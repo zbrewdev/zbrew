@@ -2,4 +2,16 @@
 #
 # Temporary hack - enhance this service to process / validate key-value pairs
 #
-cat "$1"
+props="$1"
+if [ -f ${props} ]; then
+        value=`cat ${props}`
+	OLDIFS=$IFS; IFS="
+"
+	for v in $value; do
+	   	eval "$v";
+	done
+	IFS=$OLDIFS
+else
+	echo "Unable to find properties file ${props}"
+	exit 16
+fi

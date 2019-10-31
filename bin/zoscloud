@@ -51,8 +51,8 @@ Examples:
 #
 search() {
 	search=$1
-	callerdir=`callerdir`
-	result=`grep -i "${search}" ${callerdir}/zoscloud.software`
+	callerdir=`callerdir $0`
+	result=`grep -i "${search}" ${callerdir}/../zoscloud.software`
 	echo "${result}" | tr '_' ' '
 	return 0
 }
@@ -113,7 +113,7 @@ receive() {
      javahome="${JAVA_HOME}"                    
      classpath="${SMPE_CLASSPATH}"                 
      downloadmethod="https"                            
-     downloadkeyring="*AUTH*/*"                        
+     downloadkeyring="javatruststore"                        
      javadebugoptions="-Dcom.ibm.smp.debug=severe">    
  </CLIENT>    
 zzz
@@ -122,13 +122,12 @@ zzz
   <SERVER
   host="${SMPE_FTPHOST}"
   user="${SMPE_FTPUSER}"
-  port="${SMPE_FTPPORT}"
   pw="${SMPE_FTPPW}"
   >
   <PACKAGE
-  file="/${SMPE_FTPSRCDIR}/GIMPAF.XML"
+  file="${SMPE_FTPFILE}"
   hash="${SMPE_FTPHASH}"
-  id="httptest"
+  id="${SMPE_FTPID}"
   >
   </PACKAGE>
   </SERVER>
@@ -208,6 +207,13 @@ if [ $# -lt 2 ]; then
 	exit 16
 fi
 
+mydir=$(callerdir ${0})
+props="${mydir}/../zoscloud.properties"
+. zoscloudprops "${props}"
+if [ $? -gt 0 ]; then
+	echo "Internal Error. Unable to find ${props}" >&2
+	exit 4
+fi
 verb=$1
 case ${verb} in
 	search ) 
@@ -224,6 +230,12 @@ case ${verb} in
 		rc=$?
 		;;	
 	receive ) 
+		props="${SMPE_ORDERROOT}/$2.properties"
+		. zoscloudprops "${props}"
+		if [ $? -gt 0 ]; then
+			echo "ORDER for $2 is not ready yet (unable to find ${props})" >&2
+			exit 4
+		fi
 		out=`receive $2`; 
 		rc=$? 
 		if [ $rc -gt 0 ]; then
