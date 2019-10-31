@@ -1,0 +1,248 @@
+#!/bin/sh
+
+. zoscloudfuncs
+InvalidOption=1
+TooFewParms=2
+UnknownAction=3
+
+#
+# Temporary hack - replace with a proper message file
+#
+msg() {
+	pgm=$1
+	msgnum=$2
+	msgtype=$3
+	
+	shift 3
+	args=$*
+
+	case ${msgnum} in 
+		${InvalidOption}) msgtext="Invalid option specified: -";;
+		${TooFewParms}) msgtext="Too few Parameters specified. Expected 2 but received: ";;
+		${UnknownAction}) msgtext="Unknown action specified: ";;
+		*) msgtext="Internal Error. Unknow msgnum: ${msgnum}";;
+	esac
+	echo "ZCL000"${msgnum}${msgtype} "${msgtext}${args}" >&2
+}
+
+#
+# Temporary hack - replace with a manpage
+#
+syntax() {
+	echo "\
+zoscloud [-vd] search|install|uninstall|receive|check|configure|apply <software>
+	and <software> is the software to search for
+	    
+Examples:
+	zoscloud search cobol      <-- search for products with COBOL in their description
+	zoscloud order igy630j     <-- submit an order for IGY630J software (receive can not be performed until complete)
+	zoscloud install igy630j   <-- install Product 5655-EC6 (Enterprise COBOL 6.3.0) Japanese, ID IGY630J
+	                              (install is short for receive, check, configure, apply)
+	zoscloud receive igy630e   <-- receive COBOL English SMP/E packages from ShopZ
+	zoscloud check igy630e     <-- check that all pre-reqs required for COBOL English are satisfied
+	zoscloud configure igy630e <-- configure previously checked COBOL English using configuration properties
+	zoscloud apply     igy630e <-- apply previously configured COBOL English, making it available for general use
+" >&2 
+	exit 16
+}
+
+#
+# Temporary hack - replace with call to IBM-managed server (ShopZ) to get proper list
+#
+search() {
+	search=$1
+	callerdir=`callerdir`
+	result=`grep -i "${search}" ${callerdir}/zoscloud.software`
+	echo "${result}" | tr '_' ' '
+	return 0
+}
+
+install() {
+	sw="$1"
+	out=`receive $sw`
+	rc=$?
+	if [ $rc -gt 0 ]; then
+		echo ${out}
+		return ${rc}
+	fi
+	out=`check $sw`
+	rc=$?
+	if [ $rc -gt 0 ]; then
+		echo ${out}
+		return ${rc}
+	fi
+	out=`configure $sw`
+	rc=$?
+	if [ $rc -gt 0 ]; then
+		echo ${out}
+		return ${rc}
+	fi
+	out=`apply $sw`
+	rc=$?
+	if [ $rc -gt 0 ]; then
+		echo ${out}
+		return ${rc}
+	fi
+	return 0
+}
+
+#
+# Temporary hack - replace with proper RESTful call to ShopZ to submit request
+# Response will be an ORDER number that, when complete, will have information needed  
+# for the RECEIVE
+#
+order() {
+	# currently no-op. ORDER directory for COBOL IGY630E pre-populated
+	return 0
+}
+
+uninstall() {
+	echo "Not implemented yet"
+	return 4
+}
+
+receive() {
+
+	sw="$1"
+	tmpServerHFS=${TMP}/server.$$.xml
+	tmpClientHFS=${TMP}/client.$$.xml
+	tmpCntlHFS=${TMP}/cntl.$$.xml
+
+	cat >${tmpClientHFS} <<zzz
+  <CLIENT debug="YES"                                  
+     javahome="${JAVA_HOME}"                    
+     classpath="${SMPE_CLASSPATH}"                 
+     downloadmethod="https"                            
+     downloadkeyring="*AUTH*/*"                        
+     javadebugoptions="-Dcom.ibm.smp.debug=severe">    
+ </CLIENT>    
+zzz
+
+	cat >${tmpServerHFS} <<zzz
+  <SERVER
+  host="${SMPE_FTPHOST}"
+  user="${SMPE_FTPUSER}"
+  port="${SMPE_FTPPORT}"
+  pw="${SMPE_FTPPW}"
+  >
+  <PACKAGE
+  file="/${SMPE_FTPSRCDIR}/GIMPAF.XML"
+  hash="${SMPE_FTPHASH}"
+  id="httptest"
+  >
+  </PACKAGE>
+  </SERVER>
+zzz
+
+	cat >${tmpCntlHFS} <<zzz
+  SET BDY(GLOBAL).
+    RECEIVE FROMNETWORK(
+      SERVER(SERVER)
+      CLIENT(CLIENT)
+    )
+      .
+zzz
+
+	LOG=${TMP}/$$.smplog
+	touch ${LOG}
+
+	OUT=${TMP}/$$.smpout
+	touch ${OUT}
+
+	RPT=${TMP}/$$.smprpt
+	touch ${RPT}
+
+	NTS=${TMP}/$$.smpnts
+	rm -rf ${NTS}
+	mkdir ${NTS}
+
+	mvscmdauth --pgm=gimsmp --smpcsi=${SMPE_CSI} --smpwkdir=${TMP} --smpnts=${NTS} --smplog=${LOG},mod --smpout=${OUT},mod --smprpt=${RPT},mod --server=${tmpServerHFS} --client=${tmpClientHFS} --smpcntl=${tmpCntlHFS} --bpxprint='*' --sysprint='*' 
+	rc=$?
+	if [ ${rc} -gt 0 ]; then
+		echo "SMP/E RECEIVE of ${sw} failed. See SMPLOG: ${LOG}, SMPOUT: ${OUT}, SMPRPT: ${RPT} for details."
+		echo "SMP/E RECEIVE INPUT Files have been retained: server:${tmpServerHFS} client:${tmpClientHFS} smpcntl:${tmpCntlHFS}"
+	else
+		rm -rf ${NTS} ${LOG} ${OUT} ${RPT} 
+		rm ${tmpOrderHFS} ${tmpClientHFS} ${tmpCntlHFS}
+	fi
+
+	return ${rc} 
+}
+
+check() {
+	return 0
+}
+
+configure() {
+	return 0
+}
+
+apply() {
+	return 0
+}
+
+debug=0
+verbose=0
+while getopts ":vd" opt; do
+  case ${opt} in
+    d )
+      debug=1
+      ;;
+    v )
+      verbose=1
+      opts="-v"
+      ;;
+    \?)
+      if [ ${OPTARG} != "?" ]; then
+	msg zoscloud ${InvalidOption} E "${OPTARG}"
+      fi
+      syntax
+      exit 4
+      ;;
+  esac
+done
+shift $(expr $OPTIND - 1 )
+if [ $# -lt 2 ]; then
+	msg zoscloud ${TooFewParms} E "$#"
+	syntax
+	exit 16
+fi
+
+verb=$1
+case ${verb} in
+	search ) 
+		out=`search $2`  
+		rc=$?  
+		echo "${out}"
+		;;
+	install ) 
+		out=`install $2`
+		rc=$?
+		;;
+	uninstall ) 
+		out=`uninstall $2`
+		rc=$?
+		;;	
+	receive ) 
+		out=`receive $2`; 
+		rc=$? 
+		if [ $rc -gt 0 ]; then
+			echo "${out}" 
+		fi
+		;;	
+	check ) 
+		out=`check $2`
+		rc=$?
+		;;	
+	configure ) 
+		out=`configure $2`
+		rc=$?
+		;;	
+	apply ) 
+		out=`apply $2`
+		rc=$?
+		;;	
+	* ) msg zoscloud ${UnknownAction} E ${verb}; exit 16;;
+esac
+
+exit $rc

@@ -1,0 +1,14 @@
+callerdir() {
+	calledas="$1"
+	calledasdir="$(dirname ${calledas})"
+	if [ "${calledasdir}" = '.' ]; then
+		if [ "${calledas%%/*}" = "${calledas}" ]; then
+			calledasdir=''
+		fi
+	fi
+	if [ "${calledasdir}" = '' ]; then
+		resolvedas=$(whence "${calledas}")
+		calledasdir="$(dirname ${resolvedas})"
+	fi
+	echo "${calledasdir}"
+}

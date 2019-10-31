@@ -1,0 +1,5 @@
+#!/bin/sh
+#
+# Temporary hack - enhance this service to process / validate key-value pairs
+#
+cat "$1"
