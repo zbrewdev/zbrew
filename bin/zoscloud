@@ -30,20 +30,26 @@ msg() {
 #
 syntax() {
 	echo "\
-zoscloud [-cvd] search|deploy|remove|receive|check|install|apply|configure <software>
+zoscloud [-cvd] search|order|receive|install|configure|uninstall <software>
 	and <software> is the software to search for
 	-c: clean files before processing (e.g. delete SMP/E CSI datasets) and clean temporary files after processing (e.g. SMPNTS directory)
+	
+Note:
+	zoscloud has a properties file called zoscloud.properties. The following properties need to be specified:
+		ZOSCLOUD_ORDERROOT: 	The writable directory root where ORDER information will be placed by SMP/E (currently this needs to be done manually)
+					Each product you ORDER will have a corresponding order file called <software>.order
+		ZOSCLOUD_PROPSROOT: 	The writable directory root where custom properties for a product can be specified. 
+					Each product you customize can have an optional <software>custominst.properties and/or <software>customconfig.properties file
+	If any installation customization is required, edit the <software>custominstall.properties file after you RECEIVE <software> but before you INSTALL.   
+	If any configuration customization is required, edit the <software>customconfig.properties file after you INSTALLE <software> but before you CONFIGURE.   
 	    
 Examples:
-	zoscloud search cobol      <-- search for products with COBOL in their description
-	zoscloud order igy630j     <-- submit an order for IGY630J software (receive can not be performed until complete)
-	zoscloud deploy igy630j    <-- deploy Product 5655-EC6 (Enterprise COBOL 6.3.0) Japanese, ID IGY630J
-	                              (deploy is short for receive, check, install, apply, configure)
-	zoscloud receive igy630e   <-- SMP/E RECEIVE of COBOL English from ShopZ
-	zoscloud check igy630e     <-- check that all pre-reqs required for COBOL English are satisfied
-	zoscloud install igy630e   <-- run product-specific installation before SMP/E APPLY step
-	zoscloud apply igy630e     <-- SMP/E APPLY of previously installed COBOL English, making it available for general use
-	zoscloud configure igy630e <-- run product-specific configuration after SMP/E APPLY step
+	zoscloud search cobol     <-- search for products with COBOL in their description
+	zoscloud order igy630     <-- submit an order for IGY630J software (receive can not be performed until complete)
+	zoscloud receive igy630   <-- SMP/E RECEIVE of COBOL (all languages) from ShopZ
+	zoscloud install igy630   <-- check that all pre-reqs required for COBOL are satisfied, then run IGY630-specific install steps, the SMP/E APPLY the product
+	zoscloud uninstall igy630 <-- check that uninstallation will not break other products, then remove SMP/E datasets and product-specific datasets
+	zoscloud configure igy630 <-- run product-specific configuration after SMP/E APPLY step
 " >&2 
 	exit 16
 }
@@ -59,41 +65,6 @@ search() {
 	return 0
 }
 
-deploy() {
-	sw="$1"
-	out=`receive $sw`
-	rc=$?
-	if [ $rc -gt 0 ]; then
-		echo ${out}
-		return ${rc}
-	fi
-	out=`check $sw`
-	rc=$?
-	if [ $rc -gt 0 ]; then
-		echo ${out}
-		return ${rc}
-	fi
-	out=`install $sw`
-	rc=$?
-	if [ $rc -gt 0 ]; then
-		echo ${out}
-		return ${rc}
-	fi
-	out=`apply $sw`
-	rc=$?
-	if [ $rc -gt 0 ]; then
-		echo ${out}
-		return ${rc}
-	fi
-	out=`configure $sw`
-	rc=$?
-	if [ $rc -gt 0 ]; then
-		echo ${out}
-		return ${rc}
-	fi
-	return 0
-}
-
 #
 # Temporary hack - replace with proper RESTful call to ShopZ to submit request
 # Response will be an ORDER number that, when complete, will have information needed  
@@ -101,32 +72,52 @@ deploy() {
 #
 order() {
 	# currently no-op. ORDER directory for COBOL IGY630E pre-populated
+	if [ ${verbose} -gt 0 ]; then
+		echo "order $1" >&2
+	fi
 	return 0
 }
 
-remove() {
-	echo "Not implemented yet"
+uninstall() {
+	if [ ${verbose} -gt 0 ]; then
+		echo "uninstall $*" >&2
+	fi
 	return 4
 }
 
 receive() {
-	smpreceive $1
+	if [ ${verbose} -gt 0 ]; then
+		echo "receive $*" >&2
+	fi
+	smpreceive $*
 	return $?
 }
 
 check() {
-	return 0
-}
-
-install() {
+	if [ ${verbose} -gt 0 ]; then
+		echo "check $*" >&2
+	fi
 	return 0
 }
 
 apply() {
+	if [ ${verbose} -gt 0 ]; then
+		echo "apply $*" >&2
+	fi
+	return 0
+}
+
+install() {
+	if [ ${verbose} -gt 0 ]; then
+		echo "install $*" >&2
+	fi
 	return 0
 }
 
 configure() {
+	if [ ${verbose} -gt 0 ]; then
+		echo "configure $*" >&2
+	fi
 	return 0
 }
 
@@ -165,7 +156,7 @@ if [ $# -lt 2 ]; then
 fi
 
 mydir=$(callerdir ${0})
-props="${mydir}/../zoscloud.properties"
+props="${mydir}/../properties/zoscloud.properties"
 . zoscloudprops "${props}"
 if [ $? -gt 0 ]; then
 	echo "Internal Error. Unable to find ${props}" >&2
@@ -178,48 +169,48 @@ case ${verb} in
 		rc=$?  
 		echo "${out}"
 		;;
-	deploy ) 
-		out=`deploy $2`
-		rc=$?
+	order ) 
+		out=`order ${opts} $2`  
+		rc=$?  
+		echo "${out}"
 		;;
-	remove ) 
-		out=`remove $2`
-		rc=$?
-		;;	
-	receive )
-		ussname=$(echo ${2} | tr '[:upper:]' '[:lower:]'); 
+	install )
 		zosname=$(echo ${2} | tr '[:lower:]' '[:upper:]'); 
-		props="${SMPE_ORDERROOT}/${ussname}.properties"
-		. zoscloudprops "${props}"
-		if [ $? -gt 0 ]; then
-			echo "ORDER for $2 is not ready yet (unable to find ${props})" >&2
-			exit 4
+		if [ ${verbose} -gt 0 ]; then
+			echo "Allocate SMP/E datasets for $2 " >&2
 		fi
 		smpconfig ${opts} ${zosname}
 		if [ $? -gt 0 ]; then
 			echo "Unable to configure SMP/E datasets. Receive failed" >&2
 			exit 4
 		fi
-		out=`receive ${zosname}`; 
+		out=`receive ${opts} ${zosname}`; 
+		rc=$? 
+		if [ $rc -gt 0 ]; then
+			echo "${out}" 
+		fi
+		out=`check ${opts} $2`
+		rc=$? 
+		if [ $rc -gt 0 ]; then
+			echo "${out}" 
+		fi
+		out=`install ${opts} $2`;
+		rc=$? 
+		if [ $rc -gt 0 ]; then
+			echo "${out}" 
+		fi
+		out=`apply ${opts} $2`;
 		rc=$? 
 		if [ $rc -gt 0 ]; then
 			echo "${out}" 
 		fi
 		;;	
-	check ) 
-		out=`check $2`
-		rc=$?
-		;;	
-	install ) 
-		out=`install $2`;
-		rc=$?;
-		;;
-	apply ) 
-		out=`apply $2`
-		rc=$?
-		;;	
 	configure ) 
-		out=`configure $2`
+		out=`configure ${opts} $2`
+		rc=$?
+		;;	
+	uninstall ) 
+		out=`uninstall $2`
 		rc=$?
 		;;	
 	* ) msg zoscloud ${UnknownAction} E ${verb}; exit 16;;

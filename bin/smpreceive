@@ -40,7 +40,7 @@ Examples:
 }
 
 receive() {
-	zosname="$1"
+	sw="$1"
 	tmpServerHFS=${TMP}/$$.server.xml
 	tmpClientHFS=${TMP}/$$.client.xml
 	tmpCntlHFS=${TMP}/$$.cntl.xml
@@ -101,7 +101,7 @@ zzz
 	fi
 	mkdir -p ${NTS}
 
-	mvscmdauth --pgm=gimsmp --smpcsi=${zosname}G.GLOBAL.CSI --smpwkdir=${TMP} --smpnts=${NTS} --smplog=${LOG},mod --smpout=${OUT},mod --smprpt=${RPT},mod --bpxprint=${BPXPRINT},mod --sysprint=${SYSPRINT},mod --server=${tmpServerHFS} --client=${tmpClientHFS} --smpcntl=${tmpCntlHFS}
+	mvscmdauth --pgm=gimsmp --smpcsi=${sw}G.GLOBAL.CSI --smpwkdir=${TMP} --smpnts=${NTS} --smplog=${LOG},mod --smpout=${OUT},mod --smprpt=${RPT},mod --bpxprint=${BPXPRINT},mod --sysprint=${SYSPRINT},mod --server=${tmpServerHFS} --client=${tmpClientHFS} --smpcntl=${tmpCntlHFS}
 	rc=$?
 	if [ ${rc} -gt 0 ]; then
 		echo "SMP/E RECEIVE of ${sw} failed. See SYSPRINT: ${SYSPRINT}, BPXPRINT: ${BPXPRINT}, SMPLOG: ${LOG}, SMPOUT: ${OUT}, SMPRPT: ${RPT} for details."
@@ -152,7 +152,7 @@ if [ $# -lt 1 ]; then
 fi
 
 mydir=$(callerdir ${0})
-props="${mydir}/../zoscloud.properties"
+props="${mydir}/../properties/zoscloud.properties"
 . zoscloudprops "${props}"
 if [ $? -gt 0 ]; then
         echo "Internal Error. Unable to find ${props}" >&2
@@ -162,7 +162,7 @@ fi
 mydir=$(callerdir ${0})
 ussname=$(echo ${1} | tr '[:upper:]' '[:lower:]'); 
 zosname=$(echo ${1} | tr '[:lower:]' '[:upper:]'); 
-props="${SMPE_ORDERROOT}/${ussname}.properties"
+props="${ZOSCLOUD_ORDERROOT}/${ussname}.order"
 . zoscloudprops "${props}"
 if [ $? -gt 0 ]; then
 	echo "Internal Error. Unable to find ${props}" >&2
