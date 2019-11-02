@@ -42,8 +42,17 @@ Note:
 					Each product you customize can have an optional <software>custominst.properties and/or <software>customconfig.properties file
 	If any installation customization is required, edit the <software>custominstall.properties file after you RECEIVE <software> but before you INSTALL.   
 	If any configuration customization is required, edit the <software>customconfig.properties file after you INSTALLE <software> but before you CONFIGURE.   
+
+Here is a sample order file for COBOL 6.3.0 you would create at ${ZOSCLOUD_ORDERROOT}/igy630.order
+
+SMPE_FTPHOST=deliverycb-mul.dhe.ibm.com
+SMPE_FTPFILE=2019110150147/PROD/GIMPAF.XML
+SMPE_FTPUSER=AUserFromShopZ
+SMPE_FTPPW=APasswordFromShopZ
+SMPE_FTPHASH=AHashValueFromShopZ
+SMPE_FTPID=AnIDFromShopZ
 	    
-Examples:
+zoscloud Examples:
 	zoscloud search cobol     <-- search for products with COBOL in their description
 	zoscloud order igy630     <-- submit an order for IGY630J software (receive can not be performed until complete)
 	zoscloud receive igy630   <-- SMP/E RECEIVE of COBOL (all languages) from ShopZ
@@ -107,18 +116,50 @@ apply() {
 	return 0
 }
 
+#
+# Temporary hack - need a better way to locate where installation script is
+#
 install() {
+	sw=$1
+	shift 1
+	opts=$*
+
+	ussname=$(echo ${sw} | tr '[:upper:]' '[:lower:]'); 
+	prefix=`echo ${ussname} | awk '{print substr($0,0,3)}'`
 	if [ ${verbose} -gt 0 ]; then
-		echo "install $*" >&2
+		echo "install ${opts} ${sw}" >&2
 	fi
-	return 0
+	prodinst="../zoscloud-${prefix}/${ussname}/${ussname}install"
+	if [ -f "${prodinst}" ]; then
+		${prodinst} ${opts}
+		return $?
+	else
+		echo "Unable to find product installation program: ${prodinst}. Installation failed."
+		return 16
+	fi
 }
 
+#
+# Temporary hack - need a better way to locate where installation script is
+#
 configure() {
-	if [ ${verbose} -gt 0 ]; then
-		echo "configure $*" >&2
+	sw=$1
+ 	shift 1
+        opts=$*
+
+        ussname=$(echo ${sw} | tr '[:upper:]' '[:lower:]');
+	prefix=`echo ${ussname} | awk '{print substr($0,0,3)}'`
+        if [ ${verbose} -gt 0 ]; then
+	        echo "configure ${opts} ${sw}" >&2
 	fi
-	return 0
+	prodconfig="../zoscloud-${prefix}/${ussname}/${ussname}config"
+        if [ -f "${prodconfig}" ]; then
+     	        ${prodconfig} ${opts}
+		return $?
+        else                            
+		echo "Unable to find product configuration program: ${prodconfig}. Installation failed."
+                return 16               
+	fi
 }
 
 debug=0
@@ -180,37 +221,45 @@ case ${verb} in
 			echo "Allocate SMP/E datasets for $2 " >&2
 		fi
 		smpconfig ${opts} ${zosname}
-		if [ $? -gt 0 ]; then
+		rc=$?
+		if [ $rc -gt 0 ]; then
 			echo "Unable to configure SMP/E datasets. Receive failed" >&2
-			exit 4
+			exit $rc
 		fi
 		out=`receive ${opts} ${zosname}`; 
 		rc=$? 
 		if [ $rc -gt 0 ]; then
 			echo "${out}" 
+			exit $rc
 		fi
-		out=`check ${opts} $2`
+		out=`check $2 ${opts}`
 		rc=$? 
 		if [ $rc -gt 0 ]; then
 			echo "${out}" 
+			exit $rc
 		fi
-		out=`install ${opts} $2`;
+		out=`install $2 ${opts}`;
 		rc=$? 
 		if [ $rc -gt 0 ]; then
 			echo "${out}" 
+			exit $rc
 		fi
 		out=`apply ${opts} $2`;
 		rc=$? 
 		if [ $rc -gt 0 ]; then
 			echo "${out}" 
+			exit $rc
 		fi
 		;;	
 	configure ) 
-		out=`configure ${opts} $2`
+		out=`configure $2 ${opts}`
 		rc=$?
+		if [ $rc -gt 0 ]; then
+			echo "${out}" 
+		fi
 		;;	
 	uninstall ) 
-		out=`uninstall $2`
+		out=`uninstall $2 ${opts}`
 		rc=$?
 		;;	
 	* ) msg zoscloud ${UnknownAction} E ${verb}; exit 16;;
