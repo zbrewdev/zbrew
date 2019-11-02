@@ -110,74 +110,8 @@ remove() {
 }
 
 receive() {
-	zosname="$1"
-	tmpServerHFS=${TMP}/server.$$.xml
-	tmpClientHFS=${TMP}/client.$$.xml
-	tmpCntlHFS=${TMP}/cntl.$$.xml
-
-	cat >${tmpClientHFS} <<zzz
-  <CLIENT debug="YES"                                  
-     javahome="${JAVA_HOME}"                    
-     classpath="${SMPE_CLASSPATH}"                 
-     downloadmethod="https"                            
-     downloadkeyring="javatruststore"                        
-     javadebugoptions="-Dcom.ibm.smp.debug=severe">    
- </CLIENT>    
-zzz
-
-	cat >${tmpServerHFS} <<zzz
-  <SERVER
-  host="${SMPE_FTPHOST}"
-  user="${SMPE_FTPUSER}"
-  pw="${SMPE_FTPPW}"
-  >
-  <PACKAGE
-  file="${SMPE_FTPFILE}"
-  hash="${SMPE_FTPHASH}"
-  id="${SMPE_FTPID}"
-  >
-  </PACKAGE>
-  </SERVER>
-zzz
-
-	cat >${tmpCntlHFS} <<zzz
-  SET BDY(GLOBAL).
-    RECEIVE FROMNETWORK(
-      SERVER(SERVER)
-      CLIENT(CLIENT)
-    )
-      .
-zzz
-
-	LOG=${TMP}/$$.smplog
-	touch ${LOG}
-
-	OUT=${TMP}/$$.smpout
-	touch ${OUT}
-
-	RPT=${TMP}/$$.smprpt
-	touch ${RPT}
-
-	BPXPRINT=${TMP}/$$.bpxprint
-	touch ${BPXPRINT}
-
-	SYSPRINT=${TMP}/$$.sysprint
-	touch ${SYSPRINT}
-
-	NTS=${TMP}/smpnts
-	mkdir -p ${NTS}
-
-	mvscmdauth --pgm=gimsmp --smpcsi=${zosname}G.GLOBAL.CSI --smpwkdir=${TMP} --smpnts=${NTS} --smplog=${LOG},mod --smpout=${OUT},mod --smprpt=${RPT},mod --bpxprint=${BPXPRINT},mod --sysprint=${SYSPRINT},mod --server=${tmpServerHFS} --client=${tmpClientHFS} --smpcntl=${tmpCntlHFS}
-	rc=$?
-	if [ ${rc} -gt 0 ]; then
-		echo "SMP/E RECEIVE of ${sw} failed. See SYSPRINT: ${SYSPRINT}, BPXPRINT: ${BPXPRINT}, SMPLOG: ${LOG}, SMPOUT: ${OUT}, SMPRPT: ${RPT} for details."
-		echo "SMP/E RECEIVE INPUT Files have been retained: server:${tmpServerHFS} client:${tmpClientHFS} smpcntl:${tmpCntlHFS}"
-	else
-		rm -rf ${LOG} ${OUT} ${RPT} ${BPXPRINT} ${SYSPRINT}
-		rm ${tmpOrderHFS} ${tmpClientHFS} ${tmpCntlHFS}
-	fi
-
-	return ${rc} 
+	smpreceive $1
+	return $?
 }
 
 check() {

@@ -55,10 +55,17 @@ definecsicluster() {
 	drm -f ${name}
      fi   
 
+     vls ${name} 2>/dev/null
+     rc=$?
+     if [ $rc -eq 0 ]; then
+	echo "SMP/E dataset: ${name} already exists. Run with -c to re-create if required" >&2
+	return 16
+     fi
+
      echo "
      DEFINE CLUSTER( +
               NAME(${name}) +
-              CYLINDERS(100 10) +
+              CYLINDERS(10 10) +
               FREESPACE(10 5) +
               KEYS(24 0) +
               RECORDSIZE(24 143) +
@@ -101,7 +108,7 @@ definesmpcntl() {
   UCLIN.
     ADD OPTIONS(${HLQ}G)
           DSPREFIX(${HLQ}G.SMPTLIB)
-          DSSPACE(20,20,100)
+          DSSPACE(20,20,10)
           MSGFILTER(YES)
           MSGWIDTH(80)
           RECZGRP(ALLZONES)
@@ -130,11 +137,11 @@ definesmpcntl() {
                         DIR(100).
     ADD DDDEF(SMPWRK2)  UNIT(SYSALLDA) CYLINDERS SPACE(10,10)
                         DIR(100).
-    ADD DDDEF(SMPWRK3)  UNIT(SYSALLDA) CYLINDERS SPACE(150,50)
+    ADD DDDEF(SMPWRK3)  UNIT(SYSALLDA) CYLINDERS SPACE(15,50)
                         DIR(1000).
     ADD DDDEF(SMPWRK4)  UNIT(SYSALLDA) CYLINDERS SPACE(5,5)
                         DIR(50).
-    ADD DDDEF(SMPWRK6)  UNIT(SYSALLDA) CYLINDERS SPACE(150,50)
+    ADD DDDEF(SMPWRK6)  UNIT(SYSALLDA) CYLINDERS SPACE(15,50)
                         DIR(1000).
   ENDUCL.
   SET BOUNDARY(${HLQ}T).
@@ -165,11 +172,11 @@ definesmpcntl() {
                         DIR(100).
     ADD DDDEF(SMPWRK2)  UNIT(SYSALLDA) CYLINDERS SPACE(10,10)
                         DIR(100).
-    ADD DDDEF(SMPWRK3)  UNIT(SYSALLDA) CYLINDERS SPACE(150,50)
+    ADD DDDEF(SMPWRK3)  UNIT(SYSALLDA) CYLINDERS SPACE(15,50)
                         DIR(1000).
     ADD DDDEF(SMPWRK4)  UNIT(SYSALLDA) CYLINDERS SPACE(5,5)
                         DIR(50).
-    ADD DDDEF(SMPWRK6)  UNIT(SYSALLDA) CYLINDERS SPACE(150,50)
+    ADD DDDEF(SMPWRK6)  UNIT(SYSALLDA) CYLINDERS SPACE(15,50)
                         DIR(1000).
   ENDUCL.
   SET BOUNDARY(${HLQ}D).
@@ -201,11 +208,11 @@ definesmpcntl() {
                         DIR(100).
     ADD DDDEF(SMPWRK2)  UNIT(SYSALLDA) CYLINDERS SPACE(10,10)
                         DIR(100).
-    ADD DDDEF(SMPWRK3)  UNIT(SYSALLDA) CYLINDERS SPACE(150,50)
+    ADD DDDEF(SMPWRK3)  UNIT(SYSALLDA) CYLINDERS SPACE(15,50)
                         DIR(1000).
     ADD DDDEF(SMPWRK4)  UNIT(SYSALLDA) CYLINDERS SPACE(5,5)
                         DIR(50).
-    ADD DDDEF(SMPWRK6)  UNIT(SYSALLDA) CYLINDERS SPACE(150,50)
+    ADD DDDEF(SMPWRK6)  UNIT(SYSALLDA) CYLINDERS SPACE(15,50)
                         DIR(1000).
   ENDUCL.
        "
@@ -231,15 +238,22 @@ zzz
 defineClusters() {
 	clean=$1
 	gcsi=`definecsicluster "${GLOBAL_CSI}" ${clean}`
+	rc1=$?
 	tcsi=`definecsicluster "${TARGET_CSI}" ${clean}`
+	rc2=$?
 	dcsi=`definecsicluster "${DLIB_CSI}" ${clean}`
+	rc3=$?
+
+	if [ "${rc1}${rc2}${rc3}" != "000" ]; then 
+		return 16
+	fi
 
 	mvscmdauth --pgm=IDCAMS --sysprint='*' --repro=${REPRO_FROM} --sysin=stdin <<zzz
 ${gcsi}
 ${tcsi}
 ${dcsi}
 zzz
-	exit $?
+	return $?
 }
 
 debug=0
