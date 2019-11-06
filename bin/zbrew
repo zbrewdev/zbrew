@@ -1,6 +1,6 @@
 #!/bin/sh
 
-. zoscloudfuncs
+. zbrewfuncs
 InvalidOption=1
 TooFewParms=2
 UnknownAction=3
@@ -30,20 +30,20 @@ msg() {
 #
 syntax() {
 	echo "\
-zoscloud [-cvd] search|order|receive|install|configure|uninstall <software>
+zbrew [-cvd] search|order|receive|install|configure|uninstall <software>
 	and <software> is the software to search for
 	-c: clean files before processing (e.g. delete SMP/E CSI datasets) and clean temporary files after processing (e.g. SMPNTS directory)
 	
 Note:
-	zoscloud has a properties file called zoscloud.properties. The following properties need to be specified:
-		ZOSCLOUD_ORDERROOT: 	The writable directory root where ORDER information will be placed by SMP/E (currently this needs to be done manually)
+	zbrew has a properties file called zbrew.properties. The following properties need to be specified:
+		ZBREW_ORDERROOT: 	The writable directory root where ORDER information will be placed by SMP/E (currently this needs to be done manually)
 					Each product you ORDER will have a corresponding order file called <software>.order
-		ZOSCLOUD_PROPSROOT: 	The writable directory root where custom properties for a product can be specified. 
+		ZBREW_PROPSROOT: 	The writable directory root where custom properties for a product can be specified. 
 					Each product you customize can have an optional <software>custominst.properties and/or <software>customconfig.properties file
 	If any installation customization is required, edit the <software>custominstall.properties file after you RECEIVE <software> but before you INSTALL.   
 	If any configuration customization is required, edit the <software>customconfig.properties file after you INSTALLE <software> but before you CONFIGURE.   
 
-Here is a sample order file for COBOL 6.3.0 you would create at ${ZOSCLOUD_ORDERROOT}/igy630.order
+Here is a sample order file for COBOL 6.3.0 you would create at ${ZBREW_ORDERROOT}/igy630.order
 
 SMPE_FTPHOST=deliverycb-mul.dhe.ibm.com
 SMPE_FTPFILE=2019110150147/PROD/GIMPAF.XML
@@ -52,13 +52,13 @@ SMPE_FTPPW=APasswordFromShopZ
 SMPE_FTPHASH=AHashValueFromShopZ
 SMPE_FTPID=AnIDFromShopZ
 	    
-zoscloud Examples:
-	zoscloud search cobol     <-- search for products with COBOL in their description
-	zoscloud order igy630     <-- submit an order for IGY630J software (receive can not be performed until complete)
-	zoscloud receive igy630   <-- SMP/E RECEIVE of COBOL (all languages) from ShopZ
-	zoscloud install igy630   <-- check that all pre-reqs required for COBOL are satisfied, then run IGY630-specific install steps, the SMP/E APPLY the product
-	zoscloud uninstall igy630 <-- check that uninstallation will not break other products, then remove SMP/E datasets and product-specific datasets
-	zoscloud configure igy630 <-- run product-specific configuration after SMP/E APPLY step
+zbrew Examples:
+	zbrew search cobol     <-- search for products with COBOL in their description
+	zbrew order igy630     <-- submit an order for IGY630J software (receive can not be performed until complete)
+	zbrew receive igy630   <-- SMP/E RECEIVE of COBOL (all languages) from ShopZ
+	zbrew install igy630   <-- check that all pre-reqs required for COBOL are satisfied, then run IGY630-specific install steps, the SMP/E APPLY the product
+	zbrew uninstall igy630 <-- check that uninstallation will not break other products, then remove SMP/E datasets and product-specific datasets
+	zbrew configure igy630 <-- run product-specific configuration after SMP/E APPLY step
 " >&2 
 	exit 16
 }
@@ -69,7 +69,7 @@ zoscloud Examples:
 search() {
 	search=$1
 	callerdir=`callerdir $0`
-	result=`grep -i "${search}" ${callerdir}/../zoscloud.software`
+	result=`grep -i "${search}" ${callerdir}/../zbrew.software`
 	echo "${result}" | tr '_' ' '
 	return 0
 }
@@ -129,7 +129,7 @@ install() {
 	if [ ${verbose} -gt 0 ]; then
 		echo "install ${opts} ${sw}" >&2
 	fi
-	prodinst="../zoscloud-${prefix}/${ussname}/${ussname}install"
+	prodinst="../zbrew-${prefix}/${ussname}/${ussname}install"
 	if [ -f "${prodinst}" ]; then
 		${prodinst} ${opts}
 		return $?
@@ -152,7 +152,7 @@ configure() {
         if [ ${verbose} -gt 0 ]; then
 	        echo "configure ${opts} ${sw}" >&2
 	fi
-	prodconfig="../zoscloud-${prefix}/${ussname}/${ussname}config"
+	prodconfig="../zbrew-${prefix}/${ussname}/${ussname}config"
         if [ -f "${prodconfig}" ]; then
      	        ${prodconfig} ${opts}
 		return $?
@@ -182,7 +182,7 @@ while getopts ":cvd" opt; do
       ;;
     \?)
       if [ ${OPTARG} != "?" ]; then
-	msg zoscloud ${InvalidOption} E "${OPTARG}"
+	msg zbrew ${InvalidOption} E "${OPTARG}"
       fi
       syntax
       exit 4
@@ -191,14 +191,14 @@ while getopts ":cvd" opt; do
 done
 shift $(expr $OPTIND - 1 )
 if [ $# -lt 2 ]; then
-	msg zoscloud ${TooFewParms} E "$#"
+	msg zbrew ${TooFewParms} E "$#"
 	syntax
 	exit 16
 fi
 
 mydir=$(callerdir ${0})
-props="${mydir}/../properties/zoscloud.properties"
-. zoscloudprops "${props}"
+props="${mydir}/../properties/zbrew.properties"
+. zbrewprops "${props}"
 if [ $? -gt 0 ]; then
 	echo "Internal Error. Unable to find ${props}" >&2
 	exit 4
@@ -262,7 +262,7 @@ case ${verb} in
 		out=`uninstall $2 ${opts}`
 		rc=$?
 		;;	
-	* ) msg zoscloud ${UnknownAction} E ${verb}; exit 16;;
+	* ) msg zbrew ${UnknownAction} E ${verb}; exit 16;;
 esac
 
 exit $rc

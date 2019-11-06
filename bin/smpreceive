@@ -1,6 +1,6 @@
 #!/bin/sh
 
-. zoscloudfuncs
+. zbrewfuncs
 InvalidOption=1
 TooFewParms=2
 UnknownAction=3
@@ -137,7 +137,7 @@ while getopts ":cvd" opt; do
       ;;
     \?)
       if [ ${OPTARG} != "?" ]; then
-	msg zoscloud ${InvalidOption} E "${OPTARG}"
+	msg zbrew ${InvalidOption} E "${OPTARG}"
       fi
       syntax
       exit 4
@@ -146,14 +146,14 @@ while getopts ":cvd" opt; do
 done
 shift $(expr $OPTIND - 1 )
 if [ $# -lt 1 ]; then
-	msg zoscloud ${TooFewParms} E "$#"
+	msg zbrew ${TooFewParms} E "$#"
 	syntax
 	exit 16
 fi
 
 mydir=$(callerdir ${0})
-props="${mydir}/../properties/zoscloud.properties"
-. zoscloudprops "${props}"
+props="${mydir}/../properties/zbrew.properties"
+. zbrewprops "${props}"
 if [ $? -gt 0 ]; then
         echo "Internal Error. Unable to find ${props}" >&2
 	exit 4
@@ -162,8 +162,8 @@ fi
 mydir=$(callerdir ${0})
 ussname=$(echo ${1} | tr '[:upper:]' '[:lower:]'); 
 zosname=$(echo ${1} | tr '[:lower:]' '[:upper:]'); 
-props="${ZOSCLOUD_ORDERROOT}/${ussname}.order"
-. zoscloudprops "${props}"
+props="${ZBREW_ORDERROOT}/${ussname}.order"
+. zbrewprops "${props}"
 if [ $? -gt 0 ]; then
 	echo "Internal Error. Unable to find ${props}" >&2
 	exit 4
