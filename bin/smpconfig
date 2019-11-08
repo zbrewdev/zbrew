@@ -65,7 +65,7 @@ definecsicluster() {
      echo "
      DEFINE CLUSTER( +
               NAME(${name}) +
-              CYLINDERS(10 10) +
+              CYLINDERS(100 100) +
               FREESPACE(10 5) +
               KEYS(24 0) +
               RECORDSIZE(24 143) +
@@ -108,7 +108,7 @@ definesmpcntl() {
   UCLIN.
     ADD OPTIONS(${HLQ}G)
           DSPREFIX(${HLQ}G.SMPTLIB)
-          DSSPACE(20,20,10)
+          DSSPACE(${DSSPACE})
           MSGFILTER(YES)
           MSGWIDTH(80)
           RECZGRP(ALLZONES)
@@ -297,6 +297,9 @@ GLOBAL_CSI="${HLQ}G.GLOBAL.CSI"
 TARGET_CSI="${HLQ}T.TARGET.CSI"
 DLIB_CSI="${HLQ}D.DLIB.CSI"
 REPRO_FROM="SYS1.MACLIB(GIMZPOOL)"
+
+## msf - need to move CSI allocation to be product specific for size reasons
+DSSPACE="500,500,500"
 
 out=`defineClusters ${clean}`
 rc=$?
