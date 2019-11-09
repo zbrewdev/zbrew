@@ -222,7 +222,8 @@ fi
 out=`receive ${zosname}`; 
 rc=$? 
 if [ $rc -gt 0 ]; then
-	echo "${out}" 
+	echo "SMP/E RECEIVE failed with return code $rc" >&2
+	echo "${out}" >&2
 fi
 
 exit $rc
