@@ -129,7 +129,7 @@ install() {
 	if [ ${verbose} -gt 0 ]; then
 		echo "install ${opts} ${sw}" >&2
 	fi
-	prodinst="../zbrew-${prefix}/${ussname}/${ussname}install"
+	prodinst="${mydir}/../../zbrew-${prefix}/${ussname}/${ussname}install"
 	if [ -f "${prodinst}" ]; then
 		${prodinst} ${opts}
 		return $?
@@ -152,7 +152,7 @@ configure() {
         if [ ${verbose} -gt 0 ]; then
 	        echo "configure ${opts} ${sw}" >&2
 	fi
-	prodconfig="../zbrew-${prefix}/${ussname}/${ussname}config"
+	prodconfig="${mydir}/../../zbrew-${prefix}/${ussname}/${ussname}config"
         if [ -f "${prodconfig}" ]; then
      	        ${prodconfig} ${opts}
 		return $?
