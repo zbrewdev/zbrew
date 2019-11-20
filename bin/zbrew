@@ -55,8 +55,7 @@ SMPE_FTPID=AnIDFromShopZ
 zbrew Examples:
 	zbrew search cobol     <-- search for products with COBOL in their description
 	zbrew order igy630     <-- submit an order for IGY630J software (receive can not be performed until complete)
-	zbrew receive igy630   <-- SMP/E RECEIVE of COBOL (all languages) from ShopZ
-	zbrew install igy630   <-- check that all pre-reqs required for COBOL are satisfied, then run IGY630-specific install steps, the SMP/E APPLY the product
+	zbrew install igy630   <-- check that all pre-reqs required for COBOL are satisfied, then SMP/E RECEIVE the product, then run IGY630-specific install steps, then SMP/E APPLY the product
 	zbrew uninstall igy630 <-- check that uninstallation will not break other products, then remove SMP/E datasets and product-specific datasets
 	zbrew configure igy630 <-- run product-specific configuration after SMP/E APPLY step
 " >&2 
@@ -70,7 +69,7 @@ search() {
 	search=$1
 	callerdir=`callerdir $0`
 	result=`grep -i "${search}" ${callerdir}/../zbrew.software`
-	echo "${result}" | tr '_' ' '
+	echo ${result}
 	return 0
 }
 
@@ -113,6 +112,15 @@ apply() {
 	if [ ${verbose} -gt 0 ]; then
 		echo "apply $*" >&2
 	fi
+
+	sw=$1
+	info=`search $sw`
+	rc=$?
+	if [ $rc -gt 0 ]; then
+		return $rc
+	fi	
+	fmids=`echo $info | awk '{ print $3; }' | tr ',' ' '`
+	smpapply $sw $fmids
 	return 0
 }
 
@@ -208,7 +216,7 @@ case ${verb} in
 	search ) 
 		out=`search $2`  
 		rc=$?  
-		echo "${out}"
+		echo "${out}" | tr '_' ' '
 		;;
 	order ) 
 		out=`order ${opts} $2`  

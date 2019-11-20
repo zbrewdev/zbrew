@@ -1,0 +1,213 @@
+#!/bin/sh
+
+. zbrewfuncs
+InvalidOption=1
+TooFewParms=2
+UnknownAction=3
+
+#
+# Temporary hack - replace with a proper message file
+#
+msg() {
+	pgm=$1
+	msgnum=$2
+	msgtype=$3
+	
+	shift 3
+	args=$*
+
+	case ${msgnum} in 
+		${InvalidOption}) msgtext="Invalid option specified: -";;
+		${TooFewParms}) msgtext="Too few Parameters specified. Expected 2 but received: ";;
+		${UnknownAction}) msgtext="Unknown action specified: ";;
+		*) msgtext="Internal Error. Unknow msgnum: ${msgnum}";;
+	esac
+	echo "ZCL000"${msgnum}${msgtype} "${msgtext}${args}" >&2
+}
+
+#
+# Temporary hack - replace with a manpage
+#
+syntax() {
+	echo "\
+smpapply [-vd] <prefix> <fmid list>
+	    
+Examples:
+	smpapply igy630 HADB630 JADB63H JADB631 JADB632 <-- Perform SMP/APPLY on previously RECEIVEed product IGY630
+" >&2 
+	exit 16
+}
+
+runapply() {
+	check="$1"
+	sw="$2"
+	shift 2
+	fmids=$*
+
+	tmpCntlHFS=${TMP}/$$.${check}.cntl.xml
+
+	echo "  SET BDY(${sw}T)." >${tmpCntlHFS}
+	echo "  APPLY SELECT(" >>${tmpCntlHFS}
+	for fmid in $fmids; do
+		echo "    ${fmid}" >>${tmpCntlHFS}
+	done
+	echo "  )" >>${tmpCntlHFS}
+	echo "  FORFMID(" >>${tmpCntlHFS}
+	for fmid in $fmids; do
+		echo "    ${fmid}" >>${tmpCntlHFS}
+	done
+	echo "  )" >>${tmpCntlHFS}
+	echo "  GROUPEXTEND(NOAPARS,NOUSERMODS)" >>${tmpCntlHFS}
+	if [ "${check}" = "CHECK" ]; then
+		echo "  CHECK" >>${tmpCntlHFS}
+	fi
+	echo "  RETRY(YES)" >>${tmpCntlHFS}
+	echo "  BYPASS(HOLDSYSTEM,HOLDUSER,HOLDCLASS(HIPER))." >>${tmpCntlHFS}
+	
+   	LOG=${TMP}/$$.${check}.smplog
+	touch ${LOG}
+
+	OUT=${TMP}/$$.${check}.smpout
+	touch ${OUT}
+
+	RPT=${TMP}/$$.${check}.smprpt
+	touch ${RPT}
+
+	SYSPRINT=${TMP}/$$.${check}.sysprint
+	touch ${SYSPRINT}		
+	mvscmdauth --pgm=gimsmp --smpcsi=${sw}G.GLOBAL.CSI --smplog=${LOG},mod --smpout=${OUT},mod --smprpt=${RPT},mod --sysprint=${SYSPRINT},mod --smpcntl=${tmpCntlHFS}
+	rc=$?
+	if [ ${rc} -gt 0 ]; then 
+		echo "See SYSPRINT: ${SYSPRINT}, SMPLOG: ${LOG}, SMPOUT: ${OUT}, SMPRPT: ${RPT}, SMPCNTL:${tmpCntlHFS} for details."
+	else
+                rm -rf ${LOG} ${OUT} ${RPT} ${SYSPRINT} ${tmpCntlHFS}
+	fi
+        return ${rc}
+} 
+
+apply() {
+	sw=$1
+	out=`runapply CHECK $*`
+	rc=$?
+	if [ ${rc} -gt 0 ]; then
+ 		echo "SMP/E APPLY(CHECK) of ${sw} failed. ${out}" >&2
+		return ${rc}
+	fi
+
+	out=`runapply NOCHECK $*`
+	rc=$?
+	echo "${out}"
+	if [ ${rc} -gt 0 ]; then 
+ 		echo "SMP/E APPLY of ${sw} failed. ${out}" >&2
+	fi
+
+        return ${rc}
+}
+
+debug=0
+verbose=0
+opts=""
+while getopts ":vd" opt; do
+  case ${opt} in
+    d )
+      debug=1
+      opts="${opts} -d"
+      ;;
+    v )
+      verbose=1
+      opts="${opts} -v"
+      ;;
+    \?)
+      if [ ${OPTARG} != "?" ]; then
+	msg zbrew ${InvalidOption} E "${OPTARG}"
+      fi
+      syntax
+      exit 4
+      ;;
+  esac
+done
+shift $(expr $OPTIND - 1 )
+if [ $# -lt 2 ]; then
+	msg zbrew ${TooFewParms} E "$#"
+	syntax
+	exit 16
+fi
+
+mydir=$(callerdir ${0})
+props="${mydir}/../properties/zbrew.properties"
+. zbrewprops "${props}"
+if [ $? -gt 0 ]; then
+        echo "Internal Error. Unable to find ${props}" >&2
+	exit 4
+fi   
+
+mydir=$(callerdir ${0})
+ussname=$(echo ${1} | tr '[:upper:]' '[:lower:]'); 
+zosname=$(echo ${1} | tr '[:lower:]' '[:upper:]'); 
+shift
+fmids="$*"
+props="${ZBREW_ORDERROOT}/${ussname}.order"
+. zbrewprops "${props}"
+if [ $? -gt 0 ]; then
+	echo "Internal Error. Unable to find ${props}" >&2
+	exit 4
+fi
+
+if [ -z "${SMPE_JAVAHOME}" ]; then
+	if [ -z "${JAVA_HOME}" ]; then
+		javaloc=`whence java 2>/dev/null`
+		if [ $? -eq 0 ]; then
+			SMPE_JAVAHOME="$(dirname ${javaloc})/../"
+		else 
+			echo "Unable to set SMPE_JAVAHOME. Please export SMPE_JAVAHOME before running"
+			exit 16 
+		fi
+	else 
+		SMPE_JAVAHOME="${JAVA_HOME}"
+	fi
+fi
+if [ -z "${SMPE_CLASSPATH}" ]; then
+	if [ -d /usr/lpp/smp/classes ]; then
+		SMPE_CLASSPATH="/usr/lpp/smp/classes"
+	else 
+		echo "Unable to set SMPE_CLASSPATH. Please export SMPE_CLASSPATH before running"
+		exit 16 	
+	fi
+fi
+if [ -z "${TMP}" ]; then
+        if [ -d /tmp ]; then
+         	TMP=/tmp
+        else
+       		echo "Unable to set TMP. Please export TMP before running"
+                exit 16
+        fi
+fi
+if [ -d ${SMPE_JAVAHOME} ]; then
+	;
+else
+       	echo "SMPE_JAVAHOME environment variable is defined to ${SMPE_JAVAHOME} but the directory does not exist. Please create directory or change environment variable."
+        exit 16
+fi
+
+if [ -d ${SMPE_CLASSPATH} ]; then
+	;
+else
+       	echo "SMPE_CLASSPATH environment variable is defined to ${SMPE_JAVAHOME} but the directory does not exist. Please create directory or change environment variable."
+        exit 16
+fi
+
+if [ -d $TMP ]; then
+	;
+else
+       	echo "TMP environment variable is defined to ${TMP} but the directory does not exist. Please create directory or change environment variable."
+        exit 16
+fi
+		
+out=`apply ${zosname} ${fmids}`; 
+rc=$? 
+if [ $rc -gt 0 ]; then
+	echo "SMP/E APPLY failed with return code $rc" >&2
+	echo "${out}" >&2
+fi
+
+exit $rc
