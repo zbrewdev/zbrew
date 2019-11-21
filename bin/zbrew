@@ -40,8 +40,8 @@ Note:
 					Each product you ORDER will have a corresponding order file called <software>.order
 		ZBREW_PROPSROOT: 	The writable directory root where custom properties for a product can be specified. 
 					Each product you customize can have an optional <software>custominst.properties and/or <software>customconfig.properties file
-	If any installation customization is required, edit the <software>custominstall.properties file after you RECEIVE <software> but before you INSTALL.   
-	If any configuration customization is required, edit the <software>customconfig.properties file after you INSTALLE <software> but before you CONFIGURE.   
+	If any installation customization is required, edit the <software>custominstall.properties before you INSTALL.   
+	If any configuration customization is required, edit the <software>customconfig.properties file after you INSTALL <software> but before you CONFIGURE.   
 
 Here is a sample order file for COBOL 6.3.0 you would create at ${ZBREW_ORDERROOT}/igy630.order
 
@@ -101,11 +101,27 @@ receive() {
 	return $?
 }
 
-check() {
+#
+# Temporary hack - need a better way to locate where pre-req script is
+#
+prereq() {
+	sw=$1
+	shift 1
+	opts=$*
+
+	ussname=$(echo ${sw} | tr '[:upper:]' '[:lower:]');
+	prefix=`echo ${ussname} | awk '{print substr($0,0,3)}'`
 	if [ ${verbose} -gt 0 ]; then
-		echo "check $*" >&2
+		echo "install ${opts} ${sw}" >&2
 	fi
-	return 0
+	prereq="${mydir}/../../zbrew-${prefix}/${ussname}/${ussname}prereq"
+	if [ -f "${prereq}" ]; then
+		${prereq} ${opts}
+		return $?
+	else
+		echo "Unable to find product pre-requisite check program: ${prereq}. Installation failed."
+		return 16
+	fi
 }
 
 apply() {
@@ -240,7 +256,7 @@ case ${verb} in
 			echo "${out}" 
 			exit $rc
 		fi
-		out=`check $2 ${opts}`
+		out=`prereq $2 ${opts}`
 		rc=$? 
 		if [ $rc -gt 0 ]; then
 			echo "${out}" 
