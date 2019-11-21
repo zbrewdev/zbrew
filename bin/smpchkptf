@@ -41,7 +41,12 @@ Examples:
 runchk() {
 	csi="$1"
 	shift
-	ptfs=$*
+	requiredptfs=$*
+
+	all=${TMP}/$$.all.ptfs
+	touch ${all}
+	required=${TMP}/$$.required.ptfs
+	touch ${required}
 
 	tmpCntlHFS=${TMP}/$$.cntl.xml
 	echo "  SET BOUNDARY(GLOBAL).
@@ -80,37 +85,38 @@ runchk() {
 
 	touch ${LOG} ${OUT} ${RPT} ${LIST} ${SYSPRINT}
 	tmpCntlHFS=${TMP}/$$.cntl.xml
-	echo "	SET BOUNDARY(${tgtzone}).
+	echo "  SET BOUNDARY(${tgtzone}).
   LIST PTFS.
 " >${tmpCntlHFS}
 	mvscmdauth --pgm=gimsmp --smpcsi=${csi} --smplog=${LOG},mod --smpout=${OUT},mod --smprpt=${RPT},mod --sysprint=${SYSPRINT},mod --smplist=${LIST},mod --smpcntl=${tmpCntlHFS}
 	rc=$?
 	if [ ${rc} -gt 0 ]; then
-		echo "Unable to determine global zone for: ${csi}. See SYSPRINT: ${SYSPRINT}, SMPLOG: ${LOG}, SMPOUT: ${OUT}, SMPRPT: ${RPT}, SMPCNTL:${tmpCntlHFS} for details."
+		echo "Unable to determine PTF list for target zone ${tgtzone}. See SYSPRINT: ${SYSPRINT}, SMPLOG: ${LOG}, SMPOUT: ${OUT}, SMPRPT: ${RPT}, SMPCNTL:${tmpCntlHFS} for details."
 	else
-        #   	 rm -rf ${LOG} ${OUT} ${RPT} ${SYSPRINT} ${tmpCntlHFS}
+           	 rm -rf ${LOG} ${OUT} ${RPT} ${SYSPRINT} ${tmpCntlHFS}
 	fi
 
-	return ${rc}
+	allptfs=`cat ${LIST} | awk '{ if ($2=="TYPE" && $3=="=" && $4=="PTF" && NF==4) { print($1); } }'`
+	rm ${LIST}
+	if [ "${allptfs}" = '' ]; then
+		echo "No PTFs have been applied to target zone ${tgtzone}. See SYSPRINT: ${SYSPRINT}, SMPLOG: ${LOG}, SMPOUT: ${OUT}, SMPRPT: ${RPT}, SMPCNTL:${tmpCntlHFS} for	details."
+		return 16
+	fi
+	for ptf in ${allptfs}; do
+		echo "${ptf}" >>${all}
+	done
+	for ptf in ${requiredptfs}; do
+		echo "${ptf}" >>${required}
+	done
+	merged=`sort -u ${all} ${required} | wc -l`
+	original=`wc -l <${all}`
+	if [ "${merged}" != "${original}" ]; then
+		echo "One or more PTFs required have not been applied to target zone ${tgtzone}. The applied PTFs list is: ${all}. The required PTFs list is: ${required}"
+		return 16
+	fi
+
+	return 0
 }  
-apply() {
-	sw=$1
-	out=`runapply CHECK $*`
-	rc=$?
-	if [ ${rc} -gt 0 ]; then
- 		echo "SMP/E APPLY(CHECK) of ${sw} failed. ${out}" >&2
-		return ${rc}
-	fi
-
-	out=`runapply NOCHECK $*`
-	rc=$?
-	echo "${out}"
-	if [ ${rc} -gt 0 ]; then 
- 		echo "SMP/E APPLY of ${sw} failed. ${out}" >&2
-	fi
-
-        return ${rc}
-}
 
 debug=0
 verbose=0
@@ -165,15 +171,21 @@ else
 	exit 16
 fi
 
-zosname=$(echo ${1} | tr '[:lower:]' '[:upper:]'); 
-shift
-fmids="$*"
-
-out=`apply ${zosname} ${fmids}`; 
-rc=$? 
-if [ $rc -gt 0 ]; then
-	echo "SMP/E APPLY failed with return code $rc" >&2
-	echo "${out}" >&2
+out=$(whence zbrewfuncs >/dev/null)
+if [ $? -eq 0 ]; then
+	. zbrewfuncs
+else
+    	echo "zbrew tools need to be in your PATH"
+	exit 4
 fi
 
-exit $rc
+props=$(callerdir "$0")"/../../zbrew/global.properties"
+. zbrewprops ${props}
+
+out=`runchk $*`
+rc=$?
+if [ $rc -gt 0 ]; then
+	echo ${out}
+	exit $rc
+fi
+exit 0
