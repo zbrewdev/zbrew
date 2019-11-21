@@ -38,53 +38,61 @@ Examples:
 	exit 16
 }
 
-runapply() {
-	check="$1"
-	sw="$2"
-	shift 2
-	fmids=$*
+runchk() {
+	csi="$1"
+	shift
+	ptfs=$*
 
-	tmpCntlHFS=${TMP}/$$.${check}.cntl.xml
-
-	echo "  SET BDY(${sw}T)." >${tmpCntlHFS}
-	echo "  APPLY SELECT(" >>${tmpCntlHFS}
-	for fmid in $fmids; do
-		echo "    ${fmid}" >>${tmpCntlHFS}
-	done
-	echo "  )" >>${tmpCntlHFS}
-	echo "  FORFMID(" >>${tmpCntlHFS}
-	for fmid in $fmids; do
-		echo "    ${fmid}" >>${tmpCntlHFS}
-	done
-	echo "  )" >>${tmpCntlHFS}
-	echo "  GROUPEXTEND(NOAPARS,NOUSERMODS)" >>${tmpCntlHFS}
-	if [ "${check}" = "CHECK" ]; then
-		echo "  CHECK" >>${tmpCntlHFS}
-	fi
-	echo "  RETRY(YES)" >>${tmpCntlHFS}
-	echo "  BYPASS(HOLDSYSTEM,HOLDUSER,HOLDCLASS(HIPER))." >>${tmpCntlHFS}
+	tmpCntlHFS=${TMP}/$$.cntl.xml
+	echo "  SET BOUNDARY(GLOBAL).
+  LIST GZONE.
+" >${tmpCntlHFS}
 	
-   	LOG=${TMP}/$$.${check}.smplog
+	LOG=${TMP}/$$.smplog
 	touch ${LOG}
 
-	OUT=${TMP}/$$.${check}.smpout
+	OUT=${TMP}/$$.smpout
 	touch ${OUT}
 
-	RPT=${TMP}/$$.${check}.smprpt
+	RPT=${TMP}/$$.smprpt
 	touch ${RPT}
 
-	SYSPRINT=${TMP}/$$.${check}.sysprint
-	touch ${SYSPRINT}		
-	mvscmdauth --pgm=gimsmp --smpcsi=${sw}G.GLOBAL.CSI --smplog=${LOG},mod --smpout=${OUT},mod --smprpt=${RPT},mod --sysprint=${SYSPRINT},mod --smpcntl=${tmpCntlHFS}
-	rc=$?
-	if [ ${rc} -gt 0 ]; then 
-		echo "See SYSPRINT: ${SYSPRINT}, SMPLOG: ${LOG}, SMPOUT: ${OUT}, SMPRPT: ${RPT}, SMPCNTL:${tmpCntlHFS} for details."
-	else
-                rm -rf ${LOG} ${OUT} ${RPT} ${SYSPRINT} ${tmpCntlHFS}
-	fi
-        return ${rc}
-} 
+	LIST=${TMP}/$$.smplist
+        touch ${LIST}
 
+        SYSPRINT=${TMP}/$$.sysprint
+        touch ${SYSPRINT}   	
+
+        mvscmdauth --pgm=gimsmp --smpcsi=${csi} --smplog=${LOG},mod --smpout=${OUT},mod --smprpt=${RPT},mod --sysprint=${SYSPRINT},mod --smplist=${LIST},mod --smpcntl=${tmpCntlHFS}
+	rc=$?
+ 	if [ ${rc} -gt 0 ]; then
+                echo "Unable to determine global zone for: ${csi}. See SYSPRINT: ${SYSPRINT}, SMPLOG: ${LOG}, SMPOUT: ${OUT}, SMPRPT: ${RPT}, SMPCNTL:${tmpCntlHFS} for details."
+		return ${rc}
+ 	else
+         	rm -rf ${LOG} ${OUT} ${RPT} ${SYSPRINT} ${tmpCntlHFS}
+       	fi
+	tgtzone=`cat ${LIST} | awk '{ if ($2=="TARGET" && NF==3) { print($1); } }'`
+	rm ${LIST}
+	if [ "${tgtzone}" = '' ]; then
+		echo "Internal error. Unable to	determine global zone for: ${csi}. See SYSPRINT: ${SYSPRINT}, SMPLOG: ${LOG}, SMPOUT: ${OUT}, SMPRPT: ${RPT}, SMPCNTL:${tmpCntlHFS} for	details."
+		return 16
+	fi
+
+	touch ${LOG} ${OUT} ${RPT} ${LIST} ${SYSPRINT}
+	tmpCntlHFS=${TMP}/$$.cntl.xml
+	echo "	SET BOUNDARY(${tgtzone}).
+  LIST PTFS.
+" >${tmpCntlHFS}
+	mvscmdauth --pgm=gimsmp --smpcsi=${csi} --smplog=${LOG},mod --smpout=${OUT},mod --smprpt=${RPT},mod --sysprint=${SYSPRINT},mod --smplist=${LIST},mod --smpcntl=${tmpCntlHFS}
+	rc=$?
+	if [ ${rc} -gt 0 ]; then
+		echo "Unable to determine global zone for: ${csi}. See SYSPRINT: ${SYSPRINT}, SMPLOG: ${LOG}, SMPOUT: ${OUT}, SMPRPT: ${RPT}, SMPCNTL:${tmpCntlHFS} for details."
+	else
+        #   	 rm -rf ${LOG} ${OUT} ${RPT} ${SYSPRINT} ${tmpCntlHFS}
+	fi
+
+	return ${rc}
+}  
 apply() {
 	sw=$1
 	out=`runapply CHECK $*`
