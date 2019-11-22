@@ -75,7 +75,7 @@ runapply() {
 
 	SYSPRINT=${TMP}/$$.${check}.sysprint
 	touch ${SYSPRINT}		
-	mvscmdauth --pgm=gimsmp --smpcsi=${sw}G.GLOBAL.CSI --smplog=${LOG},mod --smpout=${OUT},mod --smprpt=${RPT},mod --sysprint=${SYSPRINT},mod --smpcntl=${tmpCntlHFS}
+	mvscmdauth --pgm=gimsmp --smpcsi=${ZBREW_HLQ}${sw}G.GLOBAL.CSI --smplog=${LOG},mod --smpout=${OUT},mod --smprpt=${RPT},mod --sysprint=${SYSPRINT},mod --smpcntl=${tmpCntlHFS}
 	rc=$?
 	if [ ${rc} -gt 0 ]; then 
 		echo "See SYSPRINT: ${SYSPRINT}, SMPLOG: ${LOG}, SMPOUT: ${OUT}, SMPRPT: ${RPT}, SMPCNTL:${tmpCntlHFS} for details."

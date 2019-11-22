@@ -101,7 +101,7 @@ zzz
 	fi
 	mkdir -p ${NTS}
 
-	mvscmdauth --pgm=gimsmp --smpcsi=${sw}G.GLOBAL.CSI --smpwkdir=${TMP} --smpnts=${NTS} --smplog=${LOG},mod --smpout=${OUT},mod --smprpt=${RPT},mod --bpxprint=${BPXPRINT},mod --sysprint=${SYSPRINT},mod --server=${tmpServerHFS} --client=${tmpClientHFS} --smpcntl=${tmpCntlHFS}
+	mvscmdauth --pgm=gimsmp --smpcsi=${ZBREW_HLQ}${sw}G.GLOBAL.CSI --smpwkdir=${TMP} --smpnts=${NTS} --smplog=${LOG},mod --smpout=${OUT},mod --smprpt=${RPT},mod --bpxprint=${BPXPRINT},mod --sysprint=${SYSPRINT},mod --server=${tmpServerHFS} --client=${tmpClientHFS} --smpcntl=${tmpCntlHFS}
 	rc=$?
 	if [ ${rc} -gt 0 ]; then
 		echo "SMP/E RECEIVE of ${sw} failed. See SYSPRINT: ${SYSPRINT}, BPXPRINT: ${BPXPRINT}, SMPLOG: ${LOG}, SMPOUT: ${OUT}, SMPRPT: ${RPT} for details."
