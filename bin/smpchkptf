@@ -76,46 +76,53 @@ runchk() {
  	else
          	rm -rf ${LOG} ${OUT} ${RPT} ${SYSPRINT} ${tmpCntlHFS}
        	fi
-	tgtzone=`cat ${LIST} | awk '{ if ($2=="TARGET" && NF==3) { print($1); } }'`
+	tgtzones=`cat ${LIST} | awk '{ if ($2=="TARGET" && NF==3) { print($1); } }'`
 	rm ${LIST}
-	if [ "${tgtzone}" = '' ]; then
+	if [ "${tgtzones}" = '' ]; then
 		echo "Internal error. Unable to	determine global zone for: ${csi}. See SYSPRINT: ${SYSPRINT}, SMPLOG: ${LOG}, SMPOUT: ${OUT}, SMPRPT: ${RPT}, SMPCNTL:${tmpCntlHFS} for	details."
 		return 16
 	fi
-
-	touch ${LOG} ${OUT} ${RPT} ${LIST} ${SYSPRINT}
-	tmpCntlHFS=${TMP}/$$.cntl.xml
-	echo "  SET BOUNDARY(${tgtzone}).
+	for tgtzone in $tgtzones; do
+		if [ ${verbose} -gt 0 ]; then
+			echo "Checking target zone: ${tgtzone}" >&2
+		fi
+		touch ${LOG} ${OUT} ${RPT} ${LIST} ${SYSPRINT}
+		tmpCntlHFS=${TMP}/$$.cntl.xml
+		echo "  SET BOUNDARY(${tgtzone}).
   LIST PTFS.
 " >${tmpCntlHFS}
-	mvscmdauth --pgm=gimsmp --smpcsi=${csi} --smplog=${LOG},mod --smpout=${OUT},mod --smprpt=${RPT},mod --sysprint=${SYSPRINT},mod --smplist=${LIST},mod --smpcntl=${tmpCntlHFS}
-	rc=$?
-	if [ ${rc} -gt 0 ]; then
-		echo "Unable to determine PTF list for target zone ${tgtzone}. See SYSPRINT: ${SYSPRINT}, SMPLOG: ${LOG}, SMPOUT: ${OUT}, SMPRPT: ${RPT}, SMPCNTL:${tmpCntlHFS} for details."
-	else
-           	 rm -rf ${LOG} ${OUT} ${RPT} ${SYSPRINT} ${tmpCntlHFS}
-	fi
+		mvscmdauth --pgm=gimsmp --smpcsi=${csi} --smplog=${LOG},mod --smpout=${OUT},mod --smprpt=${RPT},mod --sysprint=${SYSPRINT},mod --smplist=${LIST},mod --smpcntl=${tmpCntlHFS}
+		rc=$?
+		if [ ${rc} -gt 0 ]; then
+			echo "Warning: Unable to determine PTF list for target zone ${tgtzone}." >&2
+		else
+        	   	rm -rf ${LOG} ${OUT} ${RPT} ${SYSPRINT} ${tmpCntlHFS}
 
-	allptfs=`cat ${LIST} | awk '{ if ($2=="TYPE" && $3=="=" && $4=="PTF" && NF==4) { print($1); } }'`
-	rm ${LIST}
-	if [ "${allptfs}" = '' ]; then
-		echo "No PTFs have been applied to target zone ${tgtzone}. See SYSPRINT: ${SYSPRINT}, SMPLOG: ${LOG}, SMPOUT: ${OUT}, SMPRPT: ${RPT}, SMPCNTL:${tmpCntlHFS} for	details."
-		return 16
-	fi
-	for ptf in ${allptfs}; do
-		echo "${ptf}" >>${all}
+			allptfs=`cat ${LIST} | awk '{ if ($2=="TYPE" && $3=="=" && $4=="PTF" && NF==4) { print($1); } }'`
+			rm ${LIST}
+			if [ "${allptfs}" = '' ]; then
+				if [ ${verbose} -gt 0 ]; then
+					echo "No PTFs in target zone: ${tgtzone}" >&2
+				fi
+			else
+				for ptf in ${allptfs}; do
+					echo "${ptf}" >>${all}
+				done
+				for ptf in ${requiredptfs}; do
+					echo "${ptf}" >>${required}
+				done
+				merged=`sort -u ${all} ${required} | wc -l`
+				original=`wc -l <${all}`
+				if [ "${merged}" = "${original}" ]; then
+					return 0
+				fi
+			fi
+		fi
 	done
-	for ptf in ${requiredptfs}; do
-		echo "${ptf}" >>${required}
-	done
-	merged=`sort -u ${all} ${required} | wc -l`
-	original=`wc -l <${all}`
-	if [ "${merged}" != "${original}" ]; then
-		echo "One or more PTFs required have not been applied to target zone ${tgtzone}. The applied PTFs list is: ${all}. The required PTFs list is: ${required}"
-		return 16
-	fi
-
-	return 0
+	echo "One or more PTFs required have not been applied to any of the target zones:" >&2
+	echo "${tgtzones}" >&2
+	echo "The required PTFs list is: ${requiredptfs}" >&2
+	return 16
 }  
 
 debug=0
