@@ -30,10 +30,10 @@ msg() {
 #
 syntax() {
 	echo "\
-smpapply [-vd] <prefix> <fmid list>
+smpchkptf [-vd] <csi> <ptf list>
 	    
 Examples:
-	smpapply igy630 HADB630 JADB63H JADB631 JADB632 <-- Perform SMP/APPLY on previously RECEIVEed product IGY630
+	smpchkptf zbrew.igy630g.global.csi HADB630 JADB63H JADB631 JADB632 <-- Perform SMP/APPLY on previously RECEIVEed product IGY630
 " >&2 
 	exit 16
 }
