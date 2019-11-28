@@ -79,21 +79,6 @@ zzz
       .
 zzz
 
-	LOG=${TMP}/$$.smplog
-	touch ${LOG}
-
-	OUT=${TMP}/$$.smpout
-	touch ${OUT}
-
-	RPT=${TMP}/$$.smprpt
-	touch ${RPT}
-
-	BPXPRINT=${TMP}/$$.bpxprint
-	touch ${BPXPRINT}
-
-	SYSPRINT=${TMP}/$$.sysprint
-	touch ${SYSPRINT}
-
 	NTS=${TMP}/smpnts
 
 	if [ ${clean} -gt 0 ]; then
@@ -101,13 +86,13 @@ zzz
 	fi
 	mkdir -p ${NTS}
 
-	mvscmdauth --pgm=gimsmp --smpcsi=${ZBREW_HLQ}${sw}G.GLOBAL.CSI --smpwkdir=${TMP} --smpnts=${NTS} --smplog=${LOG},mod --smpout=${OUT},mod --smprpt=${RPT},mod --bpxprint=${BPXPRINT},mod --sysprint=${SYSPRINT},mod --server=${tmpServerHFS} --client=${tmpClientHFS} --smpcntl=${tmpCntlHFS}
+	smpout=`smp -i ${ZBREW_HLQ}${sw}G.GLOBAL.CSI -w ${TMP} -n ${NTS} -c ${tmpClientHFS} -s ${tmpServerHFS} <${tmpCntlHFS}`
 	rc=$?
 	if [ ${rc} -gt 0 ]; then
-		echo "SMP/E RECEIVE of ${sw} failed. See SYSPRINT: ${SYSPRINT}, BPXPRINT: ${BPXPRINT}, SMPLOG: ${LOG}, SMPOUT: ${OUT}, SMPRPT: ${RPT} for details."
-		echo "SMP/E RECEIVE INPUT Files have been retained: server:${tmpServerHFS} client:${tmpClientHFS} smpcntl:${tmpCntlHFS}"
+		echo "SMP/E RECEIVE of ${sw} failed." >&2
+		echo "${smpout}" >&2
+		echo "SMP/E RECEIVE INPUT Files have been retained: server:${tmpServerHFS} client:${tmpClientHFS} smpcntl:${tmpCntlHFS}" >&2
 	else
-		rm -rf ${LOG} ${OUT} ${RPT} ${BPXPRINT} ${SYSPRINT}
 		if [ ${clean} -gt 0 ]; then
 			rm -rf ${NTS}
 		fi

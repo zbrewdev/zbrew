@@ -1,0 +1,126 @@
+#!/bin/sh
+# Similar to the SMPPROC to make it easy to run SMP/E commands
+# from 'sh'
+#
+#set -x
+
+syntax() {
+	echo "Syntax: smp [-vdrlc]" >&2              
+	echo "  -v: verbose output" >&2
+	echo "  -d: debug output" >&2
+	echo "  -i <csi file>: location of SMPCSI dataset" >&2
+	echo "  -r <report file>: write SMPRPT output to <report file>" >&2
+	echo "  -l <list file>: write SMPLIST output to <list file>" >&2
+	echo "  -w <working directory>: set SMPWKDIR to <working directory>" >&2
+	echo "  -n <network temporary store directory>: set SMPNTS to <network temporary store directory>" >&2
+	echo "  -c <client file for RECEIVE>: set CLIENT to <client file for RECEIVE>" >&2
+	echo "  -s <server file for RECEIVE>: set SERVER to <server file for RECEIVE>" >&2
+	echo "SMPCNTL (SMP commands) specified via stdin" >&2
+	echo "SMPOUT (SMP output) specified via stdout" >&2
+	echo "Note:" >&2
+	echo "  The CSI file can be specified with the environment variable SMPCSI instead of the -i option" >&2
+	echo "  The report file can be specified with the environment variable SMPRPT instead of the -r option" >&2
+	echo "  The list file can be specified with the environment variable SMPLIST instead of the -l option" >&2
+	echo "  The work directory can be specified with the environment variable SMPWKDIR instead of the -w option" >&2
+	echo "  The network temporary store directory can be specified with the environment variable SMPNTS instead of the -n option" >&2
+	echo "  The client file can be specified with the environment variable SMPCLIENT instead of the -c option" >&2
+	echo "  The server file can be specified with the environment variable SMPSERVER instead of the -s option" >&2
+	exit 4
+}
+
+crtfile() {
+	file="$1"
+	if [ ${file} != 'DUMMY' ]; then
+		rm -f ${file}
+		if [ $? -gt 0 ]; then
+			echo "Error tring to remove output file: ${file}" >&2
+			exit 16
+		fi
+		touch ${file}
+		if [ $? -gt 0 ]; then
+			echo "Unable to create output file: ${file}" >&2
+			exit 16
+		fi
+	fi
+}
+
+SMPLOG=DUMMY
+SMPOUT=stdout
+SMPIN=stdin
+
+if [ "${SMPCSI}" = "" ]; then
+	SMPCSI=DUMMY
+fi
+if [ "${SMPLIST}" = "" ]; then
+	SMPLIST=DUMMY
+fi
+if [ "${SMPRPT}" = "" ]; then
+	SMPRPT=DUMMY
+fi
+if [ "${SMPWKDIR}" = "" ]; then
+	SMPWKDIR=DUMMY
+fi
+if [ "${SMPNTS}" = "" ]; then
+	SMPNTS=DUMMY
+fi
+if [ "${SMPCLIENT}" = "" ]; then
+	SMPCLIENT=DUMMY
+fi
+if [ "${SMPSERVER}" = "" ]; then
+	SMPSERVER=DUMMY
+fi
+
+debug=0
+verbose=0
+opts=""
+
+while getopts ":r:l:i:w:n:c:s:vd" opt; do
+  case ${opt} in
+    d )
+      debug=1
+      ;;
+    v )
+      verbose=1
+      opts="-v ${opts}"
+      ;;
+    i ) 
+      SMPCSI=${OPTARG}
+      ;;
+    r ) 
+      SMPRPT=${OPTARG}
+      ;;
+    l ) 
+      SMPLIST=${OPTARG}
+      ;;
+    w ) 
+      SMPWKDIR=${OPTARG}
+      ;;
+    n ) 
+      SMPNTS=${OPTARG}
+      ;;
+    c ) 
+      SMPCLIENT=${OPTARG}
+      ;;
+    s ) 
+      SMPSERVER=${OPTARG}
+      ;;
+    \?) 	
+      if [ ${OPTARG} != "?" ]; then
+        msg zbrew ${InvalidOption} E "${OPTARG}"
+      fi
+      syntax
+      exit 4
+      ;;
+  esac
+done    	
+shift $(expr $OPTIND - 1 )
+if [ $# -gt 0 ]; then
+        echo "No parameters other than options expected for smp" >&2
+ 	syntax
+        exit 16
+fi  
+
+crtfile "${SMPLIST}"
+crtfile "${SMPRPT}"
+mvscmdauth ${opts} --pgm=gimsmp --smpcsi=${SMPCSI} --smpwkdir=${SMPWKDIR} --smplog=${SMPLOG} --smprpt=${SMPRPT} --smplist=${SMPLIST} --smpnts=${SMPNTS} --client=${SMPCLIENT} --server=${SMPSERVER} --smpout=stdout --smpcntl=stdin
+exit $?

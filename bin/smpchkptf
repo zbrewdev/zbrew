@@ -52,54 +52,36 @@ runchk() {
 	echo "  SET BOUNDARY(GLOBAL).
   LIST GZONE.
 " >${tmpCntlHFS}
-	
-	LOG=${TMP}/$$.smplog
-	touch ${LOG}
+	gzonelist=${TMP}/$$.smp.gzonelst
 
-	OUT=${TMP}/$$.smpout
-	touch ${OUT}
-
-	RPT=${TMP}/$$.smprpt
-	touch ${RPT}
-
-	LIST=${TMP}/$$.smplist
-        touch ${LIST}
-
-        SYSPRINT=${TMP}/$$.sysprint
-        touch ${SYSPRINT}   	
-
-        mvscmdauth --pgm=gimsmp --smpcsi=${csi} --smplog=${LOG},mod --smpout=${OUT},mod --smprpt=${RPT},mod --sysprint=${SYSPRINT},mod --smplist=${LIST},mod --smpcntl=${tmpCntlHFS}
+	smpout=`smp -i ${csi} -l ${gzonelist} <${tmpCntlHFS}`	
 	rc=$?
  	if [ ${rc} -gt 0 ]; then
-                echo "Unable to determine global zone for: ${csi}. See SYSPRINT: ${SYSPRINT}, SMPLOG: ${LOG}, SMPOUT: ${OUT}, SMPRPT: ${RPT}, SMPCNTL:${tmpCntlHFS} for details."
+                echo "Unable to determine global zone for: ${csi}." >&2
+		echo "${smpout}" >&2
 		return ${rc}
- 	else
-         	rm -rf ${LOG} ${OUT} ${RPT} ${SYSPRINT} ${tmpCntlHFS}
        	fi
-	tgtzones=`cat ${LIST} | awk '{ if ($2=="TARGET" && NF==3) { print($1); } }'`
-	rm ${LIST}
+	tgtzones=`awk '{ if ($2=="TARGET" && NF==3) { print($1); } }' -f ${gzonelist}`
+        rm ${tmpCntlHFS}
 	if [ "${tgtzones}" = '' ]; then
-		echo "Internal error. Unable to	determine global zone for: ${csi}. See SYSPRINT: ${SYSPRINT}, SMPLOG: ${LOG}, SMPOUT: ${OUT}, SMPRPT: ${RPT}, SMPCNTL:${tmpCntlHFS} for	details."
+		echo "Internal error. Unable to	determine global zone for: ${csi}. See ${gzonelist} for details." >&2
 		return 16
 	fi
+	ptflist=${TMP}/$$.smp.ptflst
 	for tgtzone in $tgtzones; do
 		if [ ${verbose} -gt 0 ]; then
 			echo "Checking target zone: ${tgtzone}" >&2
 		fi
-		touch ${LOG} ${OUT} ${RPT} ${LIST} ${SYSPRINT}
-		tmpCntlHFS=${TMP}/$$.cntl.xml
 		echo "  SET BOUNDARY(${tgtzone}).
   LIST PTFS.
 " >${tmpCntlHFS}
-		mvscmdauth --pgm=gimsmp --smpcsi=${csi} --smplog=${LOG},mod --smpout=${OUT},mod --smprpt=${RPT},mod --sysprint=${SYSPRINT},mod --smplist=${LIST},mod --smpcntl=${tmpCntlHFS}
+		smpout=`smp -c ${csi} -l ${ptflist} <${tmpCntlHFS}`
 		rc=$?
 		if [ ${rc} -gt 0 ]; then
 			echo "Warning: Unable to determine PTF list for target zone ${tgtzone}." >&2
 		else
-        	   	rm -rf ${LOG} ${OUT} ${RPT} ${SYSPRINT} ${tmpCntlHFS}
-
-			allptfs=`cat ${LIST} | awk '{ if ($2=="TYPE" && $3=="=" && $4=="PTF" && NF==4) { print($1); } }'`
-			rm ${LIST}
+			allptfs=`awk '{ if ($2=="TYPE" && $3=="=" && $4=="PTF" && NF==4) { print($1); } }' -f ${ptflist}`
+			rm ${ptflist}
 			if [ "${allptfs}" = '' ]; then
 				if [ ${verbose} -gt 0 ]; then
 					echo "No PTFs in target zone: ${tgtzone}" >&2
