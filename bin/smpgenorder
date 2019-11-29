@@ -1,5 +1,6 @@
 #!/bin/sh
 # MSF - Simple script to generate an ORDER properties file from RFNJOBS.TXT sent by ShopZ
+
 if [ $# -ne 0 ]; then
 	echo "Syntax: smpgenorder" >&2
 	echo "  the rfnjobs.txt file sent by shopz is read from stdin" >&2
