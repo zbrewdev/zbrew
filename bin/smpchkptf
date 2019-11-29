@@ -45,10 +45,14 @@ runchk() {
 	shift
 	requiredptfs=$*
 
+	missingptfs=''
+
 	all=${TMP}/$$.all.ptfs
 	touch ${all}
 	required=${TMP}/$$.required.ptfs
 	touch ${required}
+	missing=${TMP}/$$.missing.ptfs
+	touch ${missing}
 
 	tmpCntlHFS=${TMP}/$$.cntl.xml
 	echo "  SET BOUNDARY(GLOBAL).
@@ -73,11 +77,14 @@ runchk() {
 		if [ ${verbose} -gt 0 ]; then
 			echo "Checking target zone: ${tgtzone}" >&2
 		fi
-		echo "  SET BOUNDARY(${tgtzone}).
-  LIST SYSMODS(${requiredptfs}).
-" >${tmpCntlHFS}
+		echo "  SET BOUNDARY(${tgtzone})." >${tmpCntlHFS}
+		echo "  LIST SYSMODS(" >>${tmpCntlHFS}
+		for ptfs in ${requiredptfs}; do
+			echo "               ${ptfs}" >>${tmpCntlHFS}
+		done
+  		echo "  )." >>${tmpCntlHFS}
+
 		smpout=`smp -i ${csi} -l ${ptflist} <${tmpCntlHFS}`
-		echo $smpout
 		rc=$?
 		if [ ${rc} -gt 4 ]; then
 			echo "Warning: Unable to determine PTF list for target zone ${tgtzone}." >&2
@@ -87,21 +94,39 @@ runchk() {
 			else
 				allptfs=`awk '{ if ($2=="TYPE" && $3=="=" && $4=="FUNCTION" && NF==4) { print($1); } }' < ${ptflist}`
 			fi
-			rm ${ptflist}
 			if [ "${allptfs}" = '' ]; then
+				missingptfs="${requiredptfs}"
 				if [ ${verbose} -gt 0 ]; then
 					echo "No PTFs in target zone: ${tgtzone}" >&2
 				fi
 			else
+				missing_ptfs='n'
+				for rptf in ${requiredptfs}; do
+					found='n'
+					for ptf in ${allptfs}; do
+						if [ "${ptf}" = "${rptf}" ]; then
+							found='y'
+							if [ ${verbose} -gt 0 ]; then
+								echo "PTF ${rptf} found" >&2
+							fi
+						fi 
+					done
+					if [ "${found}" = 'n' ]; then
+						missing_ptfs='y'
+						if [ ${verbose} -gt 0 ]; then
+							echo "PTF ${rptf} not found" >&2
+						fi
+						echo "${rptf}" >>${missing}
+						missingptfs="${missingptfs} ${rptf}"
+					fi
+				done
 				for ptf in ${allptfs}; do
 					echo "${ptf}" >>${all}
 				done
 				for ptf in ${requiredptfs}; do
 					echo "${ptf}" >>${required}
 				done
-				merged=`sort -u ${all} ${required} | wc -l`
-				original=`wc -l <${all}`
-				if [ "${merged}" = "${original}" ]; then
+				if [ "${missing_ptfs}" = 'n' ]; then
 					return 0
 				fi
 			fi
@@ -111,9 +136,10 @@ runchk() {
 		echo "One or more PTFs required have not been applied to any of the target zones:" >&2
 		echo "${tgtzones}" >&2
 		echo "The required PTFs list is: ${requiredptfs}" >&2
+		echo "The missing PTFs are: ${missingptfs}" >&2
 		return 16
 	else
-		echo "FMID ${requiredptfs} not found to be installed in the specified CSI in global.parameters"
+		echo "FMID ${requiredptfs} not found to be installed. Verify global.parameters for correct CSI if you suspect this is an error"
 		return 17
 	fi
 }  
