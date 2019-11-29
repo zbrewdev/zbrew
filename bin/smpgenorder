@@ -1,0 +1,37 @@
+#!/bin/sh
+# MSF - Simple script to generate an ORDER properties file from RFNJOBS.TXT sent by ShopZ
+if [ $# -ne 0 ]; then
+	echo "Syntax: smpgenorder" >&2
+	echo "  the rfnjobs.txt file sent by shopz is read from stdin" >&2
+	echo "  the ORDER properties file is written to stdout" >&2
+	exit 16
+fi
+header='  <SERVER'
+footer='  </SERVER>'
+
+rawdata=`awk -vheader="${header}" -vfooter="${footer}" '$0 ~ "^"header { scan=1; next } $0 ~"^"footer { scan=0 } { if (scan) { print $0 }}' <&0`
+echo "${rawdata}" | while read; do
+	value=${REPLY##*=}
+	case ${REPLY} in
+		host*)
+			echo "SMPE_FTPHOST=${value}"
+			;;
+		user*)
+			echo "SMPE_FTPUSER=${value}"
+			;;
+		pw*)
+			echo "SMPE_FTPPW=${value}"
+			;;
+		file*)
+			echo "SMPE_FTPFILE=${value}"
+			;;
+		hash*)
+			echo "SMPE_FTPHASH=${value}"
+			;;
+		id*)
+			echo "SMPE_FTPID=${value}"
+			;;
+		*) 
+			;;
+	esac
+done
