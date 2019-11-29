@@ -96,7 +96,7 @@ zzz
 		if [ ${clean} -gt 0 ]; then
 			rm -rf ${NTS}
 		fi
-		rm ${tmpOrderHFS} ${tmpClientHFS} ${tmpCntlHFS}
+		rm ${tmpOrderHFS} ${tmpClientHFS} ${tmpServerHFS} ${tmpCntlHFS}
 	fi
 
 	return ${rc} 

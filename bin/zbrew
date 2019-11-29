@@ -124,19 +124,67 @@ prereq() {
 	fi
 }
 
+fmids() {
+	sw=$1
+	smplist="/tmp/smpfmid.$$.smplist"
+	smpout=`smp -i "ZBREW.${sw}G.GLOBAL.CSI" -l "${smplist}" <<zzz
+  SET BDY(GLOBAL).
+  LIST FEATURE.
+zzz`
+	rc=$?
+	if [ $rc -eq 0 ]; then
+		fmids=`awk ' /FMID/ { $1=$2=""; print $0; }' ${smplist}`
+		echo ${fmids}
+	else
+	    	echo "smpfmid failed with rc:$rc" >&2
+		echo "${smpout}" >&2
+	fi
+	rm -f "${smplist}"
+	return $rc
+}
+
+fmidset() {
+	sw=$1
+	shift
+	fmids=$*
+	fmidset="${sw}FS"
+
+	tmpCntlHFS="/tmp/smpfmid.$$.smpcntl"
+	echo "  SET BDY(GLOBAL)." >>${tmpCntlHFS}
+	echo "  UCLIN." >>${tmpCntlHFS}
+	echo "  ADD FMIDSET(${fmidset})" >>${tmpCntlHFS}
+	echo "  FMID(" >>${tmpCntlHFS}
+	for fmid in $fmids; do
+		echo "    ${fmid}" >>${tmpCntlHFS}
+	done
+	echo "  )." >>${tmpCntlHFS}
+	echo "  ENDUCL." >>${tmpCntlHFS}
+	smpout=`smp -i "ZBREW.${sw}G.GLOBAL.CSI" <${tmpCntlHFS}`
+	rc=$?
+	rm ${tmpCntlHFS}
+	if [ $rc -gt 0 ]; then
+		echo "fmidset failed with rc:$rc" >&2
+		echo "${smpout}" >&2
+	fi      
+	echo "${fmidset}"
+	return $rc
+}
+
 apply() {
 	if [ ${verbose} -gt 0 ]; then
 		echo "apply $*" >&2
 	fi
 
-	sw=$1
-	info=`search $sw`
-	rc=$?
-	if [ $rc -gt 0 ]; then
-		return $rc
-	fi	
-	fmids=`echo $info | awk '{ print $3; }' | tr ',' ' '`
-	smpapply $sw $fmids
+	sw=$(echo ${1} | tr '[:lower:]' '[:upper:]'); 
+	fmids=`fmids ${sw}`
+	if [ $? -gt 0 ]; then
+		return $?
+	fi
+	fmidset=`fmidset ${sw} ${fmids}`
+	if [ $? -gt 0 ]; then
+		return $?
+	fi
+	smpapply $sw $fmidset
 	return 0
 }
 
