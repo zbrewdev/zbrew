@@ -41,6 +41,8 @@ Examples:
 runchk() {
 	csi="$1"
 	shift
+	fmid_check="$1"
+	shift
 	requiredptfs=$*
 
 	all=${TMP}/$$.all.ptfs
@@ -53,15 +55,14 @@ runchk() {
   LIST GZONE.
 " >${tmpCntlHFS}
 	gzonelist=${TMP}/$$.smp.gzonelst
-
-	smpout=`smp -i ${csi} -l ${gzonelist} <${tmpCntlHFS}`	
+	smpout=`smp -i ${csi} -l ${gzonelist} <${tmpCntlHFS}`
 	rc=$?
  	if [ ${rc} -gt 0 ]; then
                 echo "Unable to determine global zone for: ${csi}." >&2
 		echo "${smpout}" >&2
 		return ${rc}
        	fi
-	tgtzones=`awk '{ if ($2=="TARGET" && NF==3) { print($1); } }' -f ${gzonelist}`
+	tgtzones=`awk '{ if ($2=="TARGET" && NF==3) { print($1); } }' < ${gzonelist}`
         rm ${tmpCntlHFS}
 	if [ "${tgtzones}" = '' ]; then
 		echo "Internal error. Unable to	determine global zone for: ${csi}. See ${gzonelist} for details." >&2
@@ -73,14 +74,19 @@ runchk() {
 			echo "Checking target zone: ${tgtzone}" >&2
 		fi
 		echo "  SET BOUNDARY(${tgtzone}).
-  LIST PTFS.
+  LIST SYSMODS(${requiredptfs}).
 " >${tmpCntlHFS}
-		smpout=`smp -c ${csi} -l ${ptflist} <${tmpCntlHFS}`
+		smpout=`smp -i ${csi} -l ${ptflist} <${tmpCntlHFS}`
+		echo $smpout
 		rc=$?
-		if [ ${rc} -gt 0 ]; then
+		if [ ${rc} -gt 4 ]; then
 			echo "Warning: Unable to determine PTF list for target zone ${tgtzone}." >&2
 		else
-			allptfs=`awk '{ if ($2=="TYPE" && $3=="=" && $4=="PTF" && NF==4) { print($1); } }' -f ${ptflist}`
+			if [ "${fmid_check}" = 'n' ]; then
+				allptfs=`awk '{ if ($2=="TYPE" && $3=="=" && ($4=="PTF" || $4=="SUPERSEDED") && NF==4) { print($1); } }' < ${ptflist}`
+			else
+				allptfs=`awk '{ if ($2=="TYPE" && $3=="=" && $4=="FUNCTION" && NF==4) { print($1); } }' < ${ptflist}`
+			fi
 			rm ${ptflist}
 			if [ "${allptfs}" = '' ]; then
 				if [ ${verbose} -gt 0 ]; then
@@ -101,19 +107,24 @@ runchk() {
 			fi
 		fi
 	done
-	echo "One or more PTFs required have not been applied to any of the target zones:" >&2
-	echo "${tgtzones}" >&2
-	echo "The required PTFs list is: ${requiredptfs}" >&2
-	return 16
+	if [ "${fmid_check}" = 'n' ]; then
+		echo "One or more PTFs required have not been applied to any of the target zones:" >&2
+		echo "${tgtzones}" >&2
+		echo "The required PTFs list is: ${requiredptfs}" >&2
+		return 16
+	else
+		echo "FMID ${requiredptfs} not found to be installed in the specified CSI in global.parameters"
+		return 17
+	fi
 }  
 
-debug=0
+debug=false
 verbose=0
 opts=""
 while getopts ":vd" opt; do
   case ${opt} in
     d )
-      debug=1
+      debug=true
       opts="${opts} -d"
       ;;
     v )
