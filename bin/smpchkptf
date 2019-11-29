@@ -118,13 +118,13 @@ runchk() {
 	fi
 }  
 
-debug=false
+debug=0
 verbose=0
 opts=""
 while getopts ":vd" opt; do
   case ${opt} in
     d )
-      debug=true
+      debug=1
       opts="${opts} -d"
       ;;
     v )
