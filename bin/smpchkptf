@@ -30,10 +30,10 @@ msg() {
 #
 syntax() {
 	echo "\
-smpchk [-vd] <csi> <sysmod list>
+smpchkptf [-vd] <csi> <sysmod list>
 	    
 Examples:
-	smpchk zbrew.igy630g.global.csi HADB630 JADB63H JADB631 JADB632 <-- Perform SMP/APPLY on previously RECEIVEed product IGY630
+	smpchkptf zbrew.igy630g.global.csi HADB630 JADB63H JADB631 JADB632 <-- Perform SMP/APPLY on previously RECEIVEed product IGY630
 " >&2 
 	exit 16
 }
