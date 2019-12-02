@@ -124,9 +124,6 @@ runchk() {
 				for sysmod in ${requiredsysmods}; do
 					echo "${sysmod}" >>${required}
 				done
-				if [ "${missing_sysmods}" = 'n' ]; then
-					return 0
-				fi
 			fi
 		fi
 	done
@@ -137,15 +134,16 @@ runchk() {
 		rm ${tmpCntlHFS}
 		rm ${gzonelist}
 		rm ${sysmodlist}
-	else
-		echo "Files not cleaned up .. debug on" >&2
 	fi
-
-	echo "One or more required SYSMODS (PTFs or FUNCTIONS) have not been applied to any of the target zones:" >&2
-	echo "${tgtzones}" >&2
-	echo "The required SYSMODs list is: ${requiredsysmods}" >&2
-	echo "The missing SYSMODs are: ${missingsysmods}" >&2
-	return 16
+	if [ "${missing_sysmods}" = 'n' ]; then
+		return 0
+	else	
+		echo "One or more required SYSMODS (PTFs or FUNCTIONS) have not been applied to any of the target zones:" >&2
+		echo "${tgtzones}" >&2
+		echo "The required SYSMODs list is: ${requiredsysmods}" >&2
+		echo "The missing SYSMODs are: ${missingsysmods}" >&2
+		return 16
+	fi
 }  
 
 debug=0
