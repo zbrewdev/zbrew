@@ -12,3 +12,55 @@ callerdir() {
 	fi
 	echo "${calledasdir}"
 }
+
+setjavaenv() {
+	if [ -z "${SMPE_JAVAHOME}" ]; then
+		if [ -z "${JAVA_HOME}" ]; then
+			javaloc=`whence java 2>/dev/null`
+			if [ $? -eq 0 ]; then
+	                        export SMPE_JAVAHOME="$(dirname ${javaloc})/../"
+			else
+	                    	echo "Unable to set SMPE_JAVAHOME. Please export SMPE_JAVAHOME before running"
+	                        exit 16
+			fi
+		else
+	            	export SMPE_JAVAHOME="${JAVA_HOME}"
+		fi
+	fi
+	if [ -z "${SMPE_CLASSPATH}" ]; then
+		if [ -d /usr/lpp/smp/classes ]; then
+			export SMPE_CLASSPATH="/usr/lpp/smp/classes"
+		else
+	            	echo "Unable to set SMPE_CLASSPATH. Please export SMPE_CLASSPATH before running"
+			exit 16
+		fi
+	fi
+	if [ -z "${TMP}" ]; then
+		if [ -d /tmp ]; then
+			export TMP=/tmp
+		else
+	            	echo "Unable to set TMP. Please export TMP before running"
+			exit 16
+		fi
+	fi
+	if [ -d ${SMPE_JAVAHOME} ]; then
+		;
+	else
+	    	echo "SMPE_JAVAHOME environment variable is defined to ${SMPE_JAVAHOME} but the directory does not exist. Please create directory or change environment variable."
+		exit 16
+	fi
+	
+	if [ -d ${SMPE_CLASSPATH} ]; then
+		;
+	else
+	    	echo "SMPE_CLASSPATH environment variable is defined to ${SMPE_JAVAHOME} but the directory does not exist. Please create directory or change environment variable."
+		exit 16
+	fi
+	
+	if [ -d $TMP ]; then
+		;
+	else
+		echo "TMP environment variable is defined to ${TMP} but the directory does not exist. Please create directory or change environment variable."
+		exit 16
+	fi
+}	

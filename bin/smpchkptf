@@ -61,7 +61,7 @@ runchk() {
 		echo "${smpout}" >&2
 		return ${rc}
        	fi
-	tgtzones=`awk '{ if ($2=="TARGET" && NF==3) { print($1); } }' -f ${gzonelist}`
+	tgtzones=`awk '{ if ($2=="TARGET" && NF==3) { print($1); } }' <${gzonelist}`
         rm ${tmpCntlHFS}
 	if [ "${tgtzones}" = '' ]; then
 		echo "Internal error. Unable to	determine global zone for: ${csi}. See ${gzonelist} for details." >&2
@@ -75,12 +75,12 @@ runchk() {
 		echo "  SET BOUNDARY(${tgtzone}).
   LIST PTFS.
 " >${tmpCntlHFS}
-		smpout=`smp -c ${csi} -l ${ptflist} <${tmpCntlHFS}`
+		smpout=`smp -i ${csi} -l ${ptflist} <${tmpCntlHFS}`
 		rc=$?
 		if [ ${rc} -gt 0 ]; then
 			echo "Warning: Unable to determine PTF list for target zone ${tgtzone}." >&2
 		else
-			allptfs=`awk '{ if ($2=="TYPE" && $3=="=" && $4=="PTF" && NF==4) { print($1); } }' -f ${ptflist}`
+			allptfs=`awk '{ if ($2=="TYPE" && $3=="=" && $4=="PTF" && NF==4) { print($1); } }' <${ptflist}`
 			rm ${ptflist}
 			if [ "${allptfs}" = '' ]; then
 				if [ ${verbose} -gt 0 ]; then
@@ -168,7 +168,7 @@ else
 	exit 4
 fi
 
-props=$(callerdir "$0")"/../../zbrew/global.properties"
+props=$(callerdir "$0")"/../../zbrew/properties/global.properties"
 . zbrewprops ${props}
 
 out=`runchk $*`
