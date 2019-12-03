@@ -30,7 +30,7 @@ msg() {
 #
 syntax() {
 	echo "\
-smpchkptf [-vd] <csi> <ptf list>
+smpchkptf [-vd] <csi> <sysmod list>
 	    
 Examples:
 	smpchkptf zbrew.igy630g.global.csi HADB630 JADB63H JADB631 JADB632 <-- Perform SMP/APPLY on previously RECEIVEed product IGY630
@@ -41,79 +41,123 @@ Examples:
 runchk() {
 	csi="$1"
 	shift
-	requiredptfs=$*
+	requiredsysmods=$*
 
-	all=${TMP}/$$.all.ptfs
+	missingsysmods=''
+
+	all=${TMP}/$$.all.sysmods
 	touch ${all}
-	required=${TMP}/$$.required.ptfs
+	required=${TMP}/$$.required.sysmods
 	touch ${required}
+	missing=${TMP}/$$.missing.sysmods
+	touch ${missing}
 
 	tmpCntlHFS=${TMP}/$$.cntl.xml
+	gzonelist=${TMP}/$$.smp.gzonelst
 	echo "  SET BOUNDARY(GLOBAL).
   LIST GZONE.
 " >${tmpCntlHFS}
-	gzonelist=${TMP}/$$.smp.gzonelst
-
-	smpout=`smp -i ${csi} -l ${gzonelist} <${tmpCntlHFS}`	
+	if [ ${verbose} = "1" ]; then echo "getting gzone entries for : ${csi}" >&2; fi
+	smpout=`smp -i ${csi} -l ${gzonelist} <${tmpCntlHFS}`
 	rc=$?
  	if [ ${rc} -gt 0 ]; then
                 echo "Unable to determine global zone for: ${csi}." >&2
 		echo "${smpout}" >&2
 		return ${rc}
        	fi
-	tgtzones=`awk '{ if ($2=="TARGET" && NF==3) { print($1); } }' <${gzonelist}`
-        rm ${tmpCntlHFS}
+	tgtzones=`awk '{ if ($2=="TARGET" && NF==3) { print($1); } }' < ${gzonelist}`
 	if [ "${tgtzones}" = '' ]; then
 		echo "Internal error. Unable to	determine global zone for: ${csi}. See ${gzonelist} for details." >&2
 		return 16
 	fi
-	ptflist=${TMP}/$$.smp.ptflst
+	sysmodlist=${TMP}/$$.smp.sysmodlst
 	for tgtzone in $tgtzones; do
 		if [ ${verbose} -gt 0 ]; then
 			echo "Checking target zone: ${tgtzone}" >&2
 		fi
-		echo "  SET BOUNDARY(${tgtzone}).
-  LIST PTFS.
-" >${tmpCntlHFS}
-		smpout=`smp -i ${csi} -l ${ptflist} <${tmpCntlHFS}`
+		echo "  SET BOUNDARY(${tgtzone})." >${tmpCntlHFS}
+		echo "  LIST SYSMODS(" >>${tmpCntlHFS}
+		for sysmods in ${requiredsysmods}; do
+			echo "               ${sysmods}" >>${tmpCntlHFS}
+		done
+  		echo "  )." >>${tmpCntlHFS}
+
+		smpout=`smp -i ${csi} -l ${sysmodlist} <${tmpCntlHFS}`
 		rc=$?
-		if [ ${rc} -gt 0 ]; then
-			echo "Warning: Unable to determine PTF list for target zone ${tgtzone}." >&2
+		if [ ${rc} -gt 4 ]; then
+			echo "Warning: Unable to determine SYSMOD list for target zone ${tgtzone}." >&2
 		else
-			allptfs=`awk '{ if ($2=="TYPE" && $3=="=" && $4=="PTF" && NF==4) { print($1); } }' <${ptflist}`
-			rm ${ptflist}
-			if [ "${allptfs}" = '' ]; then
+			if [ ${fmid_check} -gt 0 ]; then
+				allsysmods=`awk '{ if ($2=="TYPE" && $3=="=" && $4=="FUNCTION" && NF==4) { print($1); } }' < ${sysmodlist}`
+			else
+				allsysmods=`awk '{ if ($2=="TYPE" && $3=="=" && ($4=="PTF" || $4=="SUPERSEDED") && NF==4) { print($1); } }' < ${sysmodlist}`
+			fi
+			if [ "${allsysmods}" = '' ]; then
+				missingsysmods="${requiredsysmods}"
 				if [ ${verbose} -gt 0 ]; then
-					echo "No PTFs in target zone: ${tgtzone}" >&2
+					echo "No SYSMODs in target zone: ${tgtzone}" >&2
 				fi
 			else
-				for ptf in ${allptfs}; do
-					echo "${ptf}" >>${all}
+				missing_sysmods='n'
+				for requiredsysmod in ${requiredsysmods}; do
+					found='n'
+					for sysmod in ${allsysmods}; do
+						if [ "${sysmod}" = "${requiredsysmod}" ]; then
+							found='y'
+							if [ ${verbose} -gt 0 ]; then
+								echo "SYSMOD ${requiredsysmod} found in target zone: ${tgtzone}" >&2
+							fi
+						fi 
+					done
+					if [ "${found}" = 'n' ]; then
+						missing_sysmods='y'
+						if [ ${verbose} -gt 0 ]; then
+							echo "SYSMOD ${requiredsysmod} not found in target zone: ${tgtzone}" >&2
+						fi
+						echo "${requiredsysmod}" >>${missing}
+						missingsysmods="${missingsysmods} ${requiredsysmod}"
+					fi
 				done
-				for ptf in ${requiredptfs}; do
-					echo "${ptf}" >>${required}
+				for sysmod in ${allsysmods}; do
+					echo "${sysmod}" >>${all}
 				done
-				merged=`sort -u ${all} ${required} | wc -l`
-				original=`wc -l <${all}`
-				if [ "${merged}" = "${original}" ]; then
-					return 0
-				fi
+				for sysmod in ${requiredsysmods}; do
+					echo "${sysmod}" >>${required}
+				done
 			fi
 		fi
 	done
-	echo "One or more PTFs required have not been applied to any of the target zones:" >&2
-	echo "${tgtzones}" >&2
-	echo "The required PTFs list is: ${requiredptfs}" >&2
-	return 16
+	if [ ${debug} -eq 0 ]; then
+		rm ${required}
+		rm ${missing}
+		rm ${all}
+		rm ${tmpCntlHFS}
+		rm ${gzonelist}
+		rm ${sysmodlist}
+	fi
+	if [ "${missing_sysmods}" = 'n' ]; then
+		return 0
+	else	
+		echo "One or more required SYSMODS (PTFs or FUNCTIONS) have not been applied to any of the target zones:" >&2
+		echo "${tgtzones}" >&2
+		echo "The required SYSMODs list is: ${requiredsysmods}" >&2
+		echo "The missing SYSMODs are: ${missingsysmods}" >&2
+		return 16
+	fi
 }  
 
 debug=0
 verbose=0
+fmid_check=0
 opts=""
-while getopts ":vd" opt; do
+while getopts ":vdf" opt; do
   case ${opt} in
     d )
       debug=1
+      opts="${opts} -d"
+      ;;
+    f )
+      fmid_check=1
       opts="${opts} -d"
       ;;
     v )
