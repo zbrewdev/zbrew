@@ -30,16 +30,15 @@ msg() {
 #
 syntax() {
 	echo "\
-smpreceive [-cvd] <prefix>
-	-c: clean files before processing and clean temporary files after processing
+smpfromshopz [-vd] <prefix>
 	    
 Examples:
-	smpreceive igy630 <-- Perform SMP/RECEIVE on previously ORDERed product IGY630
+	smpfromshopz igy630 <-- Download SMP/E files for previouly ORDERed product IGY630 from ShopZ
 " >&2 
 	exit 16
 }
 
-receive() {
+receivefromnetwork() {
 	sw="$1"
 	tmpServerHFS=${TMP}/$$.server.xml
 	tmpClientHFS=${TMP}/$$.client.xml
@@ -75,15 +74,13 @@ zzz
     RECEIVE FROMNETWORK(
       SERVER(SERVER)
       CLIENT(CLIENT)
+      TRANSFERONLY
     )
       .
 zzz
 
-	NTS=${TMP}/smpnts
+	NTS=${TMP}/smpnts.${sw}
 
-	if [ ${clean} -gt 0 ]; then
-		rm -rf ${NTS}
-	fi
 	mkdir -p ${NTS}
 
 	smpout=`smp -i ${ZBREW_HLQ}${sw}G.GLOBAL.CSI -w ${TMP} -n ${NTS} -c ${tmpClientHFS} -s ${tmpServerHFS} <${tmpCntlHFS}`
@@ -93,28 +90,21 @@ zzz
 		echo "${smpout}" >&2
 		echo "SMP/E RECEIVE INPUT Files have been retained: server:${tmpServerHFS} client:${tmpClientHFS} smpcntl:${tmpCntlHFS}" >&2
 	else
-		if [ ${clean} -gt 0 ]; then
-			rm -rf ${NTS}
-		fi
 		rm ${tmpOrderHFS} ${tmpClientHFS} ${tmpServerHFS} ${tmpCntlHFS}
 	fi
 
+	echo ${NTS}
 	return ${rc} 
 }
 
 debug=0
 verbose=0
-clean=0
 opts=""
-while getopts ":cvd" opt; do
+while getopts ":vd" opt; do
   case ${opt} in
     d )
       debug=1
       opts="${opts} -d"
-      ;;
-    c )
-      clean=1
-      opts="${opts} -c"
       ;;
     v )
       verbose=1
@@ -122,7 +112,7 @@ while getopts ":cvd" opt; do
       ;;
     \?)
       if [ ${OPTARG} != "?" ]; then
-	msg zbrew ${InvalidOption} E "${OPTARG}"
+	msg smpfromnetwork ${InvalidOption} E "${OPTARG}"
       fi
       syntax
       exit 4
@@ -131,7 +121,7 @@ while getopts ":cvd" opt; do
 done
 shift $(expr $OPTIND - 1 )
 if [ $# -lt 1 ]; then
-	msg zbrew ${TooFewParms} E "$#"
+	msg smpfromnetwork ${TooFewParms} E "$#"
 	syntax
 	exit 16
 fi
@@ -156,11 +146,12 @@ fi
 
 setjavaenv 	
 
-out=`receive ${zosname}`; 
+out=`receivefromnetwork ${zosname}`; 
 rc=$? 
 if [ $rc -gt 0 ]; then
-	echo "SMP/E RECEIVE failed with return code $rc" >&2
-	echo "${out}" >&2
+	echo "SMP/E FROM Network failed with return code $rc" >&2
+else
+	echo "${out}" 
 fi
 
 exit $rc

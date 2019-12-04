@@ -97,7 +97,13 @@ receive() {
 	if [ ${verbose} -gt 0 ]; then
 		echo "receive $*" >&2
 	fi
-	smpreceive $*
+	NTS=`smpfromshopz $*`
+	rc=$?
+	echo "${NTS}"
+	if [ $rc -gt 0 ]; then
+		return $rc
+	fi
+	`smpfromnts $* $NTS`
 	return $?
 }
 
@@ -298,11 +304,13 @@ case ${verb} in
 			echo "Unable to configure SMP/E datasets. Receive failed" >&2
 			exit $rc
 		fi
-		out=`receive ${opts} ${zosname}`; 
+		NTS=`receive ${zosname}`; 
 		rc=$? 
 		if [ $rc -gt 0 ]; then
-			echo "${out}" 
 			exit $rc
+		fi
+		if [ ${clean} -gt 0 ]; then
+			rm -rf ${NTS}
 		fi
 		out=`prereq $2 ${opts}`
 		rc=$? 
