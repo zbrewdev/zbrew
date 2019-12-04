@@ -1,6 +1,7 @@
 #!/bin/sh
 
 . zbrewfuncs
+setjavaenv
 InvalidOption=1
 TooFewParms=2
 UnknownAction=3
@@ -99,7 +100,6 @@ receive() {
 	fi
 	NTS=`smpfromshopz $*`
 	rc=$?
-	echo "${NTS}"
 	if [ $rc -gt 0 ]; then
 		return $rc
 	fi
@@ -293,7 +293,7 @@ case ${verb} in
 		rc=$?  
 		echo "${out}"
 		;;
-	install )
+	smpconfig )
 		zosname=$(echo ${2} | tr '[:lower:]' '[:upper:]'); 
 		if [ ${verbose} -gt 0 ]; then
 			echo "Allocate SMP/E datasets for $2 " >&2
@@ -304,6 +304,9 @@ case ${verb} in
 			echo "Unable to configure SMP/E datasets. Receive failed" >&2
 			exit $rc
 		fi
+		;;
+	receive )
+		zosname=$(echo ${2} | tr '[:lower:]' '[:upper:]'); 
 		NTS=`receive ${zosname}`; 
 		rc=$? 
 		if [ $rc -gt 0 ]; then
@@ -312,18 +315,24 @@ case ${verb} in
 		if [ ${clean} -gt 0 ]; then
 			rm -rf ${NTS}
 		fi
+		;;
+	prereq )
 		out=`prereq $2 ${opts}`
 		rc=$? 
 		if [ $rc -gt 0 ]; then
 			echo "${out}" 
 			exit $rc
 		fi
+		;;
+	install )
 		out=`install $2 ${opts}`;
 		rc=$? 
 		if [ $rc -gt 0 ]; then
 			echo "${out}" 
 			exit $rc
 		fi
+		;;
+	apply )
 		out=`apply ${opts} $2`;
 		rc=$? 
 		if [ $rc -gt 0 ]; then
