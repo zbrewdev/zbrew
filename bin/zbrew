@@ -196,7 +196,9 @@ zzz`
 	rc=$?
 	if [ $rc -eq 0 ]; then
 		fmids=`awk ' /FMID/ { $1=$2=""; print $0; }' ${smplist}`
-		echo ${fmids}
+		uniq_fmids=`echo ${fmids} | tr ' ' '\n' | sort | uniq`
+		echo ${uniq_fmids}
+		
 	else
 	    	echo "smpfmid failed with rc:$rc" >&2
 		echo "${smpout}" >&2
@@ -214,7 +216,7 @@ fmidset() {
 	tmpCntlHFS="/tmp/smpfmid.$$.smpcntl"
 	echo "  SET BDY(GLOBAL)." >>${tmpCntlHFS}
 	echo "  UCLIN." >>${tmpCntlHFS}
-	echo "  ADD FMIDSET(${fmidset})" >>${tmpCntlHFS}
+	echo "  REP FMIDSET(${fmidset})" >>${tmpCntlHFS}
 	echo "  FMID(" >>${tmpCntlHFS}
 	for fmid in $fmids; do
 		echo "    ${fmid}" >>${tmpCntlHFS}
@@ -224,7 +226,7 @@ fmidset() {
 	smpout=`smp -i "ZBREW.${sw}G.GLOBAL.CSI" <${tmpCntlHFS}`
 	rc=$?
 	rm ${tmpCntlHFS}
-	if [ $rc -gt 0 ]; then
+	if [ $rc -gt 4 ]; then
 		echo "fmidset failed with rc:$rc" >&2
 		echo "${smpout}" >&2
 	fi      
@@ -236,17 +238,17 @@ apply() {
 	if [ ${verbose} -gt 0 ]; then
 		echo "apply $*" >&2
 	fi
-
-	sw=$(echo ${1} | tr '[:lower:]' '[:upper:]'); 
+	check=$(echo ${1} | tr '[:lower:]' '[:upper:]') 
+	sw=$(echo ${2} | tr '[:lower:]' '[:upper:]')
 	fmids=`fmids ${sw}`
 	if [ $? -gt 0 ]; then
 		return $?
 	fi
 	fmidset=`fmidset ${sw} ${fmids}`
-	if [ $? -gt 0 ]; then
+	if [ $? -gt 4 ]; then
 		return $?
 	fi
-	smpapply $sw $fmidset
+	smpapply ${check} ${sw} ${fmidset}
 	return 0
 }
 
@@ -417,7 +419,7 @@ case ${verb} in
 		fi
 		;;
 	prodprereq )
-		out=`prereq $2 ${opts}`
+		out=`prodprereq $2 ${opts}`
 		rc=$? 
 		if [ $rc -gt 0 ]; then
 			echo "${out}" 
@@ -432,8 +434,16 @@ case ${verb} in
 			exit $rc
 		fi
 		;;
+	smpapplycheck )
+		out=`apply ${opts} CHECK $2`
+		rc=$?
+		if [ $rc -gt 0 ]; then
+                        echo "${out}"
+                        exit $rc
+                fi
+                ;;
 	smpapply )
-		out=`apply ${opts} $2`;
+		out=`apply ${opts} NOCHECK $2`;
 		rc=$? 
 		if [ $rc -gt 0 ]; then
 			echo "${out}" 
