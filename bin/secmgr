@@ -1,0 +1,12 @@
+/* REXX */
+/* This routine will print out the 4 character storage manager name  */
+/* Expected Values                                                   */
+/* RCVT: IBM RACF                                                    */
+/* ACF2: Broadcom (CA) ACF2                                          */
+/* RTSS: Broadcom (CA) Top Secret                                    */
+
+CVT      = C2d(Storage(10,4))                /* point to CVT         */         
+TRACOFF  = X2d('3E0')
+CVTTRAC  = C2d(Storage(D2x(CVT+TRACOFF),4))  /* CVTTRAC              */         
+ESM      = Storage(D2x(CVTTRAC),4)           /* Security Manager name*/
+Say ESM
