@@ -1,0 +1,13 @@
+#!/bin/sh
+# MSF - Simple script to generate an ORDER properties file for a local product
+
+if [ $# -ne 2 ]; then
+	echo "Syntax: localgenorder <NTS directory>" >&2
+	echo "  Given an <NTS directory> containing the product contents" >&2
+	echo "  write the ORDER properties file is written to stdout" >&2
+	exit 16
+fi
+
+echo "SMPE_DELIVERY=LOCAL"
+echo "SMPE_NTSDIR=${1}"
+echo "SMPE_LOCALREPO=https://github.com/mikefultonbluemix/"

@@ -11,6 +11,7 @@ syntax() {
 	echo "  -i <csi file>: location of SMPCSI dataset" >&2
 	echo "  -r <report file>: write SMPRPT output to <report file>" >&2
 	echo "  -l <list file>: write SMPLIST output to <list file>" >&2
+	echo "  -p <sysprint file>: write SYSPRINT output to <sysprint file>" >&2
 	echo "  -w <working directory>: set SMPWKDIR to <working directory>" >&2
 	echo "  -n <network temporary store directory>: set SMPNTS to <network temporary store directory>" >&2
 	echo "  -c <client file for RECEIVE>: set CLIENT to <client file for RECEIVE>" >&2
@@ -21,6 +22,7 @@ syntax() {
 	echo "  The CSI file can be specified with the environment variable SMPCSI instead of the -i option" >&2
 	echo "  The report file can be specified with the environment variable SMPRPT instead of the -r option" >&2
 	echo "  The list file can be specified with the environment variable SMPLIST instead of the -l option" >&2
+	echo "  The sysprint file can be specified with the environment variable SYSPRINT instead of the -p option" >&2
 	echo "  The work directory can be specified with the environment variable SMPWKDIR instead of the -w option" >&2
 	echo "  The network temporary store directory can be specified with the environment variable SMPNTS instead of the -n option" >&2
 	echo "  The client file can be specified with the environment variable SMPCLIENT instead of the -c option" >&2
@@ -57,6 +59,9 @@ fi
 if [ "${SMPRPT}" = "" ]; then
 	SMPRPT=DUMMY
 fi
+if [ "${SYSPRINT}" = "" ]; then
+	SYSPRINT=DUMMY
+fi
 if [ "${SMPWKDIR}" = "" ]; then
 	SMPWKDIR=DUMMY
 fi
@@ -74,7 +79,7 @@ debug=0
 verbose=0
 opts=""
 
-while getopts ":r:l:i:w:n:c:s:vd" opt; do
+while getopts ":r:l:p:i:w:n:c:s:vd" opt; do
   case ${opt} in
     d )
       debug=1
@@ -91,6 +96,9 @@ while getopts ":r:l:i:w:n:c:s:vd" opt; do
       ;;
     l ) 
       SMPLIST=${OPTARG}
+      ;;
+    p ) 
+      SYSPRINT=${OPTARG}
       ;;
     w ) 
       SMPWKDIR=${OPTARG}
@@ -122,5 +130,6 @@ fi
 
 crtfile "${SMPLIST}"
 crtfile "${SMPRPT}"
-mvscmdauth ${opts} --pgm=gimsmp --smpcsi=${SMPCSI} --smpwkdir=${SMPWKDIR} --smplog=${SMPLOG} --smprpt=${SMPRPT} --smplist=${SMPLIST} --smpnts=${SMPNTS} --client=${SMPCLIENT} --server=${SMPSERVER} --smpout=stdout --smpcntl=stdin
+crtfile "${SYSPRINT}"
+mvscmdauth ${opts} --pgm=gimsmp --smpcsi=${SMPCSI} --smpwkdir=${SMPWKDIR} --smplog=${SMPLOG} --smprpt=${SMPRPT} --smplist=${SMPLIST} --smpnts=${SMPNTS} --client=${SMPCLIENT} --server=${SMPSERVER} --sysprint=${SYSPRINT},mod --smpout=stdout --smpcntl=stdin
 exit $?
