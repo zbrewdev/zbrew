@@ -108,12 +108,28 @@ definesmpcntl() {
   SET BOUNDARY(GLOBAL).
   UCLIN.
     ADD OPTIONS(${PFX}G)
+          ASM(ASMUTIL)  
+          LKED(LINKEDIT)
+          COPY(IEBCOPY) 
           DSPREFIX(${HLQ}${PFX}G.SMPTLIB)
           DSSPACE(${DSSPACE})
           MSGFILTER(YES)
           MSGWIDTH(80)
           RECZGRP(ALLZONES)
           RETRYDDN(ALL).
+    ADD UTILITY(ASMUTIL)
+          NAME(ASMA90)
+          RC(4)          
+          PARM(DECK,NOOBJECT,USING(WARN(2))) .
+    ADD UTILITY(LINKEDIT)
+          NAME(IEWL)          
+          RC(4)               
+          PRINT(SYSPRINT)     
+          PARM(SIZE=(1024K,32K),NCAL,LET,LIST,XREF).
+    ADD UTILITY(IEBCOPY)
+          NAME(IEBCOPY)    
+          RC(0) .    
+
     ADD GLOBALZONE
           OPTIONS(${PFX}G)
           SREL(Z038)

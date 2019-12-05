@@ -1,6 +1,7 @@
 #!/bin/sh
 
 . zbrewfuncs
+setjavaenv
 InvalidOption=1
 TooFewParms=2
 UnknownAction=3
@@ -348,7 +349,7 @@ case ${verb} in
 		rc=$?  
 		echo "${out}"
 		;;
-	install )
+	smpconfig )
 		zosname=$(echo ${2} | tr '[:lower:]' '[:upper:]'); 
         	ussname=$(echo ${2} | tr '[:upper:]' '[:lower:]');
 		if [ ${verbose} -gt 0 ]; then
@@ -360,15 +361,8 @@ case ${verb} in
 			echo "Unable to configure SMP/E datasets. Receive failed" >&2
 			exit $rc
 		fi
-		if [ ${clean} -gt 0 ]; then
-			rm -rf ${NTS}
-		fi
-		props="${ZBREW_ORDERROOT}/${ussname}.order"
-		. zbrewprops "${props}"
-		if [ $? -gt 0 ]; then
-		        echo "Internal Error. Unable to find ${props}" >&2
-			exit 4
-		fi
+	receive )
+		zosname=$(echo ${2} | tr '[:lower:]' '[:upper:]'); 
 		NTS=`receive ${zosname}`; 
 		rc=$? 
 		if [ $rc -gt 0 ]; then
@@ -377,18 +371,24 @@ case ${verb} in
 		if [ ${clean} -gt 0 ]; then
 			rm -rf ${NTS}
 		fi
+		;;
+	prereq )
 		out=`prereq $2 ${opts}`
 		rc=$? 
 		if [ $rc -gt 0 ]; then
 			echo "${out}" 
 			exit $rc
 		fi
+		;;
+	install )
 		out=`install $2 ${opts}`;
 		rc=$? 
 		if [ $rc -gt 0 ]; then
 			echo "${out}" 
 			exit $rc
 		fi
+		;;
+	apply )
 		out=`apply ${opts} $2`;
 		rc=$? 
 		if [ $rc -gt 0 ]; then

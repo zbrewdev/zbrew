@@ -1,5 +1,4 @@
 #!/bin/sh
-
 . zbrewfuncs
 InvalidOption=1
 TooFewParms=2
@@ -144,7 +143,6 @@ if [ $? -gt 0 ]; then
 	exit 4
 fi
 
-setjavaenv 	
 
 out=`receivefromnetwork ${zosname}`; 
 rc=$? 

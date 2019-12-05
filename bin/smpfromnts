@@ -1,5 +1,4 @@
 #!/bin/sh
-
 . zbrewfuncs
 InvalidOption=1
 TooFewParms=2
@@ -42,6 +41,7 @@ receivefromnts() {
 	sw="$1"
 	NTS="$2"
 	order=`ls $NTS`
+	echo ${order}
 	if [ $? -gt 0 ]; then
 		echo "Unable to list contents of NTS file ${NTS}" >&2
 		exit 16
