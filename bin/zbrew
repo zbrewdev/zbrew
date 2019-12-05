@@ -417,7 +417,7 @@ case ${verb} in
 		fi
 		;;
 	prodprereq )
-		out=`prereq $2 ${opts}`
+		out=`prodprereq $2 ${opts}`
 		rc=$? 
 		if [ $rc -gt 0 ]; then
 			echo "${out}" 
