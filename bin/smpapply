@@ -41,8 +41,7 @@ Examples:
 runapply() {
 	check="$1"
 	sw="$2"
-	shift 2
-	fmids=$*
+	fmids="$3"
 
 	tmpCntlHFS=${TMP}/$$.${check}.cntl.xml
 
@@ -64,7 +63,7 @@ runapply() {
 	echo "  RETRY(YES)" >>${tmpCntlHFS}
 	echo "  BYPASS(HOLDSYSTEM,HOLDUSER,HOLDCLASS(HIPER))." >>${tmpCntlHFS}
 
-	smpout=`smp -w ${TMP} -i ${ZBREW_HLQ}${sw}G.GLOBAL.CSI <${tmpCntlHFS}`
+	smpout=`smp -w ${TMP} -r "${TMP}/$$.smprpt" -p "${TMP}/$$.sysprint" -i ${ZBREW_HLQ}${sw}G.GLOBAL.CSI <${tmpCntlHFS}`
 	rc=$?
 	rm "${tmpCntlHFS}"
 	if [ $rc -gt 0 ]; then
@@ -74,19 +73,18 @@ runapply() {
 } 
 
 apply() {
-	sw=$1
-	out=`runapply CHECK $*`
+	sw=$2
+	
+	if [ ${check} = "CHECK" ]; then
+		appmsg="APPLY(CHECK)"
+	else
+		appmsg="APPLY"
+	fi
+	out=`runapply $*`
 	rc=$?
 	if [ ${rc} -gt 0 ]; then
- 		echo "SMP/E APPLY(CHECK) of ${sw} failed. ${out}" >&2
+ 		echo "SMP/E ${appmsg} of ${sw} failed. ${out}" >&2
 		return ${rc}
-	fi
-
-	out=`runapply NOCHECK $*`
-	rc=$?
-	echo "${out}"
-	if [ ${rc} -gt 0 ]; then 
- 		echo "SMP/E APPLY of ${sw} failed. ${out}" >&2
 	fi
 
         return ${rc}
@@ -144,12 +142,11 @@ else
 	echo "TMP environment variable is defined to ${TMP} but the directory does not exist. Please create directory or change environment variable."
 	exit 16
 fi
+check=$(echo ${1} | tr '[:lower:]' '[:upper:]') 
+zosname=$(echo ${2} | tr '[:lower:]' '[:upper:]') 
+fmids="$3"
 
-zosname=$(echo ${1} | tr '[:lower:]' '[:upper:]'); 
-shift
-fmids="$*"
-
-out=`apply ${zosname} ${fmids}`; 
+out=`apply ${check} ${zosname} ${fmids}`; 
 rc=$? 
 if [ $rc -gt 0 ]; then
 	echo "SMP/E APPLY failed with return code $rc" >&2
