@@ -45,6 +45,7 @@ Note:
 
 Here is a sample order file for COBOL 6.3.0 you would create at ${ZBREW_ORDERROOT}/igy630.order
 
+SMPE_DELIVERY=SHOPZ
 SMPE_FTPHOST=deliverycb-mul.dhe.ibm.com
 SMPE_FTPFILE=2019110150147/PROD/GIMPAF.XML
 SMPE_FTPUSER=AUserFromShopZ
@@ -93,17 +94,71 @@ uninstall() {
 	return 4
 }
 
-receive() {
-	if [ ${verbose} -gt 0 ]; then
-		echo "receive $*" >&2
-	fi
+receiveshopz() {
 	NTS=`smpfromshopz $*`
 	rc=$?
-	echo "${NTS}"
 	if [ $rc -gt 0 ]; then
 		return $rc
 	fi
 	`smpfromnts $* $NTS`
+	return $?
+}
+
+receiveppa() {
+}
+
+receivelocal() {
+	sw=$1
+	ussname=$(echo ${sw} | tr '[:upper:]' '[:lower:]');
+	prefix=`echo "${ussname}" | awk '{ print substr($1, 0, 3) }'`
+
+	NTS="${TMP}/smpnts.${ussname}"
+	REPO_NAME="zbrew-${prefix}"
+	REPODIR="${SMPE_LOCALREPO}/${REPO_NAME}"
+	REPO="${REPODIR}.git"
+	order="ORDER1"
+
+	rm -rf "${NTS}"	
+	mkdir -p "${NTS}/${order}"
+
+      	prodpkg="${mydir}/../../zbrew-${prefix}/${ussname}/${ussname}crtpkg"
+        if [ -f "${prodpkg}" ]; then
+	        ${prodpkg} ${NTS}/${order}
+	        rc=$?
+	else
+	        echo "Unable to find product packaging program: ${prodpkg}. Installation failed."
+		return 16
+	fi
+	if [ $rc -gt 0 ]; then
+		return $rc;
+	fi	
+	`smpfromnts ${sw} $NTS`
+	rc=$?
+	if [ $rc -gt 0 ]; then
+		return $rc;
+	fi	
+	rm -rf "${NTS}" 
+	return
+}
+
+receive() {
+	if [ ${verbose} -gt 0 ]; then
+		echo "receive $*" >&2
+	fi
+	case ${SMPE_DELIVERY} in
+		SHOPZ)
+			out=`receiveshopz $*`
+			;;
+		PPA)
+			out=`receiveppa $*`
+			;;
+		LOCAL)
+			out=`receivelocal $*`
+			;;
+		*)
+			echo "SMPE_DELIVERY must be one of SHOPZ, PPA, LOCAL and must be specified in your ORDER file" >&2
+			;;
+	esac
 	return $?
 }
 
@@ -295,6 +350,7 @@ case ${verb} in
 		;;
 	install )
 		zosname=$(echo ${2} | tr '[:lower:]' '[:upper:]'); 
+        	ussname=$(echo ${2} | tr '[:upper:]' '[:lower:]');
 		if [ ${verbose} -gt 0 ]; then
 			echo "Allocate SMP/E datasets for $2 " >&2
 		fi
@@ -303,6 +359,15 @@ case ${verb} in
 		if [ $rc -gt 0 ]; then
 			echo "Unable to configure SMP/E datasets. Receive failed" >&2
 			exit $rc
+		fi
+		if [ ${clean} -gt 0 ]; then
+			rm -rf ${NTS}
+		fi
+		props="${ZBREW_ORDERROOT}/${ussname}.order"
+		. zbrewprops "${props}"
+		if [ $? -gt 0 ]; then
+		        echo "Internal Error. Unable to find ${props}" >&2
+			exit 4
 		fi
 		NTS=`receive ${zosname}`; 
 		rc=$? 

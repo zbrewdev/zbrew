@@ -58,7 +58,7 @@ receivefromnts() {
   RECEIVE FROMNTS('${order}').
 zzz
 
-	smpout=`smp -i ${ZBREW_HLQ}${sw}G.GLOBAL.CSI -w ${TMP} -n ${NTS} <${tmpCntlHFS}`
+	smpout=`smp -i ${ZBREW_HLQ}${sw}G.GLOBAL.CSI -w ${TMP} -n ${NTS} -r ${TMP}/rpt -p ${TMP}/sysprint <${tmpCntlHFS}`
 	rc=$?
 	if [ ${rc} -gt 0 ]; then
 		echo "SMP/E RECEIVE FROMNTS of ${sw} failed." >&2
