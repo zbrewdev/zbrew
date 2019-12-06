@@ -96,12 +96,15 @@ uninstall() {
 }
 
 receiveshopz() {
-	NTS=`smpfromshopz $*`
+	sw=$1
+	shift
+	opts=$*
+	NTS=`smpfromshopz ${sw}`
 	rc=$?
 	if [ $rc -gt 0 ]; then
 		return $rc
 	fi
-	`smpfromnts $* $NTS`
+	`smpfromnts ${sw} $NTS ${opts}`
 	return $?
 }
 
@@ -174,7 +177,7 @@ prodprereq() {
 	ussname=$(echo ${sw} | tr '[:upper:]' '[:lower:]');
 	prefix=`echo ${ussname} | awk '{print substr($0,0,3)}'`
 	if [ ${verbose} -gt 0 ]; then
-		echo "install ${opts} ${sw}" >&2
+		echo "Checking prerequisites ${opts} ${sw}" >&2
 	fi
 	prereq="${mydir}/../../zbrew-${prefix}/${ussname}/${ussname}prereq"
 	if [ -f "${prereq}" ]; then
@@ -254,28 +257,36 @@ apply() {
 	return 0
 }
 
-#
-# Temporary hack - need a better way to locate where installation script is
-#
-prodinstall() {
-	sw=$1
-	shift 1
-	opts=$*
 
-	ussname=$(echo ${sw} | tr '[:upper:]' '[:lower:]'); 
+prodalloc() {
+        sw=$1
+        shift 1
+        opts=$*
+        ussname=$(echo ${sw} | tr '[:upper:]' '[:lower:]')
+        prefix=`echo ${ussname} | awk '{print substr($0,0,3)}'`
+        if [ ${verbose} -gt 0 ]; then
+                echo "proddsalloc ${prefix} ${ussname}" >&2
+        fi
+        proddsalloc ${prefix} ${ussname} ${opts}
+        rc=$?
+        return $rc
+}
+
+
+smpdddef() {
+        sw=$1
+        shift 1
+        opts=$*
+	ussname=$(echo ${sw} | tr '[:upper:]' '[:lower:]')
 	prefix=`echo ${ussname} | awk '{print substr($0,0,3)}'`
 	if [ ${verbose} -gt 0 ]; then
-		echo "install ${opts} ${sw}" >&2
+		echo "smpcrdddef ${prefix} ${ussname} ${opts}" >&2
 	fi
-	prodinst="${mydir}/../../zbrew-${prefix}/${ussname}/${ussname}install"
-	if [ -f "${prodinst}" ]; then
-		${prodinst} ${opts}
-		return $?
-	else
-		echo "Unable to find product installation program: ${prodinst}. Installation failed."
-		return 16
-	fi
+	smpcrdddef ${prefix} ${ussname} ${opts}
+	rc=$?
+	return $rc
 }
+
 
 install() {
 	restart=$1
@@ -283,7 +294,7 @@ install() {
 	shift 2
 	opts=$*
 	
-	for zbrewfunc in prodprereq smpconfig receive prodinstall smpapplycheck smpapply; do
+	for zbrewfunc in prodprereq smpconfig receive smpdddef prodalloc smpapplycheck smpapply; do
 		runfunc="${zbrewfunc}"
 		if [ "${runfunc}" = "smpapplycheck" ]; then
 			runfunc="apply CHECK"
@@ -405,7 +416,7 @@ case ${verb} in
 		smpconfig ${opts} ${zosname}
 		rc=$?
 		if [ $rc -gt 0 ]; then
-			echo "Unable to configure SMP/E datasets. Receive failed" >&2
+			echo "Unable to configure SMP/E datasets." >&2
 			exit $rc
 		fi
 		;;
@@ -421,17 +432,28 @@ case ${verb} in
 		;;
 	prodprereq )
 		out=`prodprereq $2 ${opts}`
-		rc=$? 
+		rc=$?
+		if [ $verbose -gt 0 ]; then
+			echo ${out}
+		fi 
 		if [ $rc -gt 0 ]; then
 			echo "${out}" 
 			exit $rc
 		fi
 		;;
-	prodinstall )
-		out=`prodinstall $2 ${opts}`;
-		rc=$? 
+	smpdddef )
+		out=`smpdddef $2 ${opts}`
+		rc=$?
 		if [ $rc -gt 0 ]; then
-			echo "${out}" 
+                        echo "${out}"
+                        exit $rc
+                fi
+                ;;
+	prodalloc )
+		out=`prodalloc $2 ${opts}`
+		rc=$?
+		if [ $rc -gt 0 ]; then
+			echo "${out}"
 			exit $rc
 		fi
 		;;
