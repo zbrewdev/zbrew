@@ -1,5 +1,5 @@
 #!/bin/sh
-set -x
+#set -x
 . zbrewfuncs
 setjavaenv
 InvalidOption=1
@@ -226,8 +226,8 @@ fmidset() {
 	smpout=`smp -i "ZBREW.${sw}G.GLOBAL.CSI" <${tmpCntlHFS}`
 	rc=$?
 	rm ${tmpCntlHFS}
-	if [ $rc -gt 4 ]; then
-		echo "fmidset failed with rc:$rc" >&2
+	if [ $rc -gt 4 ] || [ $verbose -gt 0 ]; then
+		echo "fmidset ended with return code: $rc" >&2
 		echo "${smpout}" >&2
 	fi      
 	echo "${fmidset}"
@@ -240,6 +240,8 @@ apply() {
 	fi
 	check=$(echo ${1} | tr '[:lower:]' '[:upper:]') 
 	sw=$(echo ${2} | tr '[:lower:]' '[:upper:]')
+	shift 2
+	opts=$*
 	fmids=`fmids ${sw}`
 	if [ $? -gt 0 ]; then
 		return $?
@@ -248,7 +250,7 @@ apply() {
 	if [ $? -gt 4 ]; then
 		return $?
 	fi
-	smpapply ${check} ${sw} ${fmidset}
+	smpapply ${opts} ${check} ${sw} ${fmidset}
 	return 0
 }
 
@@ -276,46 +278,35 @@ prodinstall() {
 }
 
 install() {
-	sw=$1
-	shift 1
+	restart=$1
+	sw=$2
+	shift 2
 	opts=$*
-
-	out=`smpconfig ${sw} ${opts}`
-	rc=$?
-	if [ $rc -gt 0 ]; then
-		echo "${out}" >&2
-		return $rc
-	fi
-	out=`receive ${sw} ${opts}`
-	rc=$?
-	if [ $rc -gt 0 ]; then
-		echo "${out}" >&2
-		return $rc
-	fi
-	out=`prodprereq ${sw} ${opts}`
-	rc=$?
-	if [ $rc -gt 0 ]; then
-		echo "${out}" >&2
-		return $rc
-	fi
-	out=`prodinstall ${sw} ${opts}`
-	rc=$?
-	if [ $rc -gt 0 ]; then
-		echo "${out}" >&2
-		return $rc
-	fi
-	out=`apply CHECK ${sw} ${opts}`
-	rc=$?
-        if [ $rc -gt 0 ]; then
-                echo "${out}" >&2
-                return $rc
-        fi
-	out=`apply NOCHECK ${sw} ${opts}`
-	rc=$?
-	if [ $rc -gt 0 ]; then
-		echo "${out}" >&2
-		return $rc
-	fi
+	
+	for zbrewfunc in prodprereq smpconfig receive prodinstall smpapplycheck smpapply; do
+		runfunc="${zbrewfunc}"
+		if [ "${runfunc}" = "smpapplycheck" ]; then
+			runfunc="apply CHECK"
+		fi
+		if [ "${runfunc}" = "smpapply" ]; then
+                        runfunc="apply NOCHECK"
+		fi
+		if [ "${restart}" != "NO" ]; then
+			if [ "${zbrewfunc}" != "${restart}" ]; then
+				continue
+			else
+				restart="NO"
+			fi
+		fi
+		out=`${runfunc} ${sw} ${opts}`
+		rc=$?
+		if [ "$rc" -gt 0 ] || [ "$verbose" -gt 0 ]; then
+			echo "${out}" >&2
+		fi
+		if [ "$rc" -gt 0 ]; then
+			return $rc 
+		fi
+	done	
 	return 0
 }
 
@@ -345,12 +336,16 @@ configure() {
 debug=0
 verbose=0
 clean=0
+restart='NO'
 opts=""
-while getopts ":cvd" opt; do
+while getopts ":cvdr:" opt; do
   case ${opt} in
     d )
       debug=1
       opts="${opts} -d"
+      ;;
+    r )
+      restart=${OPTARG}
       ;;
     c )
       clean=1
@@ -441,25 +436,25 @@ case ${verb} in
 		fi
 		;;
 	smpapplycheck )
-		out=`apply ${opts} CHECK $2`
+		out=`apply CHECK $2 ${opts}`
 		rc=$?
-		if [ $rc -gt 0 ]; then
+		if [ $rc -gt 0 ] || [ $verbose -gt 0 ]; then
                         echo "${out}"
                         exit $rc
                 fi
                 ;;
 	smpapply )
-		out=`apply ${opts} NOCHECK $2`;
+		out=`apply NOCHECK $2 ${opts}`;
 		rc=$? 
-		if [ $rc -gt 0 ]; then
+		if [ $rc -gt 0 ] || [ $verbose -gt 0 ]; then
 			echo "${out}" 
 			exit $rc
 		fi
 		;;	
 	install ) 
-		out=`install $2 ${opts}`;
+		out=`install ${restart} $2 ${opts}`
 		rc=$? 
-		if [ $rc -gt 0 ]; then
+		if [ $rc -gt 0 ] || [ $verbose -gt 0 ]; then
 			echo "${out}" 
 			exit $rc
 		fi
