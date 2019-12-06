@@ -1,16 +1,16 @@
 #!/bin/sh
 #set -x
-if [ $# != 1 ]; then
-	echo "Syntax: zbrewprops <file>" >&2
+if [ $# = 0 ]; then
+	echo "Syntax: zbrewprops [<file>]+" >&2
 	echo "  where <file> is a file of key/value pairs of the format:" >&2
 	echo "  <key>=<value>" >&2
 	echo "Each line will be evaluated, creating a variable <key> with a value <value>" >&2
 	echo "Note:" >&2
 	echo "  Comment lines can be added by starting the line with #" >&2
-	exit 16
+	return 16
 fi
 
-props="$1"
+for props in $*; do
 if [ -f ${props} ]; then
         value=`cat ${props}`
 	OLDIFS=$IFS; IFS="
@@ -28,7 +28,7 @@ if [ -f ${props} ]; then
 	   			(eval "$v" 2>/dev/null >/dev/null)
 				if [ $? -gt 0 ]; then
 					echo "The key/value pair '$v' could not be evaluated. Please correct line ${line}" >&2
-					exit 16
+					return 16
 				fi
 				eval "$v"
 			fi
@@ -36,6 +36,7 @@ if [ -f ${props} ]; then
 	done
 	IFS=$OLDIFS
 else
-	echo "Unable to find properties file ${props}"
-	exit 16
+	echo "Unable to find properties file ${props}" >&2
+	return 16
 fi
+done
