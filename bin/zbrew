@@ -304,7 +304,13 @@ install() {
 		echo "${out}" >&2
 		return $rc
 	fi
-	out=`apply ${sw} ${opts}`
+	out=`apply CHECK ${sw} ${opts}`
+	rc=$?
+        if [ $rc -gt 0 ]; then
+                echo "${out}" >&2
+                return $rc
+        fi
+	out=`apply NOCHECK ${sw} ${opts}`
 	rc=$?
 	if [ $rc -gt 0 ]; then
 		echo "${out}" >&2
