@@ -254,7 +254,7 @@ apply() {
 		return $?
 	fi
 	smpapply ${opts} ${check} ${sw} ${fmidset}
-	return 0
+	return $rc
 }
 
 
@@ -284,7 +284,11 @@ smpdddef() {
 	fi
 	smpcrdddef ${prefix} ${ussname} ${opts}
 	rc=$?
-	return $rc
+	if [ $rc -lt 5 ]; then
+		return 0
+	else
+		return $rc
+	fi
 }
 
 
@@ -315,10 +319,10 @@ install() {
 			echo "${out}" >&2
 		fi
 		if [ "$rc" -gt 0 ]; then
-			return $rc 
+			return $rc
 		fi
 	done	
-	return 0
+	return $rc
 }
 
 #

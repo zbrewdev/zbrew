@@ -15,7 +15,7 @@ targ_dddefs(){
 targdddefs=`awk -F',' '($7 == "T" && $2 != "ZFS") {print $1}' < ${smpelibs}` 
 for targdddef in ${targdddefs}; do
  smpuclin="${smpuclin}
- ADD DDDEF(${targdddef})
+ REP DDDEF(${targdddef})
  DA(${ZBREW_HLQ}${ussname}.${targdddef})
  UNIT(SYSALLDA)
  WAITFORDSN
@@ -25,10 +25,13 @@ done
 
 #for ZFS
 targdddefs=`awk -F',' '($7 == "T" && $2 == "ZFS") {print $1}' < ${smpelibs}`
+if [ "${dddefpath}" = '0' ]; then
+	dddefpath="${zfsdir}"
+fi
 for targdddef in ${targdddefs}; do
  smpuclin="${smpuclin}
- ADD DDDEF(${targdddef})
- PATH('${zfsroot}${zfsdir}').
+ REP DDDEF(${targdddef})
+ PATH('${zfsroot}${dddefpath}').
 "
 done
 
@@ -37,7 +40,7 @@ done
 for targdddef in ${CALLLIBS}; do
  llq=`echo ${targdddef} | awk -F'.' '{print $2}'`
  smpuclin="${smpuclin}
-  ADD DDDEF(${llq})
+  REP DDDEF(${llq})
   DA(${targdddef})
   UNIT(SYSALLDA)
   WAITFORDSN
@@ -50,7 +53,7 @@ dist_dddefs(){
 distdddefs=`awk -F',' '($7 == "D") {print $1}' < ${smpelibs}`
 for distdddef in ${distdddefs};do
  smpuclin="${smpuclin}
- ADD DDDEF(${distdddef})
+ REP DDDEF(${distdddef})
  DA(${ZBREW_HLQ}${ussname}.${distdddef})
  UNIT(SYSALLDA)
  WAITFORDSN
@@ -78,6 +81,7 @@ prefix=$1
 ussname=$2
 shift 2
 opts=$*
+dddefpath=0
 
 props="${mydir}/../../zbrew/properties/zbrew.properties"
 . zbrewprops "${props}"
