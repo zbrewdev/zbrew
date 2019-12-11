@@ -361,6 +361,17 @@ while getopts ":cvdr:" opt; do
       ;;
     r )
       restart=${OPTARG}
+      rescheck='notok'
+      for testarg in prodprereq smpconfig receive smpdddef prodalloc smpapplycheck smpapply; do
+	if [ "${restart}" = "${testarg}" ]; then
+		rescheck='ok'
+		break
+        fi
+      done
+      if [ "${rescheck}" = 'notok' ]; then
+      	msg zbrew ${InvalidOption} E "${OPTARG}"
+	exit 4
+      fi
       ;;
     c )
       clean=1
