@@ -298,7 +298,7 @@ install() {
 	shift 2
 	opts=$*
 	
-	for zbrewfunc in prodprereq smpconfig receive smpdddef prodalloc smpapplycheck smpapply; do
+	for zbrewfunc in ${install_verbs}; do
 		runfunc="${zbrewfunc}"
 		if [ "${runfunc}" = "smpapplycheck" ]; then
 			runfunc="apply CHECK"
@@ -348,6 +348,7 @@ configure() {
 	fi
 }
 
+install_verbs="prodprereq smpconfig receive smpdddef prodalloc smpapplycheck smpapply"
 debug=0
 verbose=0
 clean=0
@@ -362,7 +363,7 @@ while getopts ":cvdr:" opt; do
     r )
       restart=${OPTARG}
       rescheck='notok'
-      for testarg in prodprereq smpconfig receive smpdddef prodalloc smpapplycheck smpapply; do
+      for testarg in ${install_verbs}; do
 	if [ "${restart}" = "${testarg}" ]; then
 		rescheck='ok'
 		break
@@ -411,7 +412,7 @@ props="${ZBREW_ORDERROOT}/${ussname}.order"
 if [ $? -gt 0 ]; then
         echo "Internal Error. Unable to find ${props}" >&2
         exit 4
-fi   
+fi  
 verb=$1
 case ${verb} in
 	search ) 
