@@ -116,7 +116,7 @@ receivelocal() {
 	ussname=$(echo ${sw} | tr '[:upper:]' '[:lower:]');
 	prefix=`echo "${ussname}" | awk '{ print substr($1, 0, 3) }'`
 
-	NTS="${TMP}/smpnts.${ussname}"
+	NTS="${ZBREW_TMP}/smpnts.${ussname}"
 	REPO_NAME="zbrew-${prefix}"
 	REPODIR="${SMPE_LOCALREPO}/${REPO_NAME}"
 	REPO="${REPODIR}.git"
@@ -173,7 +173,13 @@ prodprereq() {
 	sw=$1
 	shift 1
 	opts=$*
-
+	tmp_frspace=$(df -k ${ZBREW_TMP} | grep ${ZBREW_TMP} | awk '{print $3}' | awk -F'/' '{print $1}')
+	if [ "${tmp_frspace}" -lt '307200' ]; then
+		echo "Warning, ${ZBREW_TMP} is low on free space, it is recommended to have at least 300 MB available"
+		echo "Current free space available is: ${tmp_frspace} KB"
+		return 16
+	fi
+        
 	ussname=$(echo ${sw} | tr '[:upper:]' '[:lower:]');
 	prefix=`echo ${ussname} | awk '{print substr($0,0,3)}'`
 	if [ ${verbose} -gt 0 ]; then
@@ -191,7 +197,7 @@ prodprereq() {
 
 fmids() {
 	sw=$1
-	smplist="/tmp/smpfmid.$$.smplist"
+	smplist="${ZBREW_TMP}/smpfmid.$$.smplist"
 	smpout=`smp -i "ZBREW.${sw}G.GLOBAL.CSI" -l "${smplist}" <<zzz
   SET BDY(GLOBAL).
   LIST FEATURE.
@@ -216,7 +222,7 @@ fmidset() {
 	fmids=$*
 	fmidset="${sw}FS"
 
-	tmpCntlHFS="/tmp/smpfmid.$$.smpcntl"
+	tmpCntlHFS="${ZBREW_TMP}/smpfmid.$$.smpcntl"
 	echo "  SET BDY(GLOBAL)." >>${tmpCntlHFS}
 	echo "  UCLIN." >>${tmpCntlHFS}
 	echo "  REP FMIDSET(${fmidset})" >>${tmpCntlHFS}

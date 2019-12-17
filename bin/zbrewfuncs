@@ -35,14 +35,6 @@ setjavaenv() {
 			exit 16
 		fi
 	fi
-	if [ -z "${TMP}" ]; then
-		if [ -d /tmp ]; then
-			export TMP=/tmp
-		else
-	            	echo "Unable to set TMP. Please export TMP before running"
-			exit 16
-		fi
-	fi
 	if [ -d ${SMPE_JAVAHOME} ]; then
 		;
 	else
@@ -57,10 +49,4 @@ setjavaenv() {
 		exit 16
 	fi
 	
-	if [ -d $TMP ]; then
-		;
-	else
-		echo "TMP environment variable is defined to ${TMP} but the directory does not exist. Please create directory or change environment variable."
-		exit 16
-	fi
 }	
