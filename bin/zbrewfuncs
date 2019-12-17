@@ -49,4 +49,11 @@ setjavaenv() {
 		exit 16
 	fi
 	
+}
+
+zbrewlog() {
+	log_dir="${ZBREW_TMP}/zbrewlog"
+	log_msg=$*
+	log_time=$(date -u)
+	echo "${log_time} ${log_msg}" >> ${log_dir}
 }	

@@ -68,10 +68,12 @@ zbrew Examples:
 # Temporary hack - replace with call to IBM-managed server (ShopZ) to get proper list
 #
 search() {
+	zbrewlog "search" $*
 	search=$1
 	callerdir=`callerdir $0`
 	result=`grep -i "${search}" ${callerdir}/../zbrew.software`
 	echo ${result}
+	zbrewlog "search RC: ${rc}"
 	return 0
 }
 
@@ -81,21 +83,26 @@ search() {
 # for the RECEIVE
 #
 order() {
+	zbrewlog "order" $*
 	# currently no-op. ORDER directory for COBOL IGY630E pre-populated
 	if [ ${verbose} -gt 0 ]; then
 		echo "order $1" >&2
 	fi
+	zbrewlog "order RC: ${rc}"
 	return 0
 }
 
 uninstall() {
+	zbrewlog "uninstall" $*
 	if [ ${verbose} -gt 0 ]; then
 		echo "uninstall $*" >&2
 	fi
+	zbrewlog "uninstall RC: ${rc}"
 	return 4
 }
 
 receiveshopz() {
+	zbrewlog "smpfromshopz" $*
 	sw=$1
 	shift
 	opts=$*
@@ -105,13 +112,19 @@ receiveshopz() {
 		return $rc
 	fi
 	`smpfromnts ${sw} $NTS ${opts}`
+	zbrewlog "smpfromshopz RC: ${rc}"
 	return $?
 }
 
 receiveppa() {
+	zbrewlog "receiveppa" $*
+
+	rc=$?
+	zbrewlog "receiveppa RC: ${rc}"
 }
 
 receivelocal() {
+	zbrewlog "smpfromnts" $*
 	sw=$1
 	ussname=$(echo ${sw} | tr '[:upper:]' '[:lower:]');
 	prefix=`echo "${ussname}" | awk '{ print substr($1, 0, 3) }'`
@@ -138,6 +151,7 @@ receivelocal() {
 	fi	
 	`smpfromnts ${sw} $NTS`
 	rc=$?
+	zbrewlog "smpfromnts RC: ${rc}"
 	if [ $rc -gt 0 ]; then
 		return $rc;
 	fi	
@@ -170,6 +184,7 @@ receive() {
 # Temporary hack - need a better way to locate where pre-req script is
 #
 prodprereq() {
+	zbrewlog "prodprereq" $*
 	sw=$1
 	shift 1
 	opts=$*
@@ -195,7 +210,9 @@ prodprereq() {
 	fi
 }
 
+
 fmids() {
+	zbrewlog "fmids" $*
 	sw=$1
 	smplist="${ZBREW_TMP}/smpfmid.$$.smplist"
 	smpout=`smp -i "ZBREW.${sw}G.GLOBAL.CSI" -l "${smplist}" <<zzz
@@ -203,6 +220,7 @@ fmids() {
   LIST FEATURE.
 zzz`
 	rc=$?
+	zbrewlog "fmids RC: ${rc}"
 	if [ $rc -eq 0 ]; then
 		fmids=`awk ' /FMID/ { $1=$2=""; print $0; }' ${smplist}`
 		uniq_fmids=`echo ${fmids} | tr ' ' '\n' | sort | uniq`
@@ -217,6 +235,7 @@ zzz`
 }
 
 fmidset() {
+	zbrewlog "fmidset" $*
 	sw=$1
 	shift
 	fmids=$*
@@ -234,6 +253,7 @@ fmidset() {
 	echo "  ENDUCL." >>${tmpCntlHFS}
 	smpout=`smp -i "ZBREW.${sw}G.GLOBAL.CSI" <${tmpCntlHFS}`
 	rc=$?
+	zbrewlog "fmidset RC: ${rc}"
 	rm ${tmpCntlHFS}
 	if [ $rc -gt 4 ] || [ $verbose -gt 0 ]; then
 		echo "fmidset ended with return code: $rc" >&2
@@ -244,6 +264,7 @@ fmidset() {
 }
 
 apply() {
+	zbrewlog "apply" $*
 	if [ ${verbose} -gt 0 ]; then
 		echo "apply $*" >&2
 	fi
@@ -260,11 +281,14 @@ apply() {
 		return $?
 	fi
 	smpapply ${opts} ${check} ${sw} ${fmidset}
+	rc=$?
+	zbrewlog "apply RC: ${rc}"
 	return $rc
 }
 
 
 prodalloc() {
+	zbrewlog "prodalloc" $*
         sw=$1
         shift 1
         opts=$*
@@ -275,11 +299,13 @@ prodalloc() {
         fi
         proddsalloc ${prefix} ${ussname} ${opts}
         rc=$?
+	zbrewlog "prodalloc RC: ${rc}" 
         return $rc
 }
 
 
 smpdddef() {
+	zbrewlog "smpdddef" $*
         sw=$1
         shift 1
         opts=$*
@@ -290,6 +316,7 @@ smpdddef() {
 	fi
 	smpcrdddef ${prefix} ${ussname} ${opts}
 	rc=$?
+	zbrewlog "smpdddef RC: ${rc}"
 	if [ $rc -lt 5 ]; then
 		return 0
 	else
@@ -299,6 +326,7 @@ smpdddef() {
 
 
 install() {
+	zbrewlog "install" $*
 	restart=$1
 	sw=$2
 	shift 2
@@ -312,15 +340,16 @@ install() {
 		if [ "${runfunc}" = "smpapply" ]; then
                         runfunc="apply NOCHECK"
 		fi
-		if [ "${restart}" != "NO" ]; then
+		if [ "${restart}" != "NORESTART" ]; then
 			if [ "${zbrewfunc}" != "${restart}" ]; then
 				continue
 			else
-				restart="NO"
+				restart="NORESTART"
 			fi
 		fi
 		out=`${runfunc} ${sw} ${opts}`
 		rc=$?
+		zbrewlog "${runfunc} RC: ${rc}"
 		if [ "$rc" -gt 0 ] || [ "$verbose" -gt 0 ]; then
 			echo "${out}" >&2
 		fi
@@ -335,6 +364,7 @@ install() {
 # Temporary hack - need a better way to locate where installation script is
 #
 configure() {
+	zbrewlog "smpconfig" $*
 	sw=$1
  	shift 1
         opts=$*
@@ -347,6 +377,7 @@ configure() {
 	prodconfig="${mydir}/../../zbrew-${prefix}/${ussname}/${ussname}config"
         if [ -f "${prodconfig}" ]; then
      	        ${prodconfig} ${opts}
+		zbrewlog "smpconfigure RC: ${rc}"
 		return $?
         else                            
 		echo "Unable to find product configuration program: ${prodconfig}. Installation failed."
@@ -358,7 +389,7 @@ install_verbs="prodprereq smpconfig receive smpdddef prodalloc smpapplycheck smp
 debug=0
 verbose=0
 clean=0
-restart='NO'
+restart='NORESTART'
 opts=""
 while getopts ":cvdr:" opt; do
   case ${opt} in
