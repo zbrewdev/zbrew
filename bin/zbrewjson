@@ -1,0 +1,127 @@
+/* REXX */
+/* 
+ * Parse a JSON stream and write out a set of key/value pairs (one per line)
+ * See: http://tech.mikefulton.ca/WebEnablementToolkit for details on the REXX JSON parsing services
+ */
+trace 'o'
+Parse arg .
+
+call hwtcalls "on"
+returnCode = -1
+diagArea. = ''
+address hwtjson "hwtConst ",
+  "returnCode ",
+  "diagArea."
+
+if (rc <> 0 | returnCode <> HWTJ_OK) then do
+  say 'Internal Error: Unable to get HWTJSON constants'
+  return 16
+end
+
+address hwtjson "hwtjinit ",
+  "returnCode ",
+  "parserHandle ",
+  "diagArea."
+if (rc <> 0 | returnCode <> HWTJ_OK) then do
+  say 'Internal Error: Unable to initialize HWT'
+  return 16
+end
+
+address mvs 'execio * diskr stdin (stem data. finis'
+stream=''
+do i=1 to data.0
+  stream=stream||data.i
+end
+
+address hwtjson "hwtjpars ",
+  "returnCode ",
+  "parserHandle ",
+  "stream ",
+  "diagArea." 
+parseRC=rc
+
+if (rc <> 0 | returnCode <> HWTJ_OK) then do
+  say 'JSON Input is invalid.'
+  say 'DiagArea.ReasonCode: '||diagArea.HWTJ_ReasonCode
+  say 'DiagArea.ReasonDesc: '||diagArea.HWTJ_ReasonDesc 
+  return 16
+end
+
+objectHandle=0
+objectEntryIndex=0
+address hwtjson "hwtjgoen",
+  "returnCode",        
+  "parserHandle",                
+  "objectHandle",            
+  "objectEntryIndex",                      
+  "entryName",              
+  "entryValueHandle",
+  "diagArea."
+if (rc <> 0 | returnCode <> HWTJ_OK) then do
+  say 'Unable to retrieve ROOT JSON Object.'
+  say 'DiagArea.ReasonCode: '||diagArea.HWTJ_ReasonCode
+  say 'DiagArea.ReasonDesc: '||diagArea.HWTJ_ReasonDesc 
+  return 16
+end
+
+address hwtjson "hwtjgnue",
+  "returnCode",
+  "parserHandle",
+  "objectHandle",
+  "numOfEntries",
+  "diagArea."
+if (rc <> 0 | returnCode <> HWTJ_OK) then do
+  say 'Unable to retrieve number of key/value pairs'
+  say 'DiagArea.ReasonCode: '||diagArea.HWTJ_ReasonCode
+  say 'DiagArea.ReasonDesc: '||diagArea.HWTJ_ReasonDesc 
+  return 16
+end
+
+do objectEntryIndex=0 to numOfEntries-1
+  address hwtjson "hwtjgoen",
+    "returnCode",
+    "parserHandle",
+    "objectHandle",
+    "objectEntryIndex",
+    "entryName",
+    "entryValueHandle",
+    "diagArea."
+  if (rc <> 0 | returnCode <> HWTJ_OK) then do
+    say 'Unable to retrieve key/value pair entry: ' || objectEntryIndex
+    say 'DiagArea.ReasonCode: '||diagArea.HWTJ_ReasonCode
+    say 'DiagArea.ReasonDesc: '||diagArea.HWTJ_ReasonDesc 
+    return 16
+  end
+  address hwtjson "hwtjgjst",
+    "returnCode",
+    "parserHandle",
+    "entryValueHandle",
+    "entryValueType",
+    "diagArea."
+  if (rc <> 0 | returnCode <> HWTJ_OK) then do
+    say 'Unable to retrieve type for key/value pair entry: ' || objectEntryIndex
+    say 'DiagArea.ReasonCode: '||diagArea.HWTJ_ReasonCode
+    say 'DiagArea.ReasonDesc: '||diagArea.HWTJ_ReasonDesc 
+    return 16
+  end
+  if (entryValueType <> 'HWTJ_STRING_TYPE') then do
+    say 'Key: ' || entryName || ' is not of string type. Only string values can be specified. Key ignored.'
+    iterate;
+  end         
+  address hwtjson "hwtjgval",
+    "returnCode",
+    "parserHandle",
+    "entryValueHandle",
+    "entryValue",
+    "diagArea."
+  if (rc <> 0 | returnCode <> HWTJ_OK) then do
+    say 'Unable to retrieve value for key/value pair entry: ' || objectEntryIndex
+    say 'DiagArea.ReasonCode: '||diagArea.HWTJ_ReasonCode
+    say 'DiagArea.ReasonDesc: '||diagArea.HWTJ_ReasonDesc 
+    return 16
+  end
+
+  Say entryName || '="' || entryValue || '"'
+end
+
+return 0
