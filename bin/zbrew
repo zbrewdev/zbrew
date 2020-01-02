@@ -31,9 +31,11 @@ msg() {
 #
 syntax() {
 	echo "\
-zbrew [-cvd] search|order|receive|install|configure|uninstall <software>
+zbrew [-cvdr] search|order|receive|install|configure|uninstall <software>
 	and <software> is the software to search for
+	(Note that install invokes several functions which are: ${install_verbs})
 	-c: clean files before processing (e.g. delete SMP/E CSI datasets) and clean temporary files after processing (e.g. SMPNTS directory)
+	-r function_name install: restart install at specific function (function_name must be one of: ${install_verbs})
 	
 Note:
 	zbrew has a properties file called zbrew.properties. The following properties need to be specified:
@@ -58,6 +60,7 @@ zbrew Examples:
 	zbrew search cobol     <-- search for products with COBOL in their description
 	zbrew order igy630     <-- submit an order for IGY630J software (receive can not be performed until complete)
 	zbrew install igy630   <-- check that all pre-reqs required for COBOL are satisfied, then SMP/E RECEIVE the product, then run IGY630-specific install steps, then SMP/E APPLY the product
+	zbrew -r smpconfig install igy630   <-- restart install at the smpconfig step
 	zbrew uninstall igy630 <-- check that uninstallation will not break other products, then remove SMP/E datasets and product-specific datasets
 	zbrew configure igy630 <-- run product-specific configuration after SMP/E APPLY step
 " >&2 
