@@ -32,8 +32,7 @@ syntax() {
 smpfromnts [-vd] <prefix> <nts-directory
 	    
 Examples:
-	smpfromnts igy630 /tmp/smpnts.igy630 <-- Perform SMP/RECEIVE FROMNTS on previously downloaded product in /tmp/igy630
-" >&2 
+	smpfromnts igy630 ${ZBREW_TMP}/smpnts.igy630 <-- Perform SMP/RECEIVE FROMNTS on previously downloaded product in ${ZBREW_TMP}/igy630" >&2 
 	exit 16
 }
 
@@ -51,14 +50,14 @@ receivefromnts() {
 		echo "Expected exactly one sub-directory in NTS file ${NTS}. ${words} were found" >&2
 		exit 16
 	fi
-	tmpCntlHFS=${TMP}/$$.cntl.xml
+	tmpCntlHFS=${ZBREW_TMP}/$$.cntl.xml
 
 	cat >${tmpCntlHFS} <<zzz
   SET BDY(GLOBAL).
   RECEIVE FROMNTS('${order}').
 zzz
 
-	smpout=`smp -i ${ZBREW_HLQ}${sw}G.GLOBAL.CSI -w ${TMP} -n ${NTS} -r ${TMP}/rpt -p ${TMP}/sysprint <${tmpCntlHFS}`
+	smpout=`smp -i ${ZBREW_HLQ}${sw}G.GLOBAL.CSI -w ${ZBREW_TMP} -n ${NTS} -r ${ZBREW_TMP}/rpt -p ${ZBREW_TMP}/sysprint <${tmpCntlHFS}`
 	rc=$?
 	if [ ${rc} -gt 0 ]; then
 		echo "SMP/E RECEIVE FROMNTS of ${sw} failed." >&2
@@ -70,6 +69,14 @@ zzz
 
 	return ${rc} 
 }
+
+mydir=$(callerdir ${0})
+props="${mydir}/../properties/zbrew.properties"
+. zbrewprops "${props}"
+if [ $? -gt 0 ]; then
+        echo "Internal Error. Unable to find ${props}" >&2
+        exit 4
+fi
 
 debug=0
 verbose=0
@@ -100,15 +107,6 @@ if [ $# -lt 2 ]; then
 	exit 16
 fi
 
-mydir=$(callerdir ${0})
-props="${mydir}/../properties/zbrew.properties"
-. zbrewprops "${props}"
-if [ $? -gt 0 ]; then
-        echo "Internal Error. Unable to find ${props}" >&2
-	exit 4
-fi   
-
-mydir=$(callerdir ${0})
 zosname=$(echo ${1} | tr '[:lower:]' '[:upper:]'); 
 ntsdir=$2
 

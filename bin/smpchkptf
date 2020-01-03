@@ -45,15 +45,15 @@ runchk() {
 
 	missingsysmods=''
 
-	all=${TMP}/$$.all.sysmods
+	all=${ZBREW_TMP}/$$.all.sysmods
 	touch ${all}
-	required=${TMP}/$$.required.sysmods
+	required=${ZBREW_TMP}/$$.required.sysmods
 	touch ${required}
-	missing=${TMP}/$$.missing.sysmods
+	missing=${ZBREW_TMP}/$$.missing.sysmods
 	touch ${missing}
 
-	tmpCntlHFS=${TMP}/$$.cntl.xml
-	gzonelist=${TMP}/$$.smp.gzonelst
+	tmpCntlHFS=${ZBREW_TMP}/$$.cntl.xml
+	gzonelist=${ZBREW_TMP}/$$.smp.gzonelst
 	echo "  SET BOUNDARY(GLOBAL).
   LIST GZONE.
 " >${tmpCntlHFS}
@@ -70,7 +70,7 @@ runchk() {
 		echo "Internal error. Unable to	determine global zone for: ${csi}. See ${gzonelist} for details." >&2
 		return 16
 	fi
-	sysmodlist=${TMP}/$$.smp.sysmodlst
+	sysmodlist=${ZBREW_TMP}/$$.smp.sysmodlst
 	for tgtzone in $tgtzones; do
 		if [ ${verbose} -gt 0 ]; then
 			echo "Checking target zone: ${tgtzone}" >&2
@@ -188,19 +188,20 @@ if [ $? -gt 0 ]; then
 	exit 4
 fi   
 
-if [ -z "${TMP}" ]; then
+if [ -z "${ZBREW_TMP}" ]; then
 	if [ -d /tmp ]; then
-		TMP=/tmp
+		echo "Warning, ZBREW_TMP found to be null, setting to /tmp"
+		ZBREW_TMP=/tmp
 	else
-		echo "Unable to set TMP. Please export TMP before running"
+		echo "Unable to set ZBREW_TMP. Please export ZBREW_TMP before running"
 		exit 16
 	fi
 fi
 
-if [ -d $TMP ]; then
+if [ -d $ZBREW_TMP ]; then
 	;
 else
-	echo "TMP environment variable is defined to ${TMP} but the directory does not exist. Please create directory or change environment variable."
+	echo "ZBREW_TMP variable is defined to ${ZBREW_TMP} but the directory does not exist. Please create directory or update zbrew.properties."
 	exit 16
 fi
 

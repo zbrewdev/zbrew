@@ -1,0 +1,114 @@
+#!/bin/sh
+#set -x
+
+out=$(whence zbrewfuncs >/dev/null)
+if [ $? -eq 0 ]; then
+	. zbrewfuncs
+else
+	echo "zbrew tools need to be in your PATH"
+	exit 4
+fi
+
+crtds() {
+	echo $1
+	echo "$1" | awk '{ ds=$1; $1=""; attrs=$0; if ($ds != "") { rc=system("dtouch " attrs " " ds); if (rc > 0) { exit(rc); } } }'
+	exit $?
+}
+
+crtzfs() {
+	root="${zfsroot}"
+	arg=0
+	for zfsarg in ${1}; do
+		arg=`expr ${arg} + 1`
+		eval "zfsarg${arg}"="${zfsarg}"
+	done
+	zfsname="${zfsarg1}"
+	primary="${zfsarg2}"
+	secondary="${zfsarg3}"
+	middle="${zfsdir}"
+	mkdir -p -m 755 ${root}${middle}
+	rc=$?
+	if [ $rc -gt 0 ]; then
+		echo "Error creating ${root}${middle} ZFS directory RC: $rc"
+		exit $rc
+	fi
+
+	mvscmdauth --pgm=IDCAMS --sysprint='*' --sysin=stdin <<zzz
+   DEFINE CLUSTER(NAME(${zfsname}) -
+   LINEAR TRACKS(${primary} ${secondary}) SHAREOPTIONS(3))
+zzz
+	rc=$?
+	if [ $rc -gt 0 ]; then
+		echo "Error creating ZFS Linear Cluster:  $rc"
+		exit $rc
+	fi
+	mvscmdauth --pgm=IOEAGFMT --args="-aggregate ${zfsname} -compat" --sysprint='*'
+	rc=$?
+	if [ $rc -gt 0 ]; then
+		echo "Error formatting ZFS: $rc"
+		exit $rc
+	fi
+	/usr/sbin/mount -t zfs -f ${zfsname} ${root}${middle}
+	rc=$?
+	if [ $rc -gt 0 ]; then
+		echo "Error mounting ZFS:  $rc"
+		exit $rc
+	fi
+	exit 0
+}
+
+
+
+mydir=$(callerdir ${0})
+prefix=$1
+ussname=$2
+shift 2
+opts=$*
+
+
+props="${mydir}/../../zbrew/properties/zbrew.properties"
+. zbrewprops "${props}"
+if [ $? -gt 0 ]; then
+        echo "Internal Error. Unable to find ${props}" >&2
+        exit 4
+fi     
+
+props="${mydir}/../../zbrew-${prefix}/${ussname}/${ussname}install.properties"
+. zbrewprops "${props}"
+if [ $? -gt 0 ]; then
+        echo "Internal Error. Unable to find ${props}" >&2
+        exit 4
+fi
+
+smpelibs="${mydir}/../../zbrew-${prefix}/${ussname}/${ussname}smpelibs"
+ussname=$(echo ${ussname} | tr '[:lower:]' '[:upper:]')
+
+# Obtain list of all Target and Distribution Datasets to allocate, exclude ZFS
+ds=`awk -v pfx="${ZBREW_HLQ}${ussname}." -F',' '($2 != "ZFS") {print pfx""$1" -t"$2" -r"$3" -l"$4" -s"$5*56"K"}' < ${smpelibs}`
+
+out=`crtds "${ds}"`
+rc=$?
+if [ $rc -gt 0 ]; then
+	echo "Dataset creation failed. Installation aborted"
+	exit $rc
+fi
+
+# Obtain list of ZFS and allocate/mount
+ds=`awk -v pfx="${ZBREW_HLQ}${ussname}." -F',' '($2 == "ZFS") {print pfx""$1" "$3" "$4}' < ${smpelibs}`
+zfsout=`crtzfs "${ds}"`
+
+if [ $rc -gt 0 ]; then
+        echo "ZFS creation/mount failed. Installation aborted"
+        exit $rc
+fi
+
+for l in $leaves; do
+	mkdir -p -m 755 ${zfsroot}${zfsdir}${l} 
+ 	rc=$? 
+ 	if [ ${rc} -gt 0 ]; then
+		exit $rc 
+ 	fi 
+done 
+
+
+exit 0

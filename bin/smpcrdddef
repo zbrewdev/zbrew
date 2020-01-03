@@ -1,0 +1,123 @@
+#!/bin/sh
+#set -x
+
+out=$(whence zbrewfuncs >/dev/null)
+if [ $? -eq 0 ]; then
+	. zbrewfuncs
+else
+	echo "zbrew tools need to be in your PATH"
+	exit 4
+fi
+
+
+#for All but ZFS libraries
+targ_dddefs(){
+targdddefs=`awk -F',' '($7 == "T" && $2 != "ZFS") {print $1}' < ${smpelibs}` 
+for targdddef in ${targdddefs}; do
+ smpuclin="${smpuclin}
+ REP DDDEF(${targdddef})
+ DA(${ZBREW_HLQ}${ussname}.${targdddef})
+ UNIT(SYSALLDA)
+ WAITFORDSN
+ SHR.
+"
+done
+
+#for ZFS
+targdddefs=`awk -F',' '($7 == "T" && $2 == "ZFS") {print $1}' < ${smpelibs}`
+if [ "${dddefpath}" = '0' ]; then
+	dddefpath="${zfsdir}"
+fi
+for targdddef in ${targdddefs}; do
+ smpuclin="${smpuclin}
+ REP DDDEF(${targdddef})
+ PATH('${zfsroot}${dddefpath}').
+"
+done
+
+
+#for CALLLIBS 
+for targdddef in ${CALLLIBS}; do
+ llq=`echo ${targdddef} | awk -F'.' '{print $2}'`
+ smpuclin="${smpuclin}
+  REP DDDEF(${llq})
+  DA(${targdddef})
+  UNIT(SYSALLDA)
+  WAITFORDSN
+  SHR.
+"
+done
+}
+
+dist_dddefs(){
+distdddefs=`awk -F',' '($7 == "D") {print $1}' < ${smpelibs}`
+for distdddef in ${distdddefs};do
+ smpuclin="${smpuclin}
+ REP DDDEF(${distdddef})
+ DA(${ZBREW_HLQ}${ussname}.${distdddef})
+ UNIT(SYSALLDA)
+ WAITFORDSN
+ SHR.
+"
+
+done
+}
+
+
+run_gimsmp(){
+mvscmdauth --pgm=GIMSMP --smpcsi=${ZBREW_HLQ}${ussname}G.GLOBAL.CSI --sysprint=DUMMY --smprpt=DUMMY --smplist=DUMMY --smpcntl=stdin <<zzz
+${smpuclin}
+zzz
+        rc=$?
+        if [ $rc -gt 0 ]; then
+                exit $rc
+        fi
+
+}
+
+
+mydir=$(callerdir ${0})
+prefix=$1
+ussname=$2
+shift 2
+opts=$*
+dddefpath=0
+
+props="${mydir}/../../zbrew/properties/zbrew.properties"
+. zbrewprops "${props}"
+if [ $? -gt 0 ]; then
+        echo "Internal Error. Unable to find ${props}" >&2
+        exit 4
+fi     
+
+props="${mydir}/../../zbrew-${prefix}/${ussname}/${ussname}install.properties"
+. zbrewprops ${props}
+
+smpelibs="${mydir}/../../zbrew-${prefix}/${ussname}/${ussname}smpelibs"
+
+ussname=$(echo ${ussname} | tr '[:lower:]' '[:upper:]')
+
+# Update Target Zone DDDEFS, note Target Zone contains both Targ/Dist libraries
+smpuclin="  SET   BDY(${ussname}T).
+     UCLIN.
+"
+targ_dddefs
+dist_dddefs
+ 
+smpuclin="${smpuclin} 
+     ENDUCL."
+run_gimsmp
+
+
+
+# Update Distribution Zone DDDEFS
+smpuclin="  SET BDY(${ussname}D).
+     UCLIN.
+"
+dist_dddefs
+smpuclin="${smpuclin}
+     ENDUCL."
+run_gimsmp
+
+
+exit 0
