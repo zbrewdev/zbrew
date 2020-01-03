@@ -379,13 +379,16 @@ if [ $? -gt 0 ]; then
 fi
 ussname=$(echo ${2} | tr '[:upper:]' '[:lower:]');
 zosname=$(echo ${2} | tr '[:lower:]' '[:upper:]');
-props="${ZBREW_ORDERROOT}/${ussname}.order"
-. zbrewprops "${props}"
-if [ $? -gt 0 ]; then
-        echo "Internal Error. Unable to find ${props}" >&2
-        exit 4
-fi   
+
 verb=$1
+if [ "${verb}" != 'search' ]; then
+	props="${ZBREW_ORDERROOT}/${ussname}.order"
+	. zbrewprops "${props}"
+	if [ $? -gt 0 ]; then
+	        echo "Internal Error. Unable to find ${props}" >&2
+	        exit 4
+	fi   
+fi
 case ${verb} in
 	search ) 
 		out=`search $2`  
