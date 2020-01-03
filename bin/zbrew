@@ -1,5 +1,5 @@
 #!/bin/sh
-
+#set -x
 . zbrewfuncs
 setjavaenv
 InvalidOption=1
@@ -31,9 +31,11 @@ msg() {
 #
 syntax() {
 	echo "\
-zbrew [-cvd] search|order|receive|install|configure|uninstall <software>
+zbrew [-cvdr] search|order|receive|install|configure|uninstall <software>
 	and <software> is the software to search for
+	(Note that install invokes several functions which are: ${install_verbs})
 	-c: clean files before processing (e.g. delete SMP/E CSI datasets) and clean temporary files after processing (e.g. SMPNTS directory)
+	-r function_name install: restart install at specific function (function_name must be one of: ${install_verbs})
 	
 Note:
 	zbrew has a properties file called zbrew.properties. The following properties need to be specified:
@@ -58,6 +60,7 @@ zbrew Examples:
 	zbrew search cobol     <-- search for products with COBOL in their description
 	zbrew order igy630     <-- submit an order for IGY630J software (receive can not be performed until complete)
 	zbrew install igy630   <-- check that all pre-reqs required for COBOL are satisfied, then SMP/E RECEIVE the product, then run IGY630-specific install steps, then SMP/E APPLY the product
+	zbrew -r smpconfig install igy630   <-- restart install at the smpconfig step
 	zbrew uninstall igy630 <-- check that uninstallation will not break other products, then remove SMP/E datasets and product-specific datasets
 	zbrew configure igy630 <-- run product-specific configuration after SMP/E APPLY step
 " >&2 
@@ -68,10 +71,12 @@ zbrew Examples:
 # Temporary hack - replace with call to IBM-managed server (ShopZ) to get proper list
 #
 search() {
+	zbrewlog "search" $*
 	search=$1
 	callerdir=`callerdir $0`
 	result=`grep -i "${search}" ${callerdir}/../zbrew.software`
 	echo ${result}
+	zbrewlog "search RC: ${rc}"
 	return 0
 }
 
@@ -81,39 +86,53 @@ search() {
 # for the RECEIVE
 #
 order() {
+	zbrewlog "order" $*
 	# currently no-op. ORDER directory for COBOL IGY630E pre-populated
 	if [ ${verbose} -gt 0 ]; then
 		echo "order $1" >&2
 	fi
+	zbrewlog "order RC: ${rc}"
 	return 0
 }
 
 uninstall() {
+	zbrewlog "uninstall" $*
 	if [ ${verbose} -gt 0 ]; then
 		echo "uninstall $*" >&2
 	fi
+	zbrewlog "uninstall RC: ${rc}"
 	return 4
 }
 
 receiveshopz() {
-	NTS=`smpfromshopz $*`
+	zbrewlog "smpfromshopz" $*
+	sw=$1
+	shift
+	opts=$*
+	NTS=`smpfromshopz ${sw}`
 	rc=$?
 	if [ $rc -gt 0 ]; then
 		return $rc
 	fi
-	`smpfromnts $* $NTS`
+	`smpfromnts ${sw} $NTS ${opts}`
+	zbrewlog "smpfromshopz RC: ${rc}"
 	return $?
 }
 
 receiveppa() {
+	zbrewlog "receiveppa" $*
+
+	rc=$?
+	zbrewlog "receiveppa RC: ${rc}"
 }
 
 receivelocal() {
+	zbrewlog "smpfromnts" $*
 	sw=$1
 	ussname=$(echo ${sw} | tr '[:upper:]' '[:lower:]');
 	prefix=`echo "${ussname}" | awk '{ print substr($1, 0, 3) }'`
 
-	NTS="${TMP}/smpnts.${ussname}"
+	NTS="${ZBREW_TMP}/smpnts.${ussname}"
 	REPO_NAME="zbrew-${prefix}"
 	REPODIR="${SMPE_LOCALREPO}/${REPO_NAME}"
 	REPO="${REPODIR}.git"
@@ -135,6 +154,7 @@ receivelocal() {
 	fi	
 	`smpfromnts ${sw} $NTS`
 	rc=$?
+	zbrewlog "smpfromnts RC: ${rc}"
 	if [ $rc -gt 0 ]; then
 		return $rc;
 	fi	
@@ -167,14 +187,21 @@ receive() {
 # Temporary hack - need a better way to locate where pre-req script is
 #
 prodprereq() {
+	zbrewlog "prodprereq" $*
 	sw=$1
 	shift 1
 	opts=$*
-
+	tmp_frspace=$(df -k ${ZBREW_TMP} | grep ${ZBREW_TMP} | awk '{print $3}' | awk -F'/' '{print $1}')
+	if [ "${tmp_frspace}" -lt '307200' ]; then
+		echo "Warning, ${ZBREW_TMP} is low on free space, it is recommended to have at least 300 MB available"
+		echo "Current free space available is: ${tmp_frspace} KB"
+		return 16
+	fi
+        
 	ussname=$(echo ${sw} | tr '[:upper:]' '[:lower:]');
 	prefix=`echo ${ussname} | awk '{print substr($0,0,3)}'`
 	if [ ${verbose} -gt 0 ]; then
-		echo "install ${opts} ${sw}" >&2
+		echo "Checking prerequisites ${opts} ${sw}" >&2
 	fi
 	prereq="${mydir}/../../zbrew-${prefix}/${ussname}/${ussname}prereq"
 	if [ -f "${prereq}" ]; then
@@ -186,14 +213,17 @@ prodprereq() {
 	fi
 }
 
+
 fmids() {
+	zbrewlog "fmids" $*
 	sw=$1
-	smplist="/tmp/smpfmid.$$.smplist"
+	smplist="${ZBREW_TMP}/smpfmid.$$.smplist"
 	smpout=`smp -i "ZBREW.${sw}G.GLOBAL.CSI" -l "${smplist}" <<zzz
   SET BDY(GLOBAL).
   LIST FEATURE.
 zzz`
 	rc=$?
+	zbrewlog "fmids RC: ${rc}"
 	if [ $rc -eq 0 ]; then
 		fmids=`awk ' /FMID/ { $1=$2=""; print $0; }' ${smplist}`
 		uniq_fmids=`echo ${fmids} | tr ' ' '\n' | sort | uniq`
@@ -208,12 +238,13 @@ zzz`
 }
 
 fmidset() {
+	zbrewlog "fmidset" $*
 	sw=$1
 	shift
 	fmids=$*
 	fmidset="${sw}FS"
 
-	tmpCntlHFS="/tmp/smpfmid.$$.smpcntl"
+	tmpCntlHFS="${ZBREW_TMP}/smpfmid.$$.smpcntl"
 	echo "  SET BDY(GLOBAL)." >>${tmpCntlHFS}
 	echo "  UCLIN." >>${tmpCntlHFS}
 	echo "  REP FMIDSET(${fmidset})" >>${tmpCntlHFS}
@@ -225,9 +256,10 @@ fmidset() {
 	echo "  ENDUCL." >>${tmpCntlHFS}
 	smpout=`smp -i "ZBREW.${sw}G.GLOBAL.CSI" <${tmpCntlHFS}`
 	rc=$?
+	zbrewlog "fmidset RC: ${rc}"
 	rm ${tmpCntlHFS}
-	if [ $rc -gt 4 ]; then
-		echo "fmidset failed with rc:$rc" >&2
+	if [ $rc -gt 4 ] || [ $verbose -gt 0 ]; then
+		echo "fmidset ended with return code: $rc" >&2
 		echo "${smpout}" >&2
 	fi      
 	echo "${fmidset}"
@@ -235,11 +267,14 @@ fmidset() {
 }
 
 apply() {
+	zbrewlog "apply" $*
 	if [ ${verbose} -gt 0 ]; then
 		echo "apply $*" >&2
 	fi
 	check=$(echo ${1} | tr '[:lower:]' '[:upper:]') 
 	sw=$(echo ${2} | tr '[:lower:]' '[:upper:]')
+	shift 2
+	opts=$*
 	fmids=`fmids ${sw}`
 	if [ $? -gt 0 ]; then
 		return $?
@@ -248,75 +283,91 @@ apply() {
 	if [ $? -gt 4 ]; then
 		return $?
 	fi
-	smpapply ${check} ${sw} ${fmidset}
-	return 0
+	smpapply ${opts} ${check} ${sw} ${fmidset}
+	rc=$?
+	zbrewlog "apply RC: ${rc}"
+	return $rc
 }
 
-#
-# Temporary hack - need a better way to locate where installation script is
-#
-prodinstall() {
-	sw=$1
-	shift 1
-	opts=$*
 
-	ussname=$(echo ${sw} | tr '[:upper:]' '[:lower:]'); 
+prodalloc() {
+	zbrewlog "prodalloc" $*
+        sw=$1
+        shift 1
+        opts=$*
+        ussname=$(echo ${sw} | tr '[:upper:]' '[:lower:]')
+        prefix=`echo ${ussname} | awk '{print substr($0,0,3)}'`
+        if [ ${verbose} -gt 0 ]; then
+                echo "proddsalloc ${prefix} ${ussname}" >&2
+        fi
+        proddsalloc ${prefix} ${ussname} ${opts}
+        rc=$?
+	zbrewlog "prodalloc RC: ${rc}" 
+        return $rc
+}
+
+
+smpdddef() {
+	zbrewlog "smpdddef" $*
+        sw=$1
+        shift 1
+        opts=$*
+	ussname=$(echo ${sw} | tr '[:upper:]' '[:lower:]')
 	prefix=`echo ${ussname} | awk '{print substr($0,0,3)}'`
 	if [ ${verbose} -gt 0 ]; then
-		echo "install ${opts} ${sw}" >&2
+		echo "smpcrdddef ${prefix} ${ussname} ${opts}" >&2
 	fi
-	prodinst="${mydir}/../../zbrew-${prefix}/${ussname}/${ussname}install"
-	if [ -f "${prodinst}" ]; then
-		${prodinst} ${opts}
-		return $?
+	smpcrdddef ${prefix} ${ussname} ${opts}
+	rc=$?
+	zbrewlog "smpdddef RC: ${rc}"
+	if [ $rc -lt 5 ]; then
+		return 0
 	else
-		echo "Unable to find product installation program: ${prodinst}. Installation failed."
-		return 16
+		return $rc
 	fi
 }
 
-install() {
-	sw=$1
-	shift 1
-	opts=$*
 
-	out=`smpconfig ${sw} ${opts}`
-	rc=$?
-	if [ $rc -gt 0 ]; then
-		echo "${out}" >&2
-		return $rc
-	fi
-	out=`receive ${sw} ${opts}`
-	rc=$?
-	if [ $rc -gt 0 ]; then
-		echo "${out}" >&2
-		return $rc
-	fi
-	out=`prodprereq ${sw} ${opts}`
-	rc=$?
-	if [ $rc -gt 0 ]; then
-		echo "${out}" >&2
-		return $rc
-	fi
-	out=`prodinstall ${sw} ${opts}`
-	rc=$?
-	if [ $rc -gt 0 ]; then
-		echo "${out}" >&2
-		return $rc
-	fi
-	out=`apply ${sw} ${opts}`
-	rc=$?
-	if [ $rc -gt 0 ]; then
-		echo "${out}" >&2
-		return $rc
-	fi
-	return 0
+install() {
+	zbrewlog "install" $*
+	restart=$1
+	sw=$2
+	shift 2
+	opts=$*
+	
+	for zbrewfunc in ${install_verbs}; do
+		runfunc="${zbrewfunc}"
+		if [ "${runfunc}" = "smpapplycheck" ]; then
+			runfunc="apply CHECK"
+		fi
+		if [ "${runfunc}" = "smpapply" ]; then
+                        runfunc="apply NOCHECK"
+		fi
+		if [ "${restart}" != "NORESTART" ]; then
+			if [ "${zbrewfunc}" != "${restart}" ]; then
+				continue
+			else
+				restart="NORESTART"
+			fi
+		fi
+		out=`${runfunc} ${sw} ${opts}`
+		rc=$?
+		zbrewlog "${runfunc} RC: ${rc}"
+		if [ "$rc" -gt 0 ] || [ "$verbose" -gt 0 ]; then
+			echo "${out}" >&2
+		fi
+		if [ "$rc" -gt 0 ]; then
+			return $rc
+		fi
+	done	
+	return $rc
 }
 
 #
 # Temporary hack - need a better way to locate where installation script is
 #
 configure() {
+	zbrewlog "smpconfig" $*
 	sw=$1
  	shift 1
         opts=$*
@@ -329,6 +380,7 @@ configure() {
 	prodconfig="${mydir}/../../zbrew-${prefix}/${ussname}/${ussname}config"
         if [ -f "${prodconfig}" ]; then
      	        ${prodconfig} ${opts}
+		zbrewlog "smpconfigure RC: ${rc}"
 		return $?
         else                            
 		echo "Unable to find product configuration program: ${prodconfig}. Installation failed."
@@ -336,15 +388,31 @@ configure() {
 	fi
 }
 
+install_verbs="prodprereq smpconfig receive smpdddef prodalloc smpapplycheck smpapply"
 debug=0
 verbose=0
 clean=0
+restart='NORESTART'
 opts=""
-while getopts ":cvd" opt; do
+while getopts ":cvdr:" opt; do
   case ${opt} in
     d )
       debug=1
       opts="${opts} -d"
+      ;;
+    r )
+      restart=${OPTARG}
+      rescheck='notok'
+      for testarg in ${install_verbs}; do
+	if [ "${restart}" = "${testarg}" ]; then
+		rescheck='ok'
+		break
+        fi
+      done
+      if [ "${rescheck}" = 'notok' ]; then
+      	msg zbrew ${InvalidOption} E "${OPTARG}"
+	exit 4
+      fi
       ;;
     c )
       clean=1
@@ -389,6 +457,7 @@ if [ "${verb}" != 'search' ]; then
 	        exit 4
 	fi   
 fi
+
 case ${verb} in
 	search ) 
 		out=`search $2`  
@@ -407,7 +476,7 @@ case ${verb} in
 		smpconfig ${opts} ${zosname}
 		rc=$?
 		if [ $rc -gt 0 ]; then
-			echo "Unable to configure SMP/E datasets. Receive failed" >&2
+			echo "Unable to configure SMP/E datasets." >&2
 			exit $rc
 		fi
 		;;
@@ -423,40 +492,51 @@ case ${verb} in
 		;;
 	prodprereq )
 		out=`prodprereq $2 ${opts}`
-		rc=$? 
+		rc=$?
+		if [ $verbose -gt 0 ]; then
+			echo ${out}
+		fi 
 		if [ $rc -gt 0 ]; then
 			echo "${out}" 
 			exit $rc
 		fi
 		;;
-	prodinstall )
-		out=`prodinstall $2 ${opts}`;
-		rc=$? 
-		if [ $rc -gt 0 ]; then
-			echo "${out}" 
-			exit $rc
-		fi
-		;;
-	smpapplycheck )
-		out=`apply ${opts} CHECK $2`
+	smpdddef )
+		out=`smpdddef $2 ${opts}`
 		rc=$?
 		if [ $rc -gt 0 ]; then
                         echo "${out}"
                         exit $rc
                 fi
                 ;;
-	smpapply )
-		out=`apply ${opts} NOCHECK $2`;
-		rc=$? 
+	prodalloc )
+		out=`prodalloc $2 ${opts}`
+		rc=$?
 		if [ $rc -gt 0 ]; then
+			echo "${out}"
+			exit $rc
+		fi
+		;;
+	smpapplycheck )
+		out=`apply CHECK $2 ${opts}`
+		rc=$?
+		if [ $rc -gt 0 ] || [ $verbose -gt 0 ]; then
+                        echo "${out}"
+                        exit $rc
+                fi
+                ;;
+	smpapply )
+		out=`apply NOCHECK $2 ${opts}`;
+		rc=$? 
+		if [ $rc -gt 0 ] || [ $verbose -gt 0 ]; then
 			echo "${out}" 
 			exit $rc
 		fi
 		;;	
 	install ) 
-		out=`install $2 ${opts}`;
+		out=`install ${restart} $2 ${opts}`
 		rc=$? 
-		if [ $rc -gt 0 ]; then
+		if [ $rc -gt 0 ] || [ $verbose -gt 0 ]; then
 			echo "${out}" 
 			exit $rc
 		fi

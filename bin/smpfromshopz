@@ -39,9 +39,9 @@ Examples:
 
 receivefromnetwork() {
 	sw="$1"
-	tmpServerHFS=${TMP}/$$.server.xml
-	tmpClientHFS=${TMP}/$$.client.xml
-	tmpCntlHFS=${TMP}/$$.cntl.xml
+	tmpServerHFS=${ZBREW_TMP}/$$.server.xml
+	tmpClientHFS=${ZBREW_TMP}/$$.client.xml
+	tmpCntlHFS=${ZBREW_TMP}/$$.cntl.xml
 
 	cat >${tmpClientHFS} <<zzz
   <CLIENT debug="YES"                                  
@@ -78,11 +78,11 @@ zzz
       .
 zzz
 
-	NTS=${TMP}/smpnts.${sw}
+	NTS=${ZBREW_TMP}/smpnts.${sw}
 
 	mkdir -p ${NTS}
 
-	smpout=`smp -i ${ZBREW_HLQ}${sw}G.GLOBAL.CSI -w ${TMP} -n ${NTS} -c ${tmpClientHFS} -s ${tmpServerHFS} <${tmpCntlHFS}`
+	smpout=`smp -i ${ZBREW_HLQ}${sw}G.GLOBAL.CSI -w ${ZBREW_TMP} -n ${NTS} -c ${tmpClientHFS} -s ${tmpServerHFS} <${tmpCntlHFS}`
 	rc=$?
 	if [ ${rc} -gt 0 ]; then
 		echo "SMP/E RECEIVE of ${sw} failed." >&2
@@ -95,6 +95,15 @@ zzz
 	echo ${NTS}
 	return ${rc} 
 }
+
+mydir=$(callerdir ${0})
+props="${mydir}/../properties/zbrew.properties"
+. zbrewprops "${props}"
+if [ $? -gt 0 ]; then
+        echo "Internal Error. Unable to find ${props}" >&2
+        exit 4
+fi
+
 
 debug=0
 verbose=0
@@ -125,13 +134,6 @@ if [ $# -lt 1 ]; then
 	exit 16
 fi
 
-mydir=$(callerdir ${0})
-props="${mydir}/../properties/zbrew.properties"
-. zbrewprops "${props}"
-if [ $? -gt 0 ]; then
-        echo "Internal Error. Unable to find ${props}" >&2
-	exit 4
-fi   
 
 mydir=$(callerdir ${0})
 ussname=$(echo ${1} | tr '[:upper:]' '[:lower:]'); 
