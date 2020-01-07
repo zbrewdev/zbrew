@@ -70,54 +70,62 @@ if (rc <> 0 | returnCode <> HWTJ_OK) then do
   return 16
 end
 
+call FindName swname, parserHandle, objectHandle
+if (rc <> 0) then do
+  return rc
 end
 
-return rc
 
-FindName: Procedure
-searchName="name"
-do until (searchResultValue = swname)
-  address hwtjson "hwtjsrch ",
-   "returnCode",
-   "parserHandle",
-   "HWTJ_SEARCHTYPE_OBJECT",
-   "searchName",
-   "objectHandle",
-   "0",
-   "searchResult",
-   "diagArea."
-  if (rc <> 0 | returnCode <> HWTJ_OK) then do
-    call SayErr 'Unable to find swname: ' || swname
-    return 4
-  end
+return 0
 
-  address hwtjson "hwtjgjst",
+FindName: Procedure Expose parserHandle objectHandle 
+Parse Arg swname, parserHandle, objectHandle 
+  searchName="name"
+  do until (searchResultValue = swname)
+    address hwtjson "hwtjsrch ",
     "returnCode",
     "parserHandle",
+    "HWTJ_SEARCHTYPE_OBJECT",
+    "searchName",
+    "objectHandle",
+    "0",
     "searchResult",
-    "searchResultType",
     "diagArea."
-  if (rc <> 0 | returnCode <> HWTJ_OK) then do
-    call Error 'Internal Error: Unable to retrieve type for name entry: ' || objectEntryIndex, diagArea.
-    return 16
-  end
-  if (searchResultType <> 'HWTJ_STRING_TYPE') then do
-    call SayErr 'Name: ' || searchName || ' is not of string type. Only string values can be specified. Key ignored.'
-    return 16
-  end
+    if (rc <> 0 | returnCode <> HWTJ_OK) then do
+      call SayErr 'Unable to find swname: ' || swname
+      return 4
+    end
 
-  address hwtjson "hwtjgval",
-    "returnCode",
-    "parserHandle",
-    "searchResult",
-    "searchResultValue",
-    "diagArea."
-  if (rc <> 0 | returnCode <> HWTJ_OK) then do
-    call Error 'Unable to retrieve value for key/value pair entry: ' || objectEntryIndex, diagArea.
-    return 16
+    address hwtjson "hwtjgjst",
+      "returnCode",
+      "parserHandle",
+      "searchResult",
+      "searchResultType",
+      "diagArea."
+    if (rc <> 0 | returnCode <> HWTJ_OK) then do
+      call Error 'Internal Error: Unable to retrieve type for name entry: ' || objectEntryIndex, diagArea.
+      return 16
+    end
+    if (searchResultType <> 'HWTJ_STRING_TYPE') then do
+      call SayErr 'Name: ' || searchName || ' is not of string type. Only string values can be specified. Key ignored.'
+      return 16
+    end
+
+    address hwtjson "hwtjgval",
+      "returnCode",
+      "parserHandle",
+      "searchResult",
+      "searchResultValue",
+      "diagArea."
+    if (rc <> 0 | returnCode <> HWTJ_OK) then do
+      call Error 'Unable to retrieve value for key/value pair entry: ' || objectEntryIndex, diagArea.
+      return 16
+    end
+    objectHandle=searchResult
+    say "Name: " || searchResultValue 
   end
-  objectHandle=searchResult
-  say "Name: " || searchResultValue 
+  return 0
+
 SayErr: Procedure
   Parse Arg text
   data.1 = text
