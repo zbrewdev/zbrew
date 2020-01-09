@@ -210,7 +210,7 @@ readJSONObject:Procedure Expose json. opts. HWTJ_OK
       return 16
     end
     index = i+1
-    cmd = stem || '.field.' || index ' = ' || '"' || entryName || '"'
+    cmd = stem || '.field.' || index || ' = ' || '"' || entryName || '"'
     if (opts.verbose) then do
       Say cmd
     end
@@ -243,7 +243,7 @@ Parse Arg msg, diagArea
 ReadJSON: Procedure Expose json. opts.
 trace 'o'
 
-  opts.verbose = 0
+  opts.verbose = 1
 
   call hwtcalls "on"
   address hwtjson "hwtConst ",
