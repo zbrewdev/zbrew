@@ -1,0 +1,243 @@
+/* REXX */
+
+/*
+ * openJSON: Open up the JSON file, read it into a stream, and parse it
+ */
+openJSON:Procedure Expose parserHandle objectHandle HWTJ_OK
+  Parse Arg parserHandle, objectHandle
+
+  address hwtjson "hwtjinit ",
+    "returnCode ",
+    "parserHandle ",
+    "diagArea."
+  if (rc <> 0 | returnCode <> HWTJ_OK) then do
+    call Error 'Internal Error: Unable to initialize HWT', diagArea.
+    return 16
+  end
+
+  address mvs 'execio * diskr stdin (stem data. finis'
+  stream=''
+  do i=1 to data.0
+    stream=stream||data.i
+  end
+
+  address hwtjson "hwtjpars ",
+    "returnCode ",
+    "parserHandle ",
+    "stream ",
+    "diagArea."
+  parseRC=rc
+
+  if (rc <> 0 | returnCode <> HWTJ_OK) then do
+    call Error 'JSON Input is Invalid.', diagArea.
+    call SayErr stream
+    return 8
+  end
+
+  objectHandle=0
+  objectEntryIndex=0
+  address hwtjson "hwtjgoen",
+    "returnCode",
+    "parserHandle",
+    "objectHandle",
+    "objectEntryIndex",
+    "entryName",
+    "entryValueHandle",
+    "diagArea."
+  if (rc <> 0 | returnCode <> HWTJ_OK) then do
+    call Error 'Internal Error: Unable to retrieve root JSON json.', diagArea.
+    return 16
+  end
+  return 0
+
+readJSONEntry:Procedure Expose json. HWTJ_OK
+  Parse arg stem, entryValueName, parserHandle, entryHandle, json
+
+  entryName = stem || '.' || entryValueName
+
+  address hwtjson "hwtjgjst",
+    "returnCode",
+    "parserHandle",
+    "entryHandle",
+    "entryValueType",
+    "diagArea."
+
+  if (rc <> 0 | returnCode <> HWTJ_OK) then do
+    call Error 'Internal Error: Unable to retrieve type for entry: ' || stem || '.' || entryValueName, diagArea.
+    return 16
+  end
+
+  rc=0
+  returnCode = HWTJ_OK
+  select
+    when (entryValueType = 'HWTJ_ARRAY_TYPE') then do
+      return readJSONArray(entryName, parserHandle, entryHandle, json)
+    end
+    when (entryValueType = 'HWTJ_OBJECT_TYPE') then do
+      return readJSONObject(entryName, parserHandle, entryHandle, json)
+    end
+    when (entryValueType = 'HWTJ_NULL_TYPE') then do
+      INTERPRET entryName || " = 'null'"
+    end
+    otherwise do
+      address hwtjson "hwtjgval",
+        "returnCode",
+        "parserHandle",
+        "entryHandle",
+        "entryValue",
+        "diagArea."
+
+      if (rc = 0 & returnCode = HWTJ_OK) then do
+        INTERPRET entryName || " = '" || entryValue || "'"
+      end
+    end
+  end
+  
+  if (rc <> 0 | returnCode <> HWTJ_OK) then do
+    call Error 'Unable to retrieve value for entry: ' || entryName, diagArea.
+    return 16
+  end
+  return 0
+
+/*
+ * readJSONArray: given an array, get the number of entries, then call readJSONObject on 
+ * each entry
+ */
+readJSONArray:Procedure Expose json. HWTJ_OK
+  Parse arg aStem, parserHandle, arrayHandle, json
+
+  stem = aStem
+
+  address hwtjson "hwtjgnue ",
+    "returnCode ",
+    "parserHandle ",
+    "arrayHandle ",
+    "entries ",
+    "diagArea."
+  if (rc <> 0 | returnCode <> HWTJ_OK) then do
+    call Error 'Internal Error: Unable to read number of array elements', diagArea.
+    return 16
+  end
+
+  INTERPRET stem || '.elements = ' || entries
+  do entry = 0 to entries-1
+    address hwtjson "hwtjgaen ",
+      "returnCode ",
+      "parserHandle ",
+      "arrayHandle ",
+      "entry ",
+      "resultHandle ",
+      "diagArea."
+    if (rc <> 0 | returnCode <> HWTJ_OK) then do
+      call Error 'Internal Error: Unable to read array element: ' || entry , diagArea.
+      return 16
+    end
+    elementHandle = resultHandle
+    index=entry+1
+
+    rc=readJSONEntry(stem, index, parserHandle, resultHandle, json)
+    if (rc > 0) then do
+      return rc
+    end
+  end
+
+  return 0
+
+readJSONObject:Procedure Expose json. HWTJ_OK
+  Parse Arg stem, parserHandle, aObjectHandle, json
+  
+  objectHandle = aObjectHandle
+  returnCode = 0
+  entryName = 0
+  entryValueHandle = 0
+
+  objectEntryIndex = 0
+  rc = 0
+  address hwtjson "hwtjgoen",
+    "returnCode",
+    "parserHandle",
+    "objectHandle",
+    "objectEntryIndex",
+    "entryName",
+    "entryValueHandle",
+    "diagArea."
+  if (rc <> 0 | returnCode <> HWTJ_OK) then do
+    call Error 'Internal Error: Unable to retrieve root JSON json.', diagArea.
+    return 16
+  end
+    
+  address hwtjson "hwtjgnue",
+    "returnCode",
+    "parserHandle",
+    "objectHandle",
+    "numOfEntries",
+    "diagArea."
+  if (rc <> 0 | returnCode <> HWTJ_OK) then do
+    call Error 'Internal Error: Unable to retrieve number of key/value pairs.', diagArea.
+    return 16
+  end
+  
+  INTERPRET stem || '.fields = ' || numOfEntries
+  do i=0 to numOfEntries-1
+  objectEntryIndex=i
+    address hwtjson "hwtjgoen",
+      "returnCode",
+      "parserHandle",
+      "objectHandle",
+      "objectEntryIndex",
+      "entryName",
+      "entryValueHandle",
+      "diagArea."
+
+    if (rc <> 0 | returnCode <> HWTJ_OK) then do
+      call Error 'Internal Error: Unable to retrieve key/value pair entry: ' || objectEntryIndex, diagArea.
+      return 16
+    end
+    rc = readJSONEntry(stem, entryName, parserHandle, entryValueHandle, json)
+    if (rc <> 0) then do
+      return rc
+    end
+
+  end
+  return 0
+
+SayErr: Procedure
+  Parse Arg text
+  data.1 = text
+  data.0 = 1
+  address mvs 'execio 1 diskw stderr (stem data.'
+  return 0
+  
+Error: Procedure Expose diagArea. 
+Parse Arg msg, diagArea
+  call SayErr msg
+  call SayErr diagArea.HWTJ_ReasonDesc
+  return 0
+
+/*
+ * Read a JSON stream from stdin and set up the variable
+ * json. to point to the underlying JSON object
+ */
+ReadJSON: Procedure Expose json.
+trace 'o'
+
+  call hwtcalls "on"
+  address hwtjson "hwtConst ",
+    "returnCode ",
+    "diagArea."
+  if (rc <> 0 | returnCode <> HWTJ_OK) then do
+    call Error 'Internal Error: Unable to get HWTJSON constants', diagArea.
+    return 16
+  end
+
+  rc = openJSON(parserHandle, objectHandle)
+  if (rc <> 0) then do
+    return rc
+  end
+
+  object=''
+  rc = readJSONObject('json', parserHandle, objectHandle, json)
+  if (rc <> 0) then do
+    return rc
+  end
+  return 0
