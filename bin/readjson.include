@@ -50,7 +50,7 @@ openJSON:Procedure Expose parserHandle objectHandle HWTJ_OK
   end
   return 0
 
-readJSONEntry:Procedure Expose json. HWTJ_OK
+readJSONEntry:Procedure Expose json. opts. HWTJ_OK
   Parse arg stem, entryValueName, parserHandle, entryHandle, json
 
   entryName = stem || '.' || entryValueName
@@ -77,7 +77,11 @@ readJSONEntry:Procedure Expose json. HWTJ_OK
       return readJSONObject(entryName, parserHandle, entryHandle, json)
     end
     when (entryValueType = 'HWTJ_NULL_TYPE') then do
-      INTERPRET entryName || " = 'null'"
+      cmd = entryName || " = 'null'"
+      if (opts.verbose) then do
+        say cmd
+      end
+      INTERPRET cmd
     end
     otherwise do
       address hwtjson "hwtjgval",
@@ -88,7 +92,11 @@ readJSONEntry:Procedure Expose json. HWTJ_OK
         "diagArea."
 
       if (rc = 0 & returnCode = HWTJ_OK) then do
-        INTERPRET entryName || " = '" || entryValue || "'"
+        cmd = entryName || " = '" || entryValue || "'"
+        if (opts.verbose) then do
+          say cmd
+        end
+        INTERPRET cmd
       end
     end
   end
@@ -103,7 +111,7 @@ readJSONEntry:Procedure Expose json. HWTJ_OK
  * readJSONArray: given an array, get the number of entries, then call readJSONObject on 
  * each entry
  */
-readJSONArray:Procedure Expose json. HWTJ_OK
+readJSONArray:Procedure Expose json. opts. HWTJ_OK
   Parse arg aStem, parserHandle, arrayHandle, json
 
   stem = aStem
@@ -119,7 +127,11 @@ readJSONArray:Procedure Expose json. HWTJ_OK
     return 16
   end
 
-  INTERPRET stem || '.elements = ' || entries
+  cmd = stem || '.elements = ' || entries
+  if (opts.verbose) then do
+    Say cmd
+  End
+  INTERPRET cmd
   do entry = 0 to entries-1
     address hwtjson "hwtjgaen ",
       "returnCode ",
@@ -143,7 +155,7 @@ readJSONArray:Procedure Expose json. HWTJ_OK
 
   return 0
 
-readJSONObject:Procedure Expose json. HWTJ_OK
+readJSONObject:Procedure Expose json. opts. HWTJ_OK
   Parse Arg stem, parserHandle, aObjectHandle, json
   
   objectHandle = aObjectHandle
@@ -176,8 +188,12 @@ readJSONObject:Procedure Expose json. HWTJ_OK
     call Error 'Internal Error: Unable to retrieve number of key/value pairs.', diagArea.
     return 16
   end
-  
-  INTERPRET stem || '.fields = ' || numOfEntries
+ 
+  cmd = stem || '.fields = ' || numOfEntries
+  if (opts.verbose) then do
+    Say cmd
+  end 
+  INTERPRET cmd
   do i=0 to numOfEntries-1
   objectEntryIndex=i
     address hwtjson "hwtjgoen",
@@ -193,6 +209,12 @@ readJSONObject:Procedure Expose json. HWTJ_OK
       call Error 'Internal Error: Unable to retrieve key/value pair entry: ' || objectEntryIndex, diagArea.
       return 16
     end
+    index = i+1
+    cmd = stem || '.field.' || index ' = ' || '"' || entryName || '"'
+    if (opts.verbose) then do
+      Say cmd
+    end
+    INTERPRET cmd
     rc = readJSONEntry(stem, entryName, parserHandle, entryValueHandle, json)
     if (rc <> 0) then do
       return rc
@@ -208,7 +230,7 @@ SayErr: Procedure
   address mvs 'execio 1 diskw stderr (stem data.'
   return 0
   
-Error: Procedure Expose diagArea. 
+Error: Procedure Expose diagArea. opts.
 Parse Arg msg, diagArea
   call SayErr msg
   call SayErr diagArea.HWTJ_ReasonDesc
@@ -218,8 +240,10 @@ Parse Arg msg, diagArea
  * Read a JSON stream from stdin and set up the variable
  * json. to point to the underlying JSON object
  */
-ReadJSON: Procedure Expose json.
+ReadJSON: Procedure Expose json. opts.
 trace 'o'
+
+  opts.verbose = 0
 
   call hwtcalls "on"
   address hwtjson "hwtConst ",
