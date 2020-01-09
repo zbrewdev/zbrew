@@ -57,3 +57,16 @@ zbrewlog() {
 	log_time=$(date -u)
 	echo "${log_time} ${log_msg}" >> ${log_dir}
 }	
+
+zbrewtest() {
+	lmsg="$1"
+	lexpected="$2"
+	lactual="$3"
+
+	if [ "${lexpected}" != "${lactual}" ]; then
+		echo "Test Failed. ${lmsg}" >&2
+		echo "Expected: ${lexpected}" >&2
+		echo "Actual: ${lactual}" >&2
+		exit 16
+	fi	
+}
