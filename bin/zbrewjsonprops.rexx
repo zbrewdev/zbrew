@@ -19,14 +19,13 @@ if (rc <> 0) then do
   return rc
 end
 
-do el = 1 to json.software.elements
+do el = 1 to json.software.0
   entry = json.software.el.name
   if (entry = swname) then do
     props = json.software.el.properties
-    do p = 1 to json.software.el.properties.fields
+    do p = 1 to json.software.el.properties.0
       key = json.software.el.properties.field.p
-      INTERPRET 'val = json.software.' || el || '.properties.' || key
-      /* val = json.software.el.properties.key */
+      val = json.software.el.properties.key
       say key || '=' || val
     end
     return 0

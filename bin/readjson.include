@@ -35,19 +35,6 @@ openJSON:Procedure Expose parserHandle objectHandle HWTJ_OK
   end
 
   objectHandle=0
-  objectEntryIndex=0
-  address hwtjson "hwtjgoen",
-    "returnCode",
-    "parserHandle",
-    "objectHandle",
-    "objectEntryIndex",
-    "entryName",
-    "entryValueHandle",
-    "diagArea."
-  if (rc <> 0 | returnCode <> HWTJ_OK) then do
-    call Error 'Internal Error: Unable to retrieve root JSON json.', diagArea.
-    return 16
-  end
   return 0
 
 readJSONEntry:Procedure Expose json. opts. HWTJ_OK
@@ -112,9 +99,7 @@ readJSONEntry:Procedure Expose json. opts. HWTJ_OK
  * each entry
  */
 readJSONArray:Procedure Expose json. opts. HWTJ_OK
-  Parse arg aStem, parserHandle, arrayHandle, json
-
-  stem = aStem
+  Parse arg stem, parserHandle, arrayHandle, json
 
   address hwtjson "hwtjgnue ",
     "returnCode ",
@@ -127,11 +112,12 @@ readJSONArray:Procedure Expose json. opts. HWTJ_OK
     return 16
   end
 
-  cmd = stem || '.elements = ' || entries
+  cmd = stem || '.0 = ' || entries
   if (opts.verbose) then do
     Say cmd
   End
   INTERPRET cmd
+
   do entry = 0 to entries-1
     address hwtjson "hwtjgaen ",
       "returnCode ",
@@ -156,9 +142,8 @@ readJSONArray:Procedure Expose json. opts. HWTJ_OK
   return 0
 
 readJSONObject:Procedure Expose json. opts. HWTJ_OK
-  Parse Arg stem, parserHandle, aObjectHandle, json
+  Parse Arg stem, parserHandle, objectHandle, json
   
-  objectHandle = aObjectHandle
   returnCode = 0
   entryName = 0
   entryValueHandle = 0
@@ -189,13 +174,13 @@ readJSONObject:Procedure Expose json. opts. HWTJ_OK
     return 16
   end
  
-  cmd = stem || '.fields = ' || numOfEntries
+  cmd = stem || '.0 = ' || numOfEntries
   if (opts.verbose) then do
     Say cmd
   end 
   INTERPRET cmd
-  do i=0 to numOfEntries-1
-  objectEntryIndex=i
+
+  do objectEntryIndex=0 to numOfEntries-1
     address hwtjson "hwtjgoen",
       "returnCode",
       "parserHandle",
@@ -209,12 +194,15 @@ readJSONObject:Procedure Expose json. opts. HWTJ_OK
       call Error 'Internal Error: Unable to retrieve key/value pair entry: ' || objectEntryIndex, diagArea.
       return 16
     end
-    index = i+1
-    cmd = stem || '.field.' || index || ' = ' || '"' || entryName || '"'
+
+    index = objectEntryIndex+1
+    entryName = translate(entryName)
+    cmd = stem || '.field.' || index || ' = ' || entryName
     if (opts.verbose) then do
       Say cmd
     end
     INTERPRET cmd
+
     rc = readJSONEntry(stem, entryName, parserHandle, entryValueHandle, json)
     if (rc <> 0) then do
       return rc
@@ -243,7 +231,11 @@ Parse Arg msg, diagArea
 ReadJSON: Procedure Expose json. opts.
 trace 'o'
 
-  opts.verbose = 1
+/*
+ * opts.verbose = 1 will print out what stem variables are set
+ * TBD: turn this into a proper option
+ */
+  opts.verbose = 0
 
   call hwtcalls "on"
   address hwtjson "hwtConst ",

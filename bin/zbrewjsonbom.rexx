@@ -20,10 +20,10 @@ Arg swname .
     return rc
   end
 
-  do el = 1 to json.software.elements
+  do el = 1 to json.software.0
     entry = json.software.el.name
     if (entry = swname) then do
-      do p = 1 to json.software.el.datasets.elements
+      do p = 1 to json.software.el.datasets.0
         name = json.software.el.datasets.p.dsname
         say name
       end
