@@ -16,7 +16,7 @@ crtds() {
 }
 
 crtzfs() {
-	root="${zfsroot}"
+	root="${ZFSROOT}"
 	arg=0
 	for zfsarg in ${1}; do
 		arg=`expr ${arg} + 1`
@@ -25,7 +25,7 @@ crtzfs() {
 	zfsname="${zfsarg1}"
 	primary="${zfsarg2}"
 	secondary="${zfsarg3}"
-	middle="${zfsdir}"
+	middle="${ZFSDIR}"
 	mkdir -p -m 755 ${root}${middle}
 	rc=$?
 	if [ $rc -gt 0 ]; then
@@ -57,28 +57,17 @@ zzz
 	exit 0
 }
 
-
-
 mydir=$(callerdir ${0})
 prefix=$1
 ussname=$2
 shift 2
 opts=$*
 
+props="${mydir}/../../zbrew/properties/zbrewprops.json"
+zbrewpropse zbrew config "${props}"
 
-props="${mydir}/../../zbrew/properties/zbrew.properties"
-. zbrewprops "${props}"
-if [ $? -gt 0 ]; then
-        echo "Internal Error. Unable to find ${props}" >&2
-        exit 4
-fi     
-
-props="${mydir}/../../zbrew-${prefix}/${ussname}/${ussname}install.properties"
-. zbrewprops "${props}"
-if [ $? -gt 0 ]; then
-        echo "Internal Error. Unable to find ${props}" >&2
-        exit 4
-fi
+props="${mydir}/../../zbrew-${prefix}/${ussname}/${ussname}install.json"
+zbrewpropse "${ussname}" install "${props}"
 
 smpelibs="${mydir}/../../zbrew-${prefix}/${ussname}/${ussname}smpelibs"
 ussname=$(echo ${ussname} | tr '[:lower:]' '[:upper:]')
@@ -102,8 +91,8 @@ if [ $rc -gt 0 ]; then
         exit $rc
 fi
 
-for l in $leaves; do
-	mkdir -p -m 755 ${zfsroot}${zfsdir}${l} 
+for l in $LEAVES; do
+	mkdir -p -m 755 ${ZFSROOT}${ZFSDIR}${l} 
  	rc=$? 
  	if [ ${rc} -gt 0 ]; then
 		exit $rc 

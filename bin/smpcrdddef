@@ -83,15 +83,11 @@ shift 2
 opts=$*
 dddefpath=0
 
-props="${mydir}/../../zbrew/properties/zbrew.properties"
-. zbrewprops "${props}"
-if [ $? -gt 0 ]; then
-        echo "Internal Error. Unable to find ${props}" >&2
-        exit 4
-fi     
+props="${mydir}/../../zbrew/properties/zbrewprops.json"
+zbrewpropse zbrew config "${props}"
 
-props="${mydir}/../../zbrew-${prefix}/${ussname}/${ussname}install.properties"
-. zbrewprops ${props}
+props="${mydir}/../../zbrew-${prefix}/${ussname}/${ussname}install.json"
+zbrewpropse "${ussname}" install "${props}"
 
 smpelibs="${mydir}/../../zbrew-${prefix}/${ussname}/${ussname}smpelibs"
 

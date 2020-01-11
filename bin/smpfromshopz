@@ -97,13 +97,8 @@ zzz
 }
 
 mydir=$(callerdir ${0})
-props="${mydir}/../properties/zbrew.properties"
-. zbrewprops "${props}"
-if [ $? -gt 0 ]; then
-        echo "Internal Error. Unable to find ${props}" >&2
-        exit 4
-fi
-
+props="${mydir}/../properties/zbrewprops.json"
+zbrewpropse zbrew config "${props}"
 
 debug=0
 verbose=0
@@ -138,13 +133,8 @@ fi
 mydir=$(callerdir ${0})
 ussname=$(echo ${1} | tr '[:upper:]' '[:lower:]'); 
 zosname=$(echo ${1} | tr '[:lower:]' '[:upper:]'); 
-props="${ZBREW_ORDERROOT}/${ussname}.order"
-. zbrewprops "${props}"
-if [ $? -gt 0 ]; then
-	echo "Internal Error. Unable to find ${props}" >&2
-	exit 4
-fi
-
+props="${ZBREW_ORDERROOT}/${ussname}order.json"
+zbrewpropse "${ussname}" order "${props}"
 
 out=`receivefromnetwork ${zosname}`; 
 rc=$? 

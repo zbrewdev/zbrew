@@ -6,9 +6,9 @@
 mydir=$(callerdir ${0})
 
 cd ${mydir}/../bin
-cat zbrewjsonbom.rexx readjson.include >zbrewjsonbom
-cat zbrewjsonprops.rexx readjson.include >zbrewjsonprops
-chmod u+x zbrewjsonbom
-chmod u+x zbrewjsonprops
+cat readbom.rexx readjson.include >readbom
+cat readprops.rexx readjson.include >readprops
+chmod u+x readbom
+chmod u+x readprops
 
 

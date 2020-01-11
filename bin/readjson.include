@@ -308,6 +308,7 @@ trace 'o'
     return rc
   end
 
+  json. = 0
   object=''
   rc = readJSONObject('json', parserHandle, objectHandle, json)
   if (rc <> 0) then do

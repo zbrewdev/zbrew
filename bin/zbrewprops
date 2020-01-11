@@ -1,18 +1,17 @@
 #!/bin/sh
 #set -x
 if [ $# = 0 ]; then
-	echo "Syntax: zbrewprops [<file>]+" >&2
-	echo "  where <file> is a file of key/value pairs of the format:" >&2
-	echo "  <key>=<value>" >&2
-	echo "Each line will be evaluated, creating a variable <key> with a value <value>" >&2
-	echo "Note:" >&2
-	echo "  Comment lines can be added by starting the line with #" >&2
-	return 16
+	echo "Syntax: zbrewprops <swname> [<file>]+" >&2
+	echo "  where <swname> is the software these properties are associated with" >&2
+	echo "  and <file> is a JSON properties file" >&2
+	echo "Each key/value pair will be evaluated, creating a variable <key> with a value <value>" >&2
+	exit 16
 fi
-
+swname=$1
+shift 1
 for props in $*; do
 if [ -f ${props} ]; then
-        value=`cat ${props}`
+        value=`readprops ${swname} <${props}`
 	OLDIFS=$IFS; IFS="
 "
 	line=0
@@ -37,6 +36,6 @@ if [ -f ${props} ]; then
 	IFS=$OLDIFS
 else
 	echo "Unable to find properties file ${props}" >&2
-	return 16
+	exit 16
 fi
 done

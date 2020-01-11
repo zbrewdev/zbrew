@@ -1,0 +1,12 @@
+{
+ 	"software": [{
+		"name":"ZBREW",
+		"config":{
+			"ZBREW_ORDERROOT":"${HOME}/order", 
+			"ZBREW_PROPSROOT":"${HOME}/properties", 
+			"ZBREW_HLQ":"ZBREW.", 
+			"ZBREW_TMP":"/rsusr/tmp"
+                 }
+	}]
+}
+

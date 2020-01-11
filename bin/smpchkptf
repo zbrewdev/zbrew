@@ -181,12 +181,8 @@ if [ $# -lt 2 ]; then
 fi
 
 mydir=$(callerdir ${0})
-props="${mydir}/../properties/zbrew.properties"
-. zbrewprops "${props}"
-if [ $? -gt 0 ]; then
-        echo "Internal Error. Unable to find ${props}" >&2
-	exit 4
-fi   
+props="${mydir}/../properties/zbrewprops.json"
+zbrewpropse zbrew config "${props}"
 
 if [ -z "${ZBREW_TMP}" ]; then
 	if [ -d /tmp ]; then
@@ -213,8 +209,8 @@ else
 	exit 4
 fi
 
-props=$(callerdir "$0")"/../../zbrew/properties/global.properties"
-. zbrewprops ${props}
+props=$(callerdir "$0")"/../../zbrew/properties/globalprops.json"
+zbrewpropse zbrew global ${props}
 
 out=`runchk $*`
 rc=$?
