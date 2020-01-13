@@ -17,6 +17,11 @@ mydir=$(callerdir ${0})
 rm -f *.actual
 #set -x
 
+#
+# Override the ZBREW_HLQ to ensure test datasets go to ZBREWT instead of ZBREW
+#
+export ZBREW_HLQ=ZBREWT.
+
 if [ -z $1 ] ; then
 	tests=*.sh
 else

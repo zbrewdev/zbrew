@@ -14,7 +14,7 @@ if ! [ -e "${mydir}/../../zbrew-zhw" ]; then
 fi
 
 # Clear up any jetsam from a previous run
-drm -f "zbrew.zhw*.*"
+drm -f "${ZBREW_HLQ}zhw*.*"
 
 # Search for product
 
