@@ -23,13 +23,30 @@ Arg swname .
   do el = 1 to json.software.0
     entry = json.software.el.name
     if (entry = swname) then do
-      do p = 1 to json.software.el.datasets.0
-        name = json.software.el.datasets.p.dsname
-        say name
+      do d = 1 to json.software.el.datasets.0
+        n = json.software.el.datasets.d.dsname
+        t = json.software.el.datasets.d.dstype
+        p = json.software.el.datasets.d.primary
+        s = json.software.el.datasets.d.secondary
+        zn= json.software.el.datasets.d.zones.0
+        zn= 1
+        if (zn <> 1) then do
+          call SayErr 'Expected exactly one zone for dataset: ' name 'but:' zn 'were specified.'
+          return 4
+        end
+        z = json.software.el.datasets.d.zones.1
+        if (type = 'ZFS') then do
+          say n t p s z
+        end
+        else do 
+          l = json.software.el.datasets.d.lrecl
+          r = json.software.el.datasets.d.recfm
+          say n t r l p s z
+        end
       end
       return 0
     end
   end
 
-  SayErr 'Unable to find software: ' || swname
-  return 0
+  call SayErr 'Unable to find software: ' || swname
+  return 4

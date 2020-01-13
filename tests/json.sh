@@ -26,8 +26,8 @@ zbrewtest "Unexpected properties" "${expected}" "${actual}"
 actual=`readbom zhw110 <${zbrewzhw_dir}/zhw110/zhw110bom.json`
 zbrewtest "Bill of Materials (BoM) file parsing failed" "0" "$?" 
 
-expected="SZHWSM
-AZHWSM"
+expected="SZHWSM PDSE FB 80 15 2 T
+AZHWSM PDSE FB 80 15 2 D"
 
 zbrewtest "Unexpected datasets" "${expected}" "${actual}"
 

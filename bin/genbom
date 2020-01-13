@@ -1,0 +1,36 @@
+#!/bin/sh
+# MSF - Simple script to generate a BOM JSON file from original flat properties file
+# This script is a hack to save typing. It does not deal with ZFS type correctly and it
+# leaves extra commas in the JSON
+
+if [ $# -ne 1 ]; then
+	echo "Syntax: genbom <swname>" >&2
+	echo "  the smplibs file read from stdin" >&2
+	echo "  the datasets JSON file is written to stdout" >&2
+	exit 16
+fi
+
+swname=$(echo ${1} | tr '[:lower:]' '[:upper:]')
+
+header='  <SERVER'
+footer='  </SERVER>'
+
+echo '{'
+echo '	"software": [{'
+echo "		\"name\":\"${swname}\","
+echo '		"datasets":['
+while IFS="," read -r name type recfm lrecl primary secondary zone; do
+	echo "			{
+				\"dsname\":\"${name}\",
+				\"dstype\":\"${type}\",
+				\"recfm\":\"${recfm}\",
+				\"lrecl\":\"${lrecl}\",
+				\"primary\":\"${primary}\",
+				\"secondary\":\"${secondary}\",
+				\"zones\":\"[\"${zone}\"]
+			},"
+done
+
+echo '		]'
+echo '	}]'
+echo '}'

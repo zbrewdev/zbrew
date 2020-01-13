@@ -69,11 +69,12 @@ zbrewpropse zbrew config "${props}"
 props="${mydir}/../../zbrew-${prefix}/${ussname}/${ussname}install.json"
 zbrewpropse "${ussname}" install "${props}"
 
-smpelibs="${mydir}/../../zbrew-${prefix}/${ussname}/${ussname}smpelibs"
+smpelibs="${mydir}/../../zbrew-${prefix}/${ussname}/${ussname}bom.json"
 ussname=$(echo ${ussname} | tr '[:lower:]' '[:upper:]')
 
+libs=`readbom ${ussname} <${smpelibs}`
 # Obtain list of all Target and Distribution Datasets to allocate, exclude ZFS
-ds=`awk -v pfx="${ZBREW_HLQ}${ussname}." -F',' '($2 != "ZFS") {print pfx""$1" -t"$2" -r"$3" -l"$4" -s"$5*56"K"}' < ${smpelibs}`
+ds=`echo "${libs}" | awk -v pfx="${ZBREW_HLQ}${ussname}." '($2 != "ZFS") {print pfx$1" -t"$2" -r"$3" -l"$4" -s"$5*56"K"}'`
 
 out=`crtds "${ds}"`
 rc=$?
@@ -83,7 +84,7 @@ if [ $rc -gt 0 ]; then
 fi
 
 # Obtain list of ZFS and allocate/mount
-ds=`awk -v pfx="${ZBREW_HLQ}${ussname}." -F',' '($2 == "ZFS") {print pfx""$1" "$3" "$4}' < ${smpelibs}`
+ds=`echo "${libs}" | awk -v pfx="${ZBREW_HLQ}${ussname}." '($2 == "ZFS") {print pfx""$1" "$3" "$4}'`
 zfsout=`crtzfs "${ds}"`
 
 if [ $rc -gt 0 ]; then
