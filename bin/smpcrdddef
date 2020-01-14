@@ -12,7 +12,8 @@ fi
 
 #for All but ZFS libraries
 targ_dddefs(){
-targdddefs=`awk -F',' '($7 == "T" && $2 != "ZFS") {print $1}' < ${smpelibs}` 
+libs=`readbom ${ussname} <${smpelibs}`
+targdddefs=`echo "${libs}" | awk '($7 == "T" && $2 != "ZFS") {print $1}'` 
 for targdddef in ${targdddefs}; do
  smpuclin="${smpuclin}
  REP DDDEF(${targdddef})
@@ -23,8 +24,8 @@ for targdddef in ${targdddefs}; do
 "
 done
 
-#for ZFS
-targdddefs=`awk -F',' '($7 == "T" && $2 == "ZFS") {print $1}' < ${smpelibs}`
+#for ZFS 
+targdddefs=`echo "${libs}" | awk '($7 == "T" && $2 == "ZFS") {print $1}'`
 if [ "${dddefpath}" = '0' ]; then
 	dddefpath="${zfsdir}"
 fi
@@ -50,7 +51,8 @@ done
 }
 
 dist_dddefs(){
-distdddefs=`awk -F',' '($7 == "D") {print $1}' < ${smpelibs}`
+libs=`readbom ${ussname} <${smpelibs}`
+distdddefs=`echo "${libs}" | awk '($7 == "D") {print $1}'`
 for distdddef in ${distdddefs};do
  smpuclin="${smpuclin}
  REP DDDEF(${distdddef})
@@ -89,7 +91,7 @@ zbrewpropse zbrew config "${props}"
 props="${mydir}/../../zbrew-${prefix}/${ussname}/${ussname}install.json"
 zbrewpropse "${ussname}" install "${props}"
 
-smpelibs="${mydir}/../../zbrew-${prefix}/${ussname}/${ussname}smpelibs"
+smpelibs="${mydir}/../../zbrew-${prefix}/${ussname}/${ussname}bom.json"
 
 ussname=$(echo ${ussname} | tr '[:lower:]' '[:upper:]')
 
