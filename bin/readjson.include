@@ -66,7 +66,9 @@ openJSON:Procedure Expose parserHandle objectHandle HWTJ_OK
 
   address mvs 'execio * diskr stdin (stem data. finis'
   stream=''
+  len.0 = data.0
   do i=1 to data.0
+    len.i=length(data.i)
     stream=stream||data.i
   end
 
@@ -78,8 +80,10 @@ openJSON:Procedure Expose parserHandle objectHandle HWTJ_OK
   parseRC=rc
 
   if (rc <> 0 | returnCode <> HWTJ_OK) then do
-    call Error 'JSON Input is Invalid.', diagArea.
-    call SayErr stream
+    call ImproveError data., line., diagArea.
+    call Error 'JSON Input is invalid.', diagArea.
+    call SayErr details.text
+    call SayErr copies(' ', details.column) '^'
     return 8
   end
 
@@ -273,6 +277,34 @@ SayErr: Procedure
   data.1 = text
   data.0 = 1
   address mvs 'execio 1 diskw stderr (stem data.'
+  return 0
+
+ImproveError: Procedure Expose data. len. diagArea. details.
+Parse Arg data, len, diagArea, details   
+
+/*
+ * Improve errors of the form: Expected comma between pairs in object at offset 395.
+ * to be of the form: Expected comma between pairs in object on line X, column Y.
+ */
+
+  msg = diagArea.HWTJ_ReasonDesc
+  Parse Value msg with 'Expected ' details ' in object at offset ' offset '.'
+
+  if (details <> '' & offset <> '') then do
+    line=1
+    do l=1 to len.0
+      if (len.l > offset) then do
+        leave
+      end
+      line = line+1    
+      offset = offset - len.l
+    end
+    col = offset+1
+    diagArea.HWTJ_ReasonDesc = 'Expected:' details 'in object at line:' line 'column:' col
+    details.linenum = line
+    details.column = col
+    details.text = data.l
+  end
   return 0
   
 Error: Procedure Expose diagArea. opts.
