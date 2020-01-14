@@ -13,6 +13,12 @@ fi
 #for All but ZFS libraries
 targ_dddefs(){
 libs=`readbom ${ussname} <${smpelibs}`
+rc=$?
+if [ $rc -gt 0 ]; then
+  echo "${libs}"
+  exit $rc
+fi
+
 targdddefs=`echo "${libs}" | awk '($7 == "T" && $2 != "ZFS") {print $1}'` 
 for targdddef in ${targdddefs}; do
  smpuclin="${smpuclin}
@@ -52,6 +58,11 @@ done
 
 dist_dddefs(){
 libs=`readbom ${ussname} <${smpelibs}`
+rc=$?
+if [ $rc -gt 0 ]; then
+  echo "${libs}"
+  exit $rc
+fi
 distdddefs=`echo "${libs}" | awk '($7 == "D") {print $1}'`
 for distdddef in ${distdddefs};do
  smpuclin="${smpuclin}

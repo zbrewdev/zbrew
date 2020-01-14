@@ -73,6 +73,11 @@ smpelibs="${mydir}/../../zbrew-${prefix}/${ussname}/${ussname}bom.json"
 ussname=$(echo ${ussname} | tr '[:lower:]' '[:upper:]')
 
 libs=`readbom ${ussname} <${smpelibs}`
+rc=$?     
+if [ $rc -gt 0 ]; then
+	echo "${libs}"
+	exit $rc
+fi
 # Obtain list of all Target and Distribution Datasets to allocate, exclude ZFS
 ds=`echo "${libs}" | awk -v pfx="${ZBREW_HLQ}${ussname}." '($2 != "ZFS") {print pfx$1" -t"$2" -r"$3" -l"$4" -s"$5*56"K"}'`
 

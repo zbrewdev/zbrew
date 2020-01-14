@@ -83,7 +83,7 @@ openJSON:Procedure Expose parserHandle objectHandle HWTJ_OK
     call ImproveError data., line., diagArea.
     call Error 'JSON Input is invalid.', diagArea.
     call SayErr details.text
-    call SayErr copies(' ', details.column) '^'
+    call SayErr details.marker
     return 8
   end
 
@@ -304,6 +304,17 @@ Parse Arg data, len, diagArea, details
     details.linenum = line
     details.column = col
     details.text = data.l
+    pfx=''
+    do i=1 to details.column
+      c=substr(details.text, i, 1)
+      if (c = '05'X) then do
+        pfx = pfx || c
+      end
+      else do 
+        pfx = pfx || ' '
+      end
+    end
+    details.marker = pfx || '^'
   end
   return 0
   
