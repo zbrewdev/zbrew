@@ -218,7 +218,7 @@ fmids() {
 	zbrewlog "fmids" $*
 	sw=$1
 	smplist="${ZBREW_TMP}/smpfmid.$$.smplist"
-	smpout=`smp -i "ZBREW.${sw}G.GLOBAL.CSI" -l "${smplist}" <<zzz
+	smpout=`smp -i "${ZBREW_HLQ}${sw}G.GLOBAL.CSI" -l "${smplist}" <<zzz
   SET BDY(GLOBAL).
   LIST FEATURE.
 zzz`
@@ -254,7 +254,7 @@ fmidset() {
 	done
 	echo "  )." >>${tmpCntlHFS}
 	echo "  ENDUCL." >>${tmpCntlHFS}
-	smpout=`smp -i "ZBREW.${sw}G.GLOBAL.CSI" <${tmpCntlHFS}`
+	smpout=`smp -i "${ZBREW_HLQ}${sw}G.GLOBAL.CSI" <${tmpCntlHFS}`
 	rc=$?
 	zbrewlog "fmidset RC: ${rc}"
 	rm ${tmpCntlHFS}
