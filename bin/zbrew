@@ -307,8 +307,8 @@ prodalloc() {
 }
 
 
-smpdddef() {
-	zbrewlog "smpdddef" $*
+smpcrdddefs() {
+	zbrewlog "smpcrdddef" $*
         sw=$1
         shift 1
         opts=$*
@@ -319,12 +319,9 @@ smpdddef() {
 	fi
 	smpcrdddef ${prefix} ${ussname} ${opts}
 	rc=$?
-	zbrewlog "smpdddef RC: ${rc}"
-	if [ $rc -lt 5 ]; then
-		return 0
-	else
-		return $rc
-	fi
+	zbrewlog "smpcrdddef RC: ${rc}"
+
+	return $rc
 }
 
 
@@ -388,7 +385,7 @@ configure() {
 	fi
 }
 
-install_verbs="prodprereq smpconfig receive smpdddef prodalloc smpapplycheck smpapply"
+install_verbs="prodprereq smpconfig receive smpcrdddefs prodalloc smpapplycheck smpapply"
 debug=0
 verbose=0
 clean=0

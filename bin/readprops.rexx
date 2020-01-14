@@ -26,7 +26,7 @@ do el = 1 to json.software.0
     do p = 1 to json.software.el.category.0
       key = json.software.el.category.field.p
       val = json.software.el.category.key
-      say key || '=' || val
+      say key || '=' || CleanValue(val)
     end
     return 0
   end

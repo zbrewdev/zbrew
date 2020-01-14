@@ -10,7 +10,7 @@
 			"COBOL61_CSI":"NONE",
 			"COBOL52_CSI":"NONE",
 			"COBOL51_CSI":"NONE",
-			"JOBPARMS":"\\\"MSGCLASS=S,NOTIFY=&SYSUID\\\"",
+			"JOBPARMS":"''MSGCLASS=S,NOTIFY=&SYSUID''",
 			"JOBOPTS":""
                  }
 	}]

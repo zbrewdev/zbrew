@@ -24,22 +24,22 @@ echo "${rawdata}" | while read; do
 	value=${REPLY##*=}
 	case ${REPLY} in
 		host*)
-			echo "			\"SMPE_FTPHOST\":\"${value}\","
+			echo "			\"SMPE_FTPHOST\":${value},"
 			;;
 		user*)
-			echo "			\"SMPE_FTPUSER\":\"${value}\","
+			echo "			\"SMPE_FTPUSER\":${value},"
 			;;
 		pw*)
-			echo "			\"SMPE_FTPPW\":\"${value}\","
+			echo "			\"SMPE_FTPPW\":${value},"
 			;;
 		file*)
-			echo "			\"SMPE_FTPFILE\":\"${value}\","
+			echo "			\"SMPE_FTPFILE\":${value},"
 			;;
 		hash*)
-			echo "			\"SMPE_FTPHASH\":\"${value}\","
+			echo "			\"SMPE_FTPHASH\":${value},"
 			;;
 		id*)
-			echo "			\"SMPE_FTPID\":\"${value}\""
+			echo "			\"SMPE_FTPID\":${value}"
 			;;
 		*) 
 			;;

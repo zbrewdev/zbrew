@@ -272,6 +272,21 @@ readJSONObject:Procedure Expose json. opts. HWTJ_OK
   end
   return 0
 
+CleanValue: Procedure
+  Parse Arg text
+
+  out=''
+  do i = 1 to length(text)
+    if (substr(text, i, 2) = '\"') then do
+      out = out || '"'
+      i=i+1
+    end
+    else do
+      out = out || substr(text, i, 1)
+    end
+  end
+  return out
+
 SayErr: Procedure
   Parse Arg text
   data.1 = text

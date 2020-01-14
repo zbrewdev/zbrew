@@ -119,7 +119,7 @@ zbrewprops() {
 			return 16
 		fi
 		if [ ${line} -eq 0 ]; then
-			echo "No properties were read for swname: ${swname}, category: ${category}, file: ${props}"
+			echo "No properties were read for swname: ${swname}, category: ${category}, file: ${props}" >&2
 			return 8
 		fi
 	done

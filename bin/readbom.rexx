@@ -35,7 +35,7 @@ Arg swname .
           return 4
         end
         z = json.software.el.datasets.d.zones.1
-        if (type = 'ZFS') then do
+        if (t = 'ZFS') then do
           say n t p s z
         end
         else do 
