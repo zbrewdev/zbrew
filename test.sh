@@ -11,8 +11,11 @@
 # Run through each of the tests in the test bucket that aren't 
 # explicitly excluded, and return the highest error code
 #
+
 . zbrewfuncs
 mydir=$(callerdir ${0})
+
+cd ${mydir}/tests
 
 rm -f *.actual
 #set -x
