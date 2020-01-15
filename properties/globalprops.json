@@ -1,0 +1,18 @@
+{
+ 	"software": [{
+		"name":"ZBREW",
+		"global":{
+			"CEEHLQ":"CEE",
+			"CEE_CSI":"NONE",
+			"HLASM_CSI":"NONE",
+			"CICS52_CSI":"NONE",
+			"COBOL62_CSI":"NONE",
+			"COBOL61_CSI":"NONE",
+			"COBOL52_CSI":"NONE",
+			"COBOL51_CSI":"NONE",
+			"JOBPARMS":"''MSGCLASS=S,NOTIFY=&SYSUID''",
+			"JOBOPTS":""
+                 }
+	}]
+}
+

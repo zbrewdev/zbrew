@@ -5,33 +5,39 @@ out=$(whence zbrewfuncs >/dev/null)
 if [ $? -eq 0 ]; then
 	. zbrewfuncs
 else
-	echo "zbrew tools need to be in your PATH"
+	echo "zbrew tools need to be in your PATH" >&2
 	exit 4
 fi
 
 
 #for All but ZFS libraries
 targ_dddefs(){
-targdddefs=`awk -F',' '($7 == "T" && $2 != "ZFS") {print $1}' < ${smpelibs}` 
+libs=`readbom ${zosname} <${smpelibs}`
+rc=$?
+if [ $rc -gt 0 ]; then
+  exit $rc
+fi
+
+targdddefs=`echo "${libs}" | awk '($2 != "ZFS" && $7 == "T") {print $1}'` 
 for targdddef in ${targdddefs}; do
  smpuclin="${smpuclin}
  REP DDDEF(${targdddef})
- DA(${ZBREW_HLQ}${ussname}.${targdddef})
+ DA(${ZBREW_HLQ}${zosname}.${targdddef})
  UNIT(SYSALLDA)
  WAITFORDSN
  SHR.
 "
 done
 
-#for ZFS
-targdddefs=`awk -F',' '($7 == "T" && $2 == "ZFS") {print $1}' < ${smpelibs}`
+#for ZFS 
+targdddefs=`echo "${libs}" | awk '($2 == "ZFS" && $5 == "T") {print $1}'`
 if [ "${dddefpath}" = '0' ]; then
-	dddefpath="${zfsdir}"
+	dddefpath="${ZFSDIR}"
 fi
 for targdddef in ${targdddefs}; do
  smpuclin="${smpuclin}
  REP DDDEF(${targdddef})
- PATH('${zfsroot}${dddefpath}').
+ PATH('${ZFSROOT}${dddefpath}').
 "
 done
 
@@ -50,11 +56,16 @@ done
 }
 
 dist_dddefs(){
-distdddefs=`awk -F',' '($7 == "D") {print $1}' < ${smpelibs}`
+libs=`readbom ${zosname} <${smpelibs}`
+rc=$?
+if [ $rc -gt 0 ]; then
+  exit $rc
+fi
+distdddefs=`echo "${libs}" | awk '($7 == "D") {print $1}'`
 for distdddef in ${distdddefs};do
  smpuclin="${smpuclin}
  REP DDDEF(${distdddef})
- DA(${ZBREW_HLQ}${ussname}.${distdddef})
+ DA(${ZBREW_HLQ}${zosname}.${distdddef})
  UNIT(SYSALLDA)
  WAITFORDSN
  SHR.
@@ -65,40 +76,39 @@ done
 
 
 run_gimsmp(){
-mvscmdauth --pgm=GIMSMP --smpcsi=${ZBREW_HLQ}${ussname}G.GLOBAL.CSI --sysprint=DUMMY --smprpt=DUMMY --smplist=DUMMY --smpcntl=stdin <<zzz
+mvscmdauth --pgm=GIMSMP --smpcsi=${ZBREW_HLQ}${zosname}G.GLOBAL.CSI --sysprint=DUMMY --smprpt=DUMMY --smplist=DUMMY --smpcntl=stdin <<zzz
 ${smpuclin}
 zzz
         rc=$?
-        if [ $rc -gt 0 ]; then
+        if [ $rc -gt 4 ]; then
+		echo "GIMSMP failed with rc:$rc" >&2
+		echo "${smpuclin}" >&2
                 exit $rc
         fi
+	exit 0
 
 }
 
 
 mydir=$(callerdir ${0})
 prefix=$1
-ussname=$2
+zosname=$2
 shift 2
 opts=$*
 dddefpath=0
 
-props="${mydir}/../../zbrew/properties/zbrew.properties"
-. zbrewprops "${props}"
-if [ $? -gt 0 ]; then
-        echo "Internal Error. Unable to find ${props}" >&2
-        exit 4
-fi     
+props="${mydir}/../../zbrew/properties/zbrewprops.json"
+zbrewpropse zbrew config "${props}"
 
-props="${mydir}/../../zbrew-${prefix}/${ussname}/${ussname}install.properties"
-. zbrewprops ${props}
+props="${mydir}/../../zbrew-${prefix}/${zosname}/${zosname}install.json"
+zbrewpropse "${zosname}" install "${props}"
 
-smpelibs="${mydir}/../../zbrew-${prefix}/${ussname}/${ussname}smpelibs"
+smpelibs="${mydir}/../../zbrew-${prefix}/${zosname}/${zosname}bom.json"
 
-ussname=$(echo ${ussname} | tr '[:lower:]' '[:upper:]')
+zosname=$(echo ${zosname} | tr '[:lower:]' '[:upper:]')
 
 # Update Target Zone DDDEFS, note Target Zone contains both Targ/Dist libraries
-smpuclin="  SET   BDY(${ussname}T).
+smpuclin="  SET   BDY(${zosname}T).
      UCLIN.
 "
 targ_dddefs
@@ -111,7 +121,7 @@ run_gimsmp
 
 
 # Update Distribution Zone DDDEFS
-smpuclin="  SET BDY(${ussname}D).
+smpuclin="  SET BDY(${zosname}D).
      UCLIN.
 "
 dist_dddefs

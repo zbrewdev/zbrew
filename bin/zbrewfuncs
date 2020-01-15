@@ -70,3 +70,67 @@ zbrewtest() {
 		exit 16
 	fi	
 }
+
+zbrewprops() {
+	if [ $# -lt 3 ]; then
+		echo "Syntax: zbrewprops <swname> <category> [<file>]+" >&2
+		echo "where:" >&2
+		echo "  <swname> is the software these properties are associated with" >&2
+		echo "  <category> is the software category these properties are associated with" >&2
+		echo "  <file> is a JSON properties file" >&2
+		echo "Each key/value pair will be evaluated, creating a variable <key> with a value <value>" >&2
+		return 16
+	fi
+	swname=$1
+	shift 1
+	category=$1
+	shift 1
+	for props in $*; do
+		if [ -f ${props} ]; then
+			props=`readprops ${swname} ${category} <${props}`
+			OLDIFS=$IFS; IFS="
+		"
+			line=0
+			for p in $props; do
+				line=$(($line+1))
+				p=`echo "$p" | awk '!/#/ { print $0; }'`
+				if [ "$p" != '' ]; then
+					key="${p%%=*}"
+					if [ "${key}" = "${p}" ]; then
+						echo "The line ${p} does not have a valid key/value pair of the form <key>=<value>. Line ignored." >&2
+					else
+						# Evaluate the line in a child shell. If it has errors, report them, otherwise repeat
+						(eval "$p" 2>/dev/null >/dev/null)
+						if [ $? -gt 0 ]; then
+							echo "The key/value pair '$p' could not be evaluated. Please correct line ${line}" >&2
+							return 16
+						fi
+						val="${p#*=}"
+
+						# Set the key only if it has not already been set
+						cmd="${key}=\${${key}-${val}}" 
+						eval "${cmd}"
+					fi
+				fi
+			done
+			IFS=$OLDIFS
+		else
+			echo "Unable to find properties file ${props}" >&2
+			return 16
+		fi
+		if [ ${line} -eq 0 ]; then
+			echo "No properties were read for swname: ${swname}, category: ${category}, file: ${props}" >&2
+			return 8
+		fi
+	done
+
+	return 0
+}
+
+zbrewpropse() {
+	zbrewprops $*
+	if [ $? -gt 0 ]; then
+		exit 4
+	fi
+	return 0
+}

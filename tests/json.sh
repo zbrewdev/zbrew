@@ -14,20 +14,20 @@ if ! [ -e "${zbrewzhw_dir}" ]; then
 	exit 1
 fi
 
-actual=`zbrewjsonprops zhw110 <${zbrewzhw_dir}/zhw110/zhw110install.json`
+actual=`readprops ZHW110 install <${zbrewzhw_dir}/zhw110/zhw110install.json`
 zbrewtest "Properties file parsing failed" "0" "$?" 
 
 expected="ZFSROOT=/zbrew/
-ZFSDIR=
+ZFSDIR=usr/lpp/IBM/zhw/zhw110/
 LEAVES="
 
 zbrewtest "Unexpected properties" "${expected}" "${actual}"
 
-actual=`zbrewjsonbom zhw110 <${zbrewzhw_dir}/zhw110/zhw110bom.json`
+actual=`readbom zhw110 <${zbrewzhw_dir}/zhw110/zhw110bom.json`
 zbrewtest "Bill of Materials (BoM) file parsing failed" "0" "$?" 
 
-expected="SZHWSM
-AZHWSM"
+expected="SZHWSM PDSE FB 80 15 2 T
+AZHWSM PDSE FB 80 15 2 D"
 
 zbrewtest "Unexpected datasets" "${expected}" "${actual}"
 

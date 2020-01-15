@@ -5,10 +5,10 @@
  */
 
 trace 'o'
-Arg swname .
+Arg swname category . 
 
-if (swname = '' | swname = '?') then do
-  call SayErr 'Syntax: zbrewjsonprops <sw>'
+if (swname = '' | category = '' | swname = '?') then do
+  call SayErr 'Syntax: zbrewjsonprops <sw> <category>'
   call SayErr '  The JSON key/value pairs are read in from stdin'
   call SayErr '  The parsed key/value pairs are written out to stdout'
   return 4
@@ -22,11 +22,11 @@ end
 do el = 1 to json.software.0
   entry = json.software.el.name
   if (entry = swname) then do
-    props = json.software.el.properties
-    do p = 1 to json.software.el.properties.0
-      key = json.software.el.properties.field.p
-      val = json.software.el.properties.key
-      say key || '=' || val
+    props = json.software.el.category
+    do p = 1 to json.software.el.category.0
+      key = json.software.el.category.field.p
+      val = json.software.el.category.key
+      say key || '=' || CleanValue(val)
     end
     return 0
   end

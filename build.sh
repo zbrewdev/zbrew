@@ -5,7 +5,7 @@
 . zbrewfuncs
 mydir=$(callerdir ${0})
 
-cd ${mydir}/../bin
+cd ${mydir}/bin
 cat readbom.rexx readjson.include >readbom
 cat readprops.rexx readjson.include >readprops
 chmod u+x readbom

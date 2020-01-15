@@ -191,12 +191,12 @@ prodprereq() {
 	sw=$1
 	shift 1
 	opts=$*
-#	tmp_frspace=$(df -k ${ZBREW_TMP} | grep ${ZBREW_TMP} | awk '{print $3}' | awk -F'/' '{print $1}')
-#	if [ "${tmp_frspace}" -lt '307200' ]; then
-#		echo "Warning, ${ZBREW_TMP} is low on free space, it is recommended to have at least 300 MB available"
-#		echo "Current free space available is: ${tmp_frspace} KB"
-#		return 16
-#	fi
+	tmp_frspace=$(df -k ${ZBREW_TMP} | tail -1 | awk '{print $3}' | awk -F'/' '{print $1}')
+	if [ "${tmp_frspace}" -lt '307200' ]; then
+		echo "Warning, ${ZBREW_TMP} is low on free space, it is recommended to have at least 300 MB available"
+		echo "Current free space available is: ${tmp_frspace} KB"
+		return 16
+	fi
         
 	ussname=$(echo ${sw} | tr '[:upper:]' '[:lower:]');
 	prefix=`echo ${ussname} | awk '{print substr($0,0,3)}'`
@@ -218,7 +218,7 @@ fmids() {
 	zbrewlog "fmids" $*
 	sw=$1
 	smplist="${ZBREW_TMP}/smpfmid.$$.smplist"
-	smpout=`smp -i "ZBREW.${sw}G.GLOBAL.CSI" -l "${smplist}" <<zzz
+	smpout=`smp -i "${ZBREW_HLQ}${sw}G.GLOBAL.CSI" -l "${smplist}" <<zzz
   SET BDY(GLOBAL).
   LIST FEATURE.
 zzz`
@@ -254,7 +254,7 @@ fmidset() {
 	done
 	echo "  )." >>${tmpCntlHFS}
 	echo "  ENDUCL." >>${tmpCntlHFS}
-	smpout=`smp -i "ZBREW.${sw}G.GLOBAL.CSI" <${tmpCntlHFS}`
+	smpout=`smp -i "${ZBREW_HLQ}${sw}G.GLOBAL.CSI" <${tmpCntlHFS}`
 	rc=$?
 	zbrewlog "fmidset RC: ${rc}"
 	rm ${tmpCntlHFS}
@@ -307,8 +307,8 @@ prodalloc() {
 }
 
 
-smpdddef() {
-	zbrewlog "smpdddef" $*
+smpcrdddefs() {
+	zbrewlog "smpcrdddef" $*
         sw=$1
         shift 1
         opts=$*
@@ -319,12 +319,9 @@ smpdddef() {
 	fi
 	smpcrdddef ${prefix} ${ussname} ${opts}
 	rc=$?
-	zbrewlog "smpdddef RC: ${rc}"
-	if [ $rc -lt 5 ]; then
-		return 0
-	else
-		return $rc
-	fi
+	zbrewlog "smpcrdddef RC: ${rc}"
+
+	return $rc
 }
 
 
@@ -388,7 +385,7 @@ configure() {
 	fi
 }
 
-install_verbs="prodprereq smpconfig receive smpdddef prodalloc smpapplycheck smpapply"
+install_verbs="prodprereq smpconfig receive smpcrdddefs prodalloc smpapplycheck smpapply"
 debug=0
 verbose=0
 clean=0
@@ -439,23 +436,15 @@ if [ $# -lt 2 ]; then
 fi
 
 mydir=$(callerdir ${0})
-props="${mydir}/../properties/zbrew.properties"
-. zbrewprops "${props}"
-if [ $? -gt 0 ]; then
-	echo "Internal Error. Unable to find ${props}" >&2
-	exit 4
-fi
+props="${mydir}/../properties/zbrewprops.json"
+zbrewpropse zbrew config "${props}"
 ussname=$(echo ${2} | tr '[:upper:]' '[:lower:]');
 zosname=$(echo ${2} | tr '[:lower:]' '[:upper:]');
 
 verb=$1
 if [ "${verb}" != 'search' ]; then
-	props="${ZBREW_ORDERROOT}/${ussname}.order"
-	. zbrewprops "${props}"
-	if [ $? -gt 0 ]; then
-	        echo "Internal Error. Unable to find ${props}" >&2
-	        exit 4
-	fi   
+	props="${ZBREW_ORDERROOT}/${ussname}order.json"
+	zbrewpropse "${ussname}" order "${props}"
 fi
 
 case ${verb} in

@@ -1,6 +1,55 @@
 /* REXX */
 
 /*
+ * readjson.include: This code provides a procedure called readJSON.
+ * This file needs to be 'included' into the REXX code that wants to 
+ * call readJSON because the procedure creates a stem variable (json)
+ * with the parsed contents of the JSON file.
+ * 
+ * The input stream is read from stdin                         
+ *
+ * readjson expects valid JSON on input, with a root object
+ * The stem variable is of the form:
+ * json.<json-object>
+ * where <json-object> may be a JSON string, number, object, array, boolean, or null
+ *
+ * An object is of the form:
+ * object.0 = <number of keys>
+ * object.<key> = <value>
+ * for each key (or field) in the object. 
+ * 
+ * To enable the caller to walk all the fields of an object without knowing the key names, 
+ * an extra entry called:
+ * object.field.<i> = object.<key i>
+ * for each key in the object.
+ *
+ * An array is of the form:
+ * array.0 = <number of elements>
+ * array.1.<json-object>
+ * array.2.<json-object>
+ * ... 
+ *
+ * For example, the JSON stream:
+ * { "software": [{ "name":"ZHW110", "datasets": [{ "dsname":"SZHWSM" }, { "dsname":"AZHWSM" }] }] }
+ * 
+ * would return the json stem:
+ * json.0 = 1
+ * json.field.1 = SOFTWARE
+ * json.SOFTWARE.0 = 1
+ * json.SOFTWARE.1.0 = 2
+ * json.SOFTWARE.1.field.1 = NAME
+ * json.SOFTWARE.1.NAME = 'ZHW110'
+ * json.SOFTWARE.1.field.2 = DATASETS
+ * json.SOFTWARE.1.DATASETS.0 = 2
+ * json.SOFTWARE.1.DATASETS.1.0 = 1
+ * json.SOFTWARE.1.DATASETS.1.field.1 = DSNAME
+ * json.SOFTWARE.1.DATASETS.1.DSNAME = 'SZHWSM'
+ * json.SOFTWARE.1.DATASETS.2.0 = 1
+ * json.SOFTWARE.1.DATASETS.2.field.1 = DSNAME
+ * json.SOFTWARE.1.DATASETS.2.DSNAME = 'AZHWSM'
+ */
+
+/*
  * openJSON: Open up the JSON file, read it into a stream, and parse it
  */
 openJSON:Procedure Expose parserHandle objectHandle HWTJ_OK
@@ -17,7 +66,9 @@ openJSON:Procedure Expose parserHandle objectHandle HWTJ_OK
 
   address mvs 'execio * diskr stdin (stem data. finis'
   stream=''
+  len.0 = data.0
   do i=1 to data.0
+    len.i=length(data.i)
     stream=stream||data.i
   end
 
@@ -29,14 +80,20 @@ openJSON:Procedure Expose parserHandle objectHandle HWTJ_OK
   parseRC=rc
 
   if (rc <> 0 | returnCode <> HWTJ_OK) then do
-    call Error 'JSON Input is Invalid.', diagArea.
-    call SayErr stream
+    call ImproveError data., line., diagArea.
+    call Error 'JSON Input is invalid.', diagArea.
+    call SayErr details.text
+    call SayErr details.marker
     return 8
   end
 
   objectHandle=0
   return 0
 
+/*
+ * read a single entry and update the stem with the value(s)
+ * of the entry
+ */
 readJSONEntry:Procedure Expose json. opts. HWTJ_OK
   Parse arg stem, entryValueName, parserHandle, entryHandle, json
 
@@ -141,6 +198,10 @@ readJSONArray:Procedure Expose json. opts. HWTJ_OK
 
   return 0
 
+/*
+ * read a JSON object and update the stem with the fields
+ * of the entry
+ */
 readJSONObject:Procedure Expose json. opts. HWTJ_OK
   Parse Arg stem, parserHandle, objectHandle, json
   
@@ -211,11 +272,65 @@ readJSONObject:Procedure Expose json. opts. HWTJ_OK
   end
   return 0
 
+CleanValue: Procedure
+  Parse Arg text
+
+  out=''
+  do i = 1 to length(text)
+    if (substr(text, i, 2) = '\"') then do
+      out = out || '"'
+      i=i+1
+    end
+    else do
+      out = out || substr(text, i, 1)
+    end
+  end
+  return out
+
 SayErr: Procedure
   Parse Arg text
   data.1 = text
   data.0 = 1
   address mvs 'execio 1 diskw stderr (stem data.'
+  return 0
+
+ImproveError: Procedure Expose data. len. diagArea. details.
+Parse Arg data, len, diagArea, details   
+
+/*
+ * Improve errors of the form: Expected comma between pairs in object at offset 395.
+ * to be of the form: Expected comma between pairs in object on line X, column Y.
+ */
+
+  msg = diagArea.HWTJ_ReasonDesc
+  Parse Value msg with 'Expected ' details ' in object at offset ' offset '.'
+
+  if (details <> '' & offset <> '') then do
+    line=1
+    do l=1 to len.0
+      if (len.l > offset) then do
+        leave
+      end
+      line = line+1    
+      offset = offset - len.l
+    end
+    col = offset+1
+    diagArea.HWTJ_ReasonDesc = 'Expected:' details 'in object at line:' line 'column:' col
+    details.linenum = line
+    details.column = col
+    details.text = data.l
+    pfx=''
+    do i=1 to details.column
+      c=substr(details.text, i, 1)
+      if (c = '05'X) then do
+        pfx = pfx || c
+      end
+      else do 
+        pfx = pfx || ' '
+      end
+    end
+    details.marker = pfx || '^'
+  end
   return 0
   
 Error: Procedure Expose diagArea. opts.
@@ -228,7 +343,7 @@ Parse Arg msg, diagArea
  * Read a JSON stream from stdin and set up the variable
  * json. to point to the underlying JSON object
  */
-ReadJSON: Procedure Expose json. opts.
+readJSON: Procedure Expose json. opts.
 trace 'o'
 
 /*
@@ -251,6 +366,7 @@ trace 'o'
     return rc
   end
 
+  json. = 0
   object=''
   rc = readJSONObject('json', parserHandle, objectHandle, json)
   if (rc <> 0) then do

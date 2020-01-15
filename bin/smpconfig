@@ -305,12 +305,8 @@ if [ $# -lt 1 ]; then
 fi      
 
 mydir=$(callerdir ${0})
-props="${mydir}/../properties/zbrew.properties"
-. zbrewprops "${props}"
-if [ $? -gt 0 ]; then
-        echo "Internal Error. Unable to find ${props}" >&2
-        exit 4
-fi   
+props="${mydir}/../properties/zbrewprops.json"
+zbrewpropse zbrew config "${props}"
 
 PFX=$(echo ${1} | tr '[:lower:]' '[:upper:]');
 HLQ="${ZBREW_HLQ}"
