@@ -1,5 +1,6 @@
 LICENSE
 README.md
+zbrew.software
 bin/proddsalloc
 bin/secmgr
 bin/smp
