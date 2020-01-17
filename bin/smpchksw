@@ -1,0 +1,242 @@
+#!/bin/sh
+
+. zbrewfuncs
+InvalidOption=1
+TooFewParms=2
+UnknownAction=3
+
+#
+# Temporary hack - replace with a proper message file
+#
+msg() {
+	pgm=$1
+	msgnum=$2
+	msgtype=$3
+	
+	shift 3
+	args=$*
+
+	case ${msgnum} in 
+		${InvalidOption}) msgtext="Invalid option specified: -";;
+		${TooFewParms}) msgtext="Too few Parameters specified. Expected 2 but received: ";;
+		${UnknownAction}) msgtext="Unknown action specified: ";;
+		*) msgtext="Internal Error. Unknow msgnum: ${msgnum}";;
+	esac
+	echo "ZCL000"${msgnum}${msgtype} "${msgtext}${args}" >&2
+}
+
+#
+# Temporary hack - replace with a manpage
+#
+syntax() {
+	echo "\
+smpchksw [-vd] <csi> <fmid> <ptf list>
+	    
+Examples:
+	Check that the PTFs UK47103 and UK59311 for the High Level assembler V1.6 are installed
+	smpchksw \${HMQ_CSI} HMQ4160 UK47103 UK59311 
+" >&2 
+	exit 16
+}
+
+chkfmid() {
+#set -x
+	csi="$(echo ${1} | tr '[:lower:]' '[:upper:]')"
+	tgtzone="$(echo ${2} | tr '[:lower:]' '[:upper:]')"
+	fmid="$(echo ${3} | tr '[:lower:]' '[:upper:]')"
+
+	tmpCntlHFS=${ZBREW_TMP}/$$.${tgtzone}.fmidcntl.xml
+	ptflist=${ZBREW_TMP}/$$.${tgtzone}.fmidsmp.ptflst
+	touch ${ptflist}
+
+	if [ ${verbose} -gt 0 ]; then
+		echo "Checking target zone: ${tgtzone}" >&2
+	fi
+
+	echo "  SET BOUNDARY(${tgtzone})." >${tmpCntlHFS}
+	echo "  LIST SYSMODS(${fmid})." >>${tmpCntlHFS}
+
+	smpout=`smp -i ${csi} -l ${ptflist} <${tmpCntlHFS}`
+	rc=$?
+	if [ ${rc} -gt 4 ]; then
+		echo "Warning: Unable to determine SYSMOD list for target zone ${tgtzone}." >&2
+		return ${rc}
+	else
+		allfmids=`awk '{ if ($2=="TYPE" && $3=="=" && $4=="FUNCTION" && NF==4) { print($1); } }' < ${ptflist}`
+		if [ ${debug} -eq 0 ]; then
+			rm ${tmpCntlHFS}
+			rm ${ptflist}
+		fi
+		if [ "${allfmids}" = '' ]; then
+			if [ ${verbose} -gt 0 ]; then
+				echo "FMID ${fmid} not in target zone: ${tgtzone}" >&2
+			fi
+			return 4
+		else 
+			if ! [ -z "${allptfs##*$fmid*}" ]; then
+				return 0
+			fi
+		fi
+	fi	
+	return 4
+} 
+
+chkptfs() {
+#set -x
+	csi="$(echo ${1} | tr '[:lower:]' '[:upper:]')"
+	tgtzone="$(echo ${2} | tr '[:lower:]' '[:upper:]')"
+	shift 2
+	ptfs="$(echo ${*} | tr '[:lower:]' '[:upper:]')"
+
+	tmpCntlHFS=${ZBREW_TMP}/$$.$tgtzone.cntl.xml
+	ptflist=${ZBREW_TMP}/$$.$tgtzone.smp.ptflst
+
+	echo "  SET BOUNDARY(${tgtzone})." >${tmpCntlHFS}
+	echo "  LIST SYSMODS(${fmid})." >>${tmpCntlHFS}
+	
+	smpout=`smp -i ${csi} -l ${ptflist} <${tmpCntlHFS}`
+	rc=$?
+	if [ ${rc} -gt 4 ]; then
+		echo "Warning: Unable to determine SYSMOD list for target zone ${tgtzone}." >&2
+		return ${rc}
+	fi
+
+	missing_ptfs='n'
+	for requiredptf in ${requiredptfs}; do
+		found='n'
+		for ptf in ${allptfs}; do
+			if [ "${ptf}" = "${requiredptf}" ]; then
+				found='y'
+				if [ ${verbose} -gt 0 ]; then
+					echo "PTF ${requiredptf} found in target zone: ${tgtzone}" >&2
+				fi
+				break;
+			fi 
+		done
+		if [ "${found}" = 'n' ]; then
+			if [ ${verbose} -gt 0 ]; then
+				echo "PTF ${requiredptf} not found in target zone: ${tgtzone}" >&2
+			fi
+			missingptfs="${missingptfs} ${requiredptf}"
+		fi
+	done
+
+	if [ ${debug} -eq 0 ]; then
+		rm ${required}
+		rm ${missing}
+		rm ${all}
+		rm ${tmpCntlHFS}
+		rm ${ptflist}
+	fi
+	echo "${missingptfs}"
+	return 0
+}
+
+runchk() {
+#set -x
+	csi="$1"
+	shift
+	fmid="$1"
+	shift
+	ptfs=$*
+	requiredptfs="${ptfs}"
+
+	tmpCntlHFS=${ZBREW_TMP}/$$.gzone.cntl.xml
+	gzonelist=${ZBREW_TMP}/$$.gzone.smp.gzonelst
+	touch gzonelist
+
+	echo "  SET BOUNDARY(GLOBAL).
+  LIST GZONE.
+" >${tmpCntlHFS}
+	if [ ${verbose} = "1" ]; then 
+		echo "getting gzone entries for: ${csi}" >&2; 
+	fi
+	smpout=`smp -i ${csi} -l ${gzonelist} <${tmpCntlHFS}`
+	rc=$?
+ 	if [ ${rc} -gt 0 ]; then
+                echo "Unable to determine global zone for: ${csi}." >&2
+		echo "${smpout}" >&2
+		return ${rc}
+       	fi
+	tgtzones=`awk '{ if ($2=="TARGET" && NF==3) { print($1); } }' < ${gzonelist}`
+	if [ "${tgtzones}" = '' ]; then
+		echo "Internal error. Unable to	determine global zone for: ${csi}. See ${gzonelist} for details." >&2
+		return 16
+	fi
+
+	for tgtzone in $tgtzones; do
+		out=`chkfmid ${csi} ${tgtzone} ${fmid}` 
+		if [ $? -eq 0 ]; then 
+			ptfs=`chkptfs ${csi} ${tgtzone} ${ptfs}`
+			break
+		fi
+	done
+	if [ "${ptfs}" != '' ]; then
+		echo "One or more required SYSMODS (PTFs or FUNCTIONS) have not been applied to any of the target zones:" >&2
+		echo "${tgtzones}" >&2
+		echo "The required SYSMODs list is: ${requiredptfs}" >&2
+		echo "The missing SYSMODs are: ${ptfs}" >&2
+		return 16
+	fi
+	if [ ${debug} -eq 0 ]; then
+		rm ${tmpCntlHFS}
+		rm ${gzonelist}
+	fi
+	return 0
+}  
+
+debug=0
+verbose=0
+fmid_check=0
+opts=""
+while getopts ":vdf" opt; do
+  case ${opt} in
+    d )
+      debug=1
+      opts="${opts} -d"
+      ;;
+    f )
+      fmid_check=1
+      opts="${opts} -d"
+      ;;
+    v )
+      verbose=1
+      opts="${opts} -v"
+      ;;
+    \?)
+      if [ ${OPTARG} != "?" ]; then
+	msg zbrew ${InvalidOption} E "${OPTARG}"
+      fi
+      syntax
+      exit 4
+      ;;
+  esac
+done
+shift $(expr $OPTIND - 1 )
+if [ $# -lt 2 ]; then
+	msg zbrew ${TooFewParms} E "$#"
+	syntax
+	exit 16
+fi
+
+out=$(whence zbrewfuncs >/dev/null)
+if [ $? -eq 0 ]; then
+	. zbrewfuncs
+else
+    	echo "zbrew tools need to be in your PATH"
+	exit 4
+fi
+mydir=$(callerdir ${0})
+props="${mydir}/../properties/zbrewprops.json"
+zbrewpropse zbrew config "${props}"
+
+props=$(callerdir "$0")"/../../zbrew/properties/globalprops.json"
+zbrewpropse zbrew global ${props}
+
+out=`runchk $*`
+rc=$?
+if [ $rc -gt 0 ]; then
+	echo ${out}
+	exit $rc
+fi
+exit 0
