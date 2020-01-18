@@ -83,10 +83,10 @@ while getopts ":r:l:p:i:w:n:c:s:vd" opt; do
   case ${opt} in
     d )
       debug=1
+      opts="-v ${opts}"
       ;;
     v )
       verbose=1
-      opts="-v ${opts}"
       ;;
     i ) 
       SMPCSI=${OPTARG}
@@ -131,5 +131,14 @@ fi
 crtfile "${SMPLIST}"
 crtfile "${SMPRPT}"
 crtfile "${SYSPRINT}"
+if [ ${verbose} -gt 0 ]; then
+	start=`date +%H:%M:%S`
+	echo "${start} gimsmp started" >&2
+fi
 mvscmdauth ${opts} --pgm=gimsmp --smpcsi=${SMPCSI} --smpwkdir=${SMPWKDIR} --smplog=${SMPLOG} --smprpt=${SMPRPT} --smplist=${SMPLIST} --smpnts=${SMPNTS} --client=${SMPCLIENT} --server=${SMPSERVER} --sysprint=${SYSPRINT},mod --smpout=stdout --smpcntl=stdin
-exit $?
+rc=$?
+if [ ${verbose} -gt 0 ]; then
+	end=`date +%H:%M:%S`
+	echo "${end} gimsmp finished" >&2
+fi
+exit $rc

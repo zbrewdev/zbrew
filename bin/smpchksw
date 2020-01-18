@@ -40,10 +40,9 @@ Examples:
 }
 
 chkfmid() {
-#set -x
-	csi="$(echo ${1} | tr '[:lower:]' '[:upper:]')"
-	tgtzone="$(echo ${2} | tr '[:lower:]' '[:upper:]')"
-	fmid="$(echo ${3} | tr '[:lower:]' '[:upper:]')"
+	csi="${1}"
+	tgtzone="${2}"
+	fmid="${3}"
 
 	tmpCntlHFS=${ZBREW_TMP}/$$.${tgtzone}.fmidcntl.xml
 	ptflist=${ZBREW_TMP}/$$.${tgtzone}.fmidsmp.ptflst
@@ -54,15 +53,15 @@ chkfmid() {
 	fi
 
 	echo "  SET BOUNDARY(${tgtzone})." >${tmpCntlHFS}
-	echo "  LIST SYSMODS(${fmid})." >>${tmpCntlHFS}
+	echo "  LIST SYSMOD FUNCTIONS." >>${tmpCntlHFS}
 
-	smpout=`smp -i ${csi} -l ${ptflist} <${tmpCntlHFS}`
+	smpout=`smp ${opts} -i ${csi} -l ${ptflist} <${tmpCntlHFS}`
 	rc=$?
 	if [ ${rc} -gt 4 ]; then
-		echo "Warning: Unable to determine SYSMOD list for target zone ${tgtzone}." >&2
+ 		echo "Warning: Unable to determine SYSMOD list for target zone ${tgtzone}." >&2
 		return ${rc}
 	else
-		allfmids=`awk '{ if ($2=="TYPE" && $3=="=" && $4=="FUNCTION" && NF==4) { print($1); } }' < ${ptflist}`
+		allfmids=`awk '{ if (NF==4 && $2=="TYPE" && $3=="=" && $4=="FUNCTION") { print($1); } }' < ${ptflist}`
 		if [ ${debug} -eq 0 ]; then
 			rm ${tmpCntlHFS}
 			rm ${ptflist}
@@ -73,58 +72,58 @@ chkfmid() {
 			fi
 			return 4
 		else 
-			if ! [ -z "${allptfs##*$fmid*}" ]; then
-				return 0
-			fi
+			case ${allfmids} in
+				*${fmid}* ) return 0 ;;
+				* ) ;;
+			esac
 		fi
 	fi	
 	return 4
 } 
 
 chkptfs() {
-#set -x
-	csi="$(echo ${1} | tr '[:lower:]' '[:upper:]')"
-	tgtzone="$(echo ${2} | tr '[:lower:]' '[:upper:]')"
-	shift 2
-	ptfs="$(echo ${*} | tr '[:lower:]' '[:upper:]')"
+	csi="${1}"
+	tgtzone="${2}"
+	fmid="${3}"
+	shift 3
+	ptfs="${*}"
 
 	tmpCntlHFS=${ZBREW_TMP}/$$.$tgtzone.cntl.xml
 	ptflist=${ZBREW_TMP}/$$.$tgtzone.smp.ptflst
 
 	echo "  SET BOUNDARY(${tgtzone})." >${tmpCntlHFS}
-	echo "  LIST SYSMODS(${fmid})." >>${tmpCntlHFS}
+	echo "  LIST PTFS FORFMID(${fmid})." >>${tmpCntlHFS}
 	
-	smpout=`smp -i ${csi} -l ${ptflist} <${tmpCntlHFS}`
+	smpout=`smp ${opts} -i ${csi} -l ${ptflist} <${tmpCntlHFS}`
 	rc=$?
 	if [ ${rc} -gt 4 ]; then
 		echo "Warning: Unable to determine SYSMOD list for target zone ${tgtzone}." >&2
 		return ${rc}
 	fi
 
-	missing_ptfs='n'
+	missingptfs=''
+	allptfs=`awk ' { if (NF == 4 && $2 == "TYPE" && $3 == "=" && ($4 == "PTF" || $4 == "SUPERSEDED")) { print $1; }}' <$ptflist `
 	for requiredptf in ${requiredptfs}; do
-		found='n'
-		for ptf in ${allptfs}; do
-			if [ "${ptf}" = "${requiredptf}" ]; then
-				found='y'
-				if [ ${verbose} -gt 0 ]; then
-					echo "PTF ${requiredptf} found in target zone: ${tgtzone}" >&2
-				fi
-				break;
-			fi 
-		done
-		if [ "${found}" = 'n' ]; then
+		case ${allptfs} in
+			*${requiredptf}* )
+			if [ ${verbose} -gt 0 ]; then
+				echo "PTF ${requiredptf} found in target zone: ${tgtzone}" >&2
+			fi
+			;;
+		* )     
 			if [ ${verbose} -gt 0 ]; then
 				echo "PTF ${requiredptf} not found in target zone: ${tgtzone}" >&2
 			fi
-			missingptfs="${missingptfs} ${requiredptf}"
-		fi
+			if [ "${missingptfs}" = '' ]; then
+				missingptfs="${requiredptf}"
+			else
+				missingptfs="${missingptfs} ${requiredptf}"
+			fi
+			;;
+		esac
 	done
 
 	if [ ${debug} -eq 0 ]; then
-		rm ${required}
-		rm ${missing}
-		rm ${all}
 		rm ${tmpCntlHFS}
 		rm ${ptflist}
 	fi
@@ -133,11 +132,9 @@ chkptfs() {
 }
 
 runchk() {
-#set -x
 	csi="$1"
-	shift
-	fmid="$1"
-	shift
+	fmid="$2"
+	shift 2
 	ptfs=$*
 	requiredptfs="${ptfs}"
 
@@ -151,14 +148,14 @@ runchk() {
 	if [ ${verbose} = "1" ]; then 
 		echo "getting gzone entries for: ${csi}" >&2; 
 	fi
-	smpout=`smp -i ${csi} -l ${gzonelist} <${tmpCntlHFS}`
+	smpout=`smp ${opts} -i ${csi} -l ${gzonelist} <${tmpCntlHFS}`
 	rc=$?
  	if [ ${rc} -gt 0 ]; then
                 echo "Unable to determine global zone for: ${csi}." >&2
 		echo "${smpout}" >&2
 		return ${rc}
        	fi
-	tgtzones=`awk '{ if ($2=="TARGET" && NF==3) { print($1); } }' < ${gzonelist}`
+	tgtzones=`awk '{ if (NF==3 && $2=="TARGET") { print($1); } }' < ${gzonelist}`
 	if [ "${tgtzones}" = '' ]; then
 		echo "Internal error. Unable to	determine global zone for: ${csi}. See ${gzonelist} for details." >&2
 		return 16
@@ -167,8 +164,14 @@ runchk() {
 	for tgtzone in $tgtzones; do
 		out=`chkfmid ${csi} ${tgtzone} ${fmid}` 
 		if [ $? -eq 0 ]; then 
-			ptfs=`chkptfs ${csi} ${tgtzone} ${ptfs}`
-			break
+			ptfs=`chkptfs ${csi} ${tgtzone} ${fmid} ${ptfs}`
+			if [ "${ptfs}" != "${requiredptfs}" ]; then
+				break
+			fi
+		else 
+			if [ $? -gt 4 ]; then
+				echo "${out}" >&2
+			fi
 		fi
 	done
 	if [ "${ptfs}" != '' ]; then
@@ -197,7 +200,6 @@ while getopts ":vdf" opt; do
       ;;
     f )
       fmid_check=1
-      opts="${opts} -d"
       ;;
     v )
       verbose=1
@@ -233,10 +235,11 @@ zbrewpropse zbrew config "${props}"
 props=$(callerdir "$0")"/../../zbrew/properties/globalprops.json"
 zbrewpropse zbrew global ${props}
 
-out=`runchk $*`
+parms="$(echo ${*} | tr '[:lower:]' '[:upper:]')"
+out=`runchk ${parms}`
 rc=$?
 if [ $rc -gt 0 ]; then
-	echo ${out}
+	echo "${out}" >&2
 	exit $rc
 fi
 exit 0

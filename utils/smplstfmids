@@ -1,0 +1,38 @@
+#!/bin/sh
+if [ $# != 2 ]; then
+	echo "smplstfmid <csi> <zone>"
+	exit 4
+fi
+out=$(whence zbrewfuncs >/dev/null)
+if [ $? -eq 0 ]; then
+	. zbrewfuncs
+else    	
+	echo "zbrew tools need to be in your PATH" >&2
+	exit 4
+fi      
+
+mydir=$(callerdir ${0})
+props="${mydir}/../properties/zbrewprops.json"
+zbrewpropse zbrew config "${props}"
+
+csi="$(echo ${1} | tr '[:lower:]' '[:upper:]')"
+tgtzone="$(echo ${2} | tr '[:lower:]' '[:upper:]')"
+
+tmpCntlHFS=${ZBREW_TMP}/$$.${tgtzone}.fmidcntl.xml
+fmidlist=${ZBREW_TMP}/$$.${tgtzone}.fmidsmp.fmidlst
+touch ${fmidlist}
+
+
+echo "  SET BOUNDARY(${tgtzone})." >${tmpCntlHFS}
+echo "  LIST SYSMODS." >>${tmpCntlHFS}
+
+smpout=`smp -i ${csi} -l ${fmidlist} <${tmpCntlHFS}`
+rc=$?
+if [ $rc -eq 0 ]; then
+	result=`grep FUNCTION $fmidlist | awk ' { print $1; }' ` 
+	rm -rf ${fmidlist} ${tmpCntlHFS}
+	echo "${result}"
+else
+	echo "${smpout}" >&2
+fi
+exit $rc
