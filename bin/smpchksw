@@ -68,17 +68,26 @@ chkfmid() {
 		fi
 		if [ "${allfmids}" = '' ]; then
 			if [ ${verbose} -gt 0 ]; then
-				echo "FMID ${fmid} not in target zone: ${tgtzone}" >&2
+				echo "No FMIDs in target zone: ${tgtzone}" >&2
 			fi
 			return 4
 		else 
 			case ${allfmids} in
-				*${fmid}* ) return 0 ;;
-				* ) ;;
+				*${fmid}* ) 
+					if [ ${verbose} -gt 0 ]; then
+						echo "FMID ${fmid} found in target zone: ${tgtzone}" >&2
+					fi
+					return 0 
+					;;
+				* ) 
+					if [ ${verbose} -gt 0 ]; then
+						echo "FMID ${fmid} not in target zone: ${tgtzone}" >&2
+					fi
+					return 4
+					;;
 			esac
 		fi
 	fi	
-	return 4
 } 
 
 chkptfs() {
@@ -87,6 +96,7 @@ chkptfs() {
 	fmid="${3}"
 	shift 3
 	ptfs="${*}"
+	requiredptfs="${ptfs}"
 
 	tmpCntlHFS=${ZBREW_TMP}/$$.$tgtzone.cntl.xml
 	ptflist=${ZBREW_TMP}/$$.$tgtzone.smp.ptflst
@@ -123,24 +133,34 @@ chkptfs() {
 		esac
 	done
 
+	if [ ${verbose} -gt 0 ]; then
+		if [ "${missingptfs}" != '' ]; then
+			echo "PTFs ${missingptfs} not found in tgtzone ${tgtzone}, fmid ${fmid}" >&2
+		fi
+	fi
 	if [ ${debug} -eq 0 ]; then
 		rm ${tmpCntlHFS}
 		rm ${ptflist}
 	fi
 	echo "${missingptfs}"
-	return 0
+	if [ "${missingptfs}" = '' ]; then
+		return 0
+	else
+		return 4
+	fi
 }
 
 runchk() {
+#set -x
 	csi="$1"
 	fmid="$2"
 	shift 2
-	ptfs=$*
-	requiredptfs="${ptfs}"
+	ptfs="$*"
+	reqptfs="${ptfs}"
 
 	tmpCntlHFS=${ZBREW_TMP}/$$.gzone.cntl.xml
 	gzonelist=${ZBREW_TMP}/$$.gzone.smp.gzonelst
-	touch gzonelist
+	touch ${gzonelist}
 
 	echo "  SET BOUNDARY(GLOBAL).
   LIST GZONE.
@@ -163,22 +183,42 @@ runchk() {
 
 	for tgtzone in $tgtzones; do
 		out=`chkfmid ${csi} ${tgtzone} ${fmid}` 
-		if [ $? -eq 0 ]; then 
-			ptfs=`chkptfs ${csi} ${tgtzone} ${fmid} ${ptfs}`
-			if [ "${ptfs}" != "${requiredptfs}" ]; then
+		rc=$?
+		if [ $rc -eq 0 ]; then 
+			missingptfs=`chkptfs ${csi} ${tgtzone} ${fmid} ${reqptfs}`
+			if [ $? -gt 0 ]; then
+				if [ ${verbose} -gt 0 ]; then
+					echo "chkptfs failed for ${tgtzone} ${fmid}" >&2
+				fi
+				continue
+			fi
+			if [ "${missingptfs}" != "${reqptfs}" ]; then
+				if [ ${verbose} -gt 0 ]; then
+					if [ "${missingptfs}" != '' ]; then
+						echo "chkptfs is missing ptfs ${missingptfs} from ${reqptfs} in ${tgtzone} ${fmid}" >&2
+					fi
+				fi
 				break
 			fi
 		else 
-			if [ $? -gt 4 ]; then
+			if [ ${verbose} -gt 0 ]; then
+				echo "chkfmid returned with error code: $rc" >&2
+			fi
+			if [ $rc -gt 4 ]; then
 				echo "${out}" >&2
 			fi
 		fi
 	done
-	if [ "${ptfs}" != '' ]; then
-		echo "One or more required SYSMODS (PTFs or FUNCTIONS) have not been applied to any of the target zones:" >&2
+
+	if [ "${missingptfs}" = '' ]; then
+		if [ ${verbose} -gt 0 ]; then
+			echo "All PTFs found in zone ${tgtzone}, fmid ${fmid}" >&2
+		fi
+	else
+		echo "One or more required PTFs have not been applied to the target zones for FMID: ${fmid}" >&2
 		echo "${tgtzones}" >&2
-		echo "The required SYSMODs list is: ${requiredptfs}" >&2
-		echo "The missing SYSMODs are: ${ptfs}" >&2
+		echo "The required PTF list is: ${reqptfs}" >&2
+		echo "The missing PTFs are: ${missingptfs}" >&2
 		return 16
 	fi
 	if [ ${debug} -eq 0 ]; then
