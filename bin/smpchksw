@@ -18,7 +18,7 @@ msg() {
 
 	case ${msgnum} in 
 		${InvalidOption}) msgtext="Invalid option specified: -";;
-		${TooFewParms}) msgtext="Too few Parameters specified. Expected 2 but received: ";;
+		${TooFewParms}) msgtext="Too few parameters specified. Expected 2 but received: ";;
 		${UnknownAction}) msgtext="Unknown action specified: ";;
 		*) msgtext="Internal Error. Unknow msgnum: ${msgnum}";;
 	esac
@@ -181,9 +181,14 @@ runchk() {
 		return 16
 	fi
 
+	missingptfs="${reqptfs}"
+	minrc=12
 	for tgtzone in $tgtzones; do
 		out=`chkfmid ${csi} ${tgtzone} ${fmid}` 
 		rc=$?
+		if [ $minrc -gt $rc ]; then
+			minrc=$rc
+		fi
 		if [ $rc -eq 0 ]; then 
 			missingptfs=`chkptfs ${csi} ${tgtzone} ${fmid} ${reqptfs}`
 			if [ $? -gt 0 ]; then
@@ -210,6 +215,10 @@ runchk() {
 		fi
 	done
 
+	if [ ${minrc} -gt 0 ]; then
+		echo "FMID ${fmid} is not in any target zone in ${csi}" >&2
+		return 16
+	fi
 	if [ "${missingptfs}" = '' ]; then
 		if [ ${verbose} -gt 0 ]; then
 			echo "All PTFs found in zone ${tgtzone}, fmid ${fmid}" >&2
@@ -255,7 +264,7 @@ while getopts ":vdf" opt; do
   esac
 done
 shift $(expr $OPTIND - 1 )
-if [ $# -lt 2 ]; then
+if [ $# -lt 3 ]; then
 	msg zbrew ${TooFewParms} E "$#"
 	syntax
 	exit 16
