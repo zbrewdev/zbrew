@@ -58,7 +58,7 @@ chkfmid() {
 	smpout=`smp ${opts} -i ${csi} -l ${ptflist} <${tmpCntlHFS}`
 	rc=$?
 	if [ ${rc} -gt 4 ]; then
- 		echo "Warning: Unable to determine SYSMOD list for target zone ${tgtzone}." >&2
+ 		echo "Warning: Unable to determine PTF list for target zone ${tgtzone}." >&2
 		return ${rc}
 	else
 		allfmids=`awk '{ if (NF==4 && $2=="TYPE" && $3=="=" && $4=="FUNCTION") { print($1); } }' < ${ptflist}`
@@ -102,12 +102,16 @@ chkptfs() {
 	ptflist=${ZBREW_TMP}/$$.$tgtzone.smp.ptflst
 
 	echo "  SET BOUNDARY(${tgtzone})." >${tmpCntlHFS}
-	echo "  LIST PTFS FORFMID(${fmid})." >>${tmpCntlHFS}
+	echo "  LIST SYSMODS(" >>${tmpCntlHFS}
+	for ptf in ${requiredptfs}; do
+		echo "    ${ptf}" >>${tmpCntlHFS}
+	done
+        echo "  ) FORFMID(${fmid})." >>${tmpCntlHFS}
 	
 	smpout=`smp ${opts} -i ${csi} -l ${ptflist} <${tmpCntlHFS}`
 	rc=$?
 	if [ ${rc} -gt 4 ]; then
-		echo "Warning: Unable to determine SYSMOD list for target zone ${tgtzone}." >&2
+		echo "Warning: Unable to determine PTF list for target zone ${tgtzone}." >&2
 		return ${rc}
 	fi
 

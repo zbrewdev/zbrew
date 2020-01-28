@@ -65,14 +65,15 @@ rm ${errout}
 
 # Some PTFs missing
 export FMID=HADB620
-export PTFLIST="UQ60666 UI52160"
+export BADPTF=UQ60666
+export PTFLIST="${BADPTF} UI52160"
 result=`smpchksw ${CSI} ${FMID} ${PTFLIST}` 2>${errout}
 rc=$?
 if [ $rc -eq 0 ]; then
-        echo "smpchksw should have failed to find $UQ60666 PTF." >&2
+        echo "smpchksw should have failed to find ${BADPTF} PTF." >&2
         exit 2
 else
-	expected="The missing PTFs are: UQ60666"
+	expected="The missing PTFs are: ${BADPTF}"
         grep "${expected}" ${errout} >/dev/null
 	if [ $? -gt 0 ]; then
 		actual=`cat ${errout}`
