@@ -31,9 +31,6 @@ done
 
 #for ZFS 
 targdddefs=`echo "${libs}" | awk '($2 == "ZFS" && $5 == "T") {print $1}'`
-if [ "${DDDEFPATH}" = '0' ]; then
-	DDDEFPATH="${ZFSDIR}"
-fi
 for targdddef in ${targdddefs}; do
  smpuclin="${smpuclin}
  REP DDDEF(${targdddef})
