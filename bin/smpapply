@@ -133,22 +133,6 @@ mydir=$(callerdir ${0})
 props="${mydir}/../properties/zbrewprops.json"
 zbrewpropse zbrew config "${props}"
 
-if [ -z "${ZBREW_TMP}" ]; then
-	if [ -d /tmp ]; then
-		echo "Warning, ZBREW_TMP found to be null, setting to /tmp"
-		ZBREW_TMP=/tmp
-	else
-		echo "Unable to set ZBREW_TMP. Please export ZBREW_TMP before running"
-		exit 16
-	fi
-fi
-
-if [ -d $ZBREW_TMP ]; then
-	;
-else
-	echo "ZBREW_TMP variable is defined as ${ZBREW_TMP} but the directory does not exist. Please create directory or update zbrew.properties variable ZBREW_TMP."
-	exit 16
-fi
 check=$(echo ${1} | tr '[:lower:]' '[:upper:]') 
 zosname=$(echo ${2} | tr '[:lower:]' '[:upper:]') 
 fmids="$3"
