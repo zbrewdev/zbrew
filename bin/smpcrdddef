@@ -31,13 +31,10 @@ done
 
 #for ZFS 
 targdddefs=`echo "${libs}" | awk '($2 == "ZFS" && $5 == "T") {print $1}'`
-if [ "${dddefpath}" = '0' ]; then
-	dddefpath="${ZFSDIR}"
-fi
 for targdddef in ${targdddefs}; do
  smpuclin="${smpuclin}
  REP DDDEF(${targdddef})
- PATH('${ZFSROOT}${dddefpath}').
+ PATH('${ZFSROOT}${DDDEFPATH}').
 "
 done
 
@@ -95,7 +92,6 @@ prefix=$1
 zosname=$2
 shift 2
 opts=$*
-dddefpath=0
 
 props="${mydir}/../../zbrew/properties/zbrewprops.json"
 zbrewpropse zbrew config "${props}"

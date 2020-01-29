@@ -490,8 +490,8 @@ case ${verb} in
 			exit $rc
 		fi
 		;;
-	smpdddef )
-		out=`smpdddef $2 ${opts}`
+	smpcrdddefs )
+		out=`smpcrdddefs $2 ${opts}`
 		rc=$?
 		if [ $rc -gt 0 ]; then
                         echo "${out}"
