@@ -95,7 +95,6 @@ prefix=$1
 zosname=$2
 shift 2
 opts=$*
-DDDEFPATH=0
 
 props="${mydir}/../../zbrew/properties/zbrewprops.json"
 zbrewpropse zbrew config "${props}"
