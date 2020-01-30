@@ -8,12 +8,19 @@ mydir=$(callerdir ${0})
 
 # First, make sure the zhw repo has been installed
 
-if ! [ -e "${mydir}/../../zbrew-zhw" ]; then
+ZHW110DIR="${mydir}/../../zbrew-zhw/zhw110/"
+if ! [ -e "${ZHW110DIR}" ]; then
 	echo "Need to install zhw repo to run this test" >&2
 	exit 1
 fi
 
 # Clear up any jetsam from a previous run
+zbrewpropse zbrew config ${mydir}/../properties/zbrewprops.json
+zbrewpropse zhw110 install ${ZHW110DIR}zhw110install.json
+
+# Clear up any jetsam from a previous run
+MOUNT="${ZFSROOT}${ZFSDIR}"
+unmount "${MOUNT}" 2>/dev/null
 drm -f "${ZBREW_HLQ}zhw*.*"
 
 # Search for product
