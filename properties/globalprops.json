@@ -4,12 +4,12 @@
 		"global":{
 			"CEEHLQ":"CEE",
 			"CEE_CSI":"NONE",
-			"HLASM_CSI":"NONE",
+			"HMQ_CSI":"NONE",
 			"CICS52_CSI":"NONE",
-			"COBOL62_CSI":"NONE",
-			"COBOL61_CSI":"NONE",
-			"COBOL52_CSI":"NONE",
-			"COBOL51_CSI":"NONE",
+			"IGY62_CSI":"NONE",
+			"IGY61_CSI":"NONE",
+			"IGY52_CSI":"NONE",
+			"IGY51_CSI":"NONE",
 			"JOBPARMS":"''MSGCLASS=S,NOTIFY=&SYSUID''",
 			"JOBOPTS":""
                  }
