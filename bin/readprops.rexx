@@ -8,7 +8,7 @@ trace 'o'
 Arg swname category . 
 
 if (swname = '' | category = '' | swname = '?') then do
-  call SayErr 'Syntax: zbrewjsonprops <sw> <category>'
+  call SayErr 'Syntax: readprops <sw> <category>'
   call SayErr '  The JSON key/value pairs are read in from stdin'
   call SayErr '  The parsed key/value pairs are written out to stdout'
   return 4

@@ -303,7 +303,7 @@ Parse Arg data, len, diagArea, details
  */
 
   msg = diagArea.HWTJ_ReasonDesc
-  Parse Value msg with 'Expected ' details ' in object at offset ' offset '.'
+  Parse Value msg with 'Expected ' details ' in ' type ' at offset ' offset '.'
 
   if (details <> '' & offset <> '') then do
     line=1
@@ -315,7 +315,7 @@ Parse Arg data, len, diagArea, details
       offset = offset - len.l
     end
     col = offset+1
-    diagArea.HWTJ_ReasonDesc = 'Expected:' details 'in object at line:' line 'column:' col
+    diagArea.HWTJ_ReasonDesc = 'Expected:' details 'in' type 'at line:' line 'column:' col
     details.linenum = line
     details.column = col
     details.text = data.l

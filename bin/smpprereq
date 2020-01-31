@@ -1,0 +1,83 @@
+#!/bin/sh
+#set -x
+
+. zbrewfuncs
+
+InvalidOption=1
+TooFewParms=2
+UnknownAction=3
+PrefixTooLong=4
+
+#
+# Temporary hack - replace with a proper message file
+#
+msg() {
+       	pgm=$1
+	msgnum=$2
+	msgtype=$3
+
+	shift 3
+	args=$*
+
+	case ${msgnum} in
+		${InvalidOption}) msgtext="Invalid option specified: -";;
+		${TooFewParms}) msgtext="Too few Parameters specified. Expected 2 but received: ";;
+		${UnknownAction}) msgtext="Unknown action specified: ";;
+		${PrefixTooLong}) msgtext="Prefix must be 6 characters or less. Received: ";;
+		*) msgtext="Internal Error. Unknow msgnum: ${msgnum}";;
+	esac
+	echo "ZCL000"${msgnum}${msgtype} "${msgtext}${args}" >&2
+}
+
+#
+# Temporary hack - replace with a manpage
+#
+syntax() {
+	echo "\
+smpprereq [-vcd] <pre-req json>
+
+Examples:
+" >&2
+     	exit 16
+}
+
+debug=0
+clean=0
+verbose=0
+while getopts ":vdc" opt; do
+  case ${opt} in
+    c )         
+      clean=1
+      ;;
+    d )         
+      debug=1
+      ;;
+    v ) 
+      verbose=1
+      opts="-v"
+      ;;
+    \?)
+      if [ ${OPTARG} != "?" ]; then
+        msg smpprereq ${InvalidOption} E "${OPTARG}"
+      fi
+      syntax
+      exit 4    
+      ;;        
+  esac
+done
+shift $(expr $OPTIND - 1 )
+if [ $# -lt 1 ]; then
+	msg smpprereq ${TooFewParms} E "$#"
+	syntax  
+	exit 16
+fi      
+
+mydir=$(callerdir ${0})
+props="${mydir}/../properties/zbrewprops.json"
+zbrewpropse zbrew config "${props}"
+
+rc=$?
+if [ $rc -gt 0 ]; then
+	echo "${out}"
+fi
+exit $rc 
