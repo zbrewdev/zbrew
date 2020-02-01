@@ -19,14 +19,15 @@ zbrewtest "Properties file parsing failed" "0" "$?"
 
 expected="ZFSROOT=/zbrew/
 ZFSDIR=usr/lpp/IBM/zhw/zhw110/
-LEAVES="
+LEAVES=hw"
 
 zbrewtest "Unexpected properties" "${expected}" "${actual}"
 
 actual=`readbom zhw110 <${zbrewzhw_dir}/zhw110/zhw110bom.json`
 zbrewtest "Bill of Materials (BoM) file parsing failed" "0" "$?" 
 
-expected="SZHWSM PDSE FB 80 15 2 T
+expected="SZHWHFS ZFS 10 10 T
+SZHWSM PDSE FB 80 15 2 T
 AZHWSM PDSE FB 80 15 2 D"
 
 zbrewtest "Unexpected datasets" "${expected}" "${actual}"

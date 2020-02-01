@@ -8,7 +8,7 @@ mydir=$(callerdir ${0})
 cd ${mydir}/bin
 cat readbom.rexx readjson.include >readbom
 cat readprops.rexx readjson.include >readprops
+cat readreq.rexx readjson.include >readreq
 chmod u+x readbom
 chmod u+x readprops
-
-
+chmod u+x readreq

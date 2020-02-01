@@ -8,10 +8,10 @@ trace 'o'
 Arg swname .
 
   if (swname = '' | swname = '?') then do
-    call SayErr 'Syntax: zbrewjsonbom <swname>'
+    call SayErr 'Syntax: readbom <swname>'
     call SayErr '  Where <swname> is the name of the software product, e.g. ZHW110'
-    call SayErr '  The JSON key/value pairs are read in from stdin'
-    call SayErr '  The parsed key/value pairs are written out to stdout'
+    call SayErr '  The JSON bill of materials is read in from stdin'
+    call SayErr '  The parsed values are written out to stdout'
     return 4
   end
 
