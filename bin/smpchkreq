@@ -39,8 +39,34 @@ Examples:
 	exit 16
 }
 
-runchk() {
+chkreq() {
+	type="$1"
+	prodid="$2"
+	fmid="$3"
+	shift 3
+	ptfs="$*"
+	
+	csienv="\$${prodid}_CSI"
+	csi=`eval echo ${csienv}`
+	if [ "${csi}" = '' ]; then
+		echo "Environment variable: ${csienv} is not set, but is required for requisite checking" >&2
+		return 16
+	fi
 	return 0
+}
+
+runchk() {
+	reqs=`readreq $1 <$2`
+	maxrc=0
+	echo "${reqs}" | while read req; do
+		result=`chkreq ${req}`
+		rc=$?
+		if [ $rc -gt 0 ]; then
+			echo "${result}" 
+			maxrc=${rc}
+		fi
+	done
+	return $maxrc
 }
 
 debug=0
@@ -90,8 +116,9 @@ zbrewpropse zbrew config "${props}"
 props=$(callerdir "$0")"/../../zbrew/properties/globalprops.json"
 zbrewpropse zbrew global ${props}
 
-parms="$(echo ${*} | tr '[:lower:]' '[:upper:]')"
-out=`runchk ${parms}`
+sw="$(echo $1 | tr '[:lower:]' '[:upper:]')"
+json="$2"
+out=`runchk "${sw}" "${json}"`
 rc=$?
 if [ $rc -gt 0 ]; then
 	echo "${out}" >&2
