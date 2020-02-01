@@ -39,6 +39,10 @@ Examples:
 	exit 16
 }
 
+#
+# If the CSI variable is defined, then the ptfs need to all be applied for the fmid
+# otherwise a return code of 4 is returned (CSI not defined)
+#
 chkreq() {
 	type="$1"
 	prodid="$2"
@@ -49,8 +53,14 @@ chkreq() {
 	csienv="\$${prodid}_CSI"
 	csi=`eval echo ${csienv}`
 	if [ "${csi}" = '' ]; then
-		echo "Environment variable: ${csienv} is not set, but is required for requisite checking" >&2
-		return 16
+		#echo "Environment variable: ${prodid}_CSI is not set, but is required for requisite checking" >&2
+		return 4
+	fi
+	result=`smpchksw ${opts} ${csi} ${fmid} ${ptfs}`
+	rc=$?
+	if [ $rc -gt 0 ]; then
+		echo "${result}" >&2
+		return $rc
 	fi
 	return 0
 }
