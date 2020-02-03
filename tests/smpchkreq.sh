@@ -4,7 +4,6 @@
 #
 . zbrewfuncs
 mydir=$(callerdir ${0})
-#set -x
 
 # First, make sure the zhw repo has been installed
 
@@ -16,16 +15,37 @@ fi
 
 # zhw has a pre-req on either LE 2.2 or LE 2.3
 # zhw has a co-req on CICS 5.2 and Assembler 1.6
-# Specify a pre-req CSI dataset for LE 2.3 and Assembler 1.6 but not the others
-export HMQ160_CSI="MVS.GLOBAL.CSI"
+
+# first, unset any CSI's that might be specified
+# this should fail because at least one pre-req LE has to be provided
+unset CEE220_CSI
+unset CEE230_CSI
+unset DFH520_CSI
+unset ASM160_CSI
+
+actual=`smpchkreq zhw110 ${ZHW110DIR}/zhw110req.json 2>&1`
+rc=$?
+expected="The following pre-requisite product ids had no CSI specification for any release:
+  CEE
+At least one pre-requisite product release must have a CSI specification provided"
+
+if [ $rc -eq 0 ]; then
+	zbrewtest "Requisite checks for ZHW110 should have failed because no LE CSI specified" 
+fi
+if [ $rc -eq 8 ]; then
+	zbrewtest "Requisite checks for ZHW110 had unexpected output" "${expected}" "${actual}"
+fi
+
+# Specify a pre-req CSI dataset for LE 2.3 and co-req Assembler 1.6 but not the others
+# This should pass because a pre-req LE is specified and co-reqs do not need to be specified
 export CEE230_CSI="MVS.GLOBAL.CSI"
 
 actual=`smpchkreq zhw110 ${ZHW110DIR}/zhw110req.json`
-expected="PREREQ CEE220 HLE77A0 UI50167 UI53807 UI53820 UI56511 UI61244
-PREREQ CEE230 HLE77B0 UI30573 UI31702 UI33265 UI43053 UI45429 UI43458 UI49699 UI53511 UI53889 UI54726 UI56507 UI61245 UI29282
-COREQ HCI520 HCI6900 UI22206 UI30410
-COREQ HMQ160 HMQ4160 UK47103 UK59311"
+rc=$?
+expected=""
 
-zbrewtest "Requisites for ZHW110 not as expected" "${expected}" "${actual}"
+if [ $rc -gt 0 ]; then
+	zbrewtest "Requisites for ZHW110 not as expected" "${expected}" "${actual}"
+fi
 
 exit 0

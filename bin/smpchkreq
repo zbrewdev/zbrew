@@ -46,36 +46,104 @@ Examples:
 chkreq() {
 	type="$1"
 	prodid="$2"
-	fmid="$3"
-	shift 3
+	relid="$3"
+	fmid="$4"
+	shift 4
 	ptfs="$*"
 	
-	csienv="\$${prodid}_CSI"
+	csienv="\$${relid}_CSI"
 	csi=`eval echo ${csienv}`
 	if [ "${csi}" = '' ]; then
-		#echo "Environment variable: ${prodid}_CSI is not set, but is required for requisite checking" >&2
-		return 4
+		if [ "${type}" = "COREQ" ]; then
+			echo "${prodid} PASS ${fmid} ${ptfs}"
+			return 0
+		else
+			echo "${prodid} SKIP ${fmid} ${ptfs}" 
+			return 4
+		fi
 	fi
 	result=`smpchksw ${opts} ${csi} ${fmid} ${ptfs}`
 	rc=$?
-	if [ $rc -gt 0 ]; then
+	if [ $rc -eq 0 ]; then
+		echo "${prodid} PASS ${fmid} ${ptfs}"
+	else
 		echo "${result}" >&2
-		return $rc
+		echo "${prodid} FAIL ${fmid} ${ptfs}"
 	fi
-	return 0
+	return $rc
 }
 
-runchk() {
-	reqs=`readreq $1 <$2`
+#
+# Update skipprod so that all prodids that were ONLY skipped
+# are kept in a string but those that have at least one PASS
+# are removed
+#
+substr() {
+      	str=$1
+	substr=$2
+
+	echo "${str}" | grep -q "${substr}"
+	return $?
+}
+
+updtprereq() {
+      	prodid=$1
+	status=$2
+	fmid=$3
+	shift 3
+	ptfs=$*
+
+	case ${status} in
+		SKIP)
+                     	substr "${skipprod}" "${prodid}"
+                        if [ $? -gt 0 ]; then
+                                substr "${passprod}" "${prodid}"
+                                if [ $? -gt 0 ]; then
+                                        skipprod="${skipprod}${prodid} "
+                                fi
+                        fi
+                        ;;
+		PASS)
+                     	substr "${skipprod}" "${prodid}"
+                        if [ $? -eq 0 ]; then
+                                skipprod=`echo "${skipprod}" | sed "s/ ${prodid} / /g"`
+                        fi
+                        passprod="${passprod}${prodid} "
+                        ;;
+	esac
+	return 0
+}
+	
+readreqvar() {
+	reqs="$1"
 	maxrc=0
 	echo "${reqs}" | while read req; do
 		result=`chkreq ${req}`
 		rc=$?
-		if [ $rc -gt 0 ]; then
-			echo "${result}" 
-			maxrc=${rc}
+		if [ $rc -gt 4 ]; then
+			return $rc
 		fi
-	done
+		updtprereq ${result}
+		echo "$skipprod"
+	done | tail -1
+	return 0
+}
+
+runchk() {
+	skipprod=' '
+	passprod=' '
+	reqs=`readreq $1 <$2`
+	skipprod=`readreqvar "${reqs}"`
+
+	trimmed=`echo ${skipprod} | tr -d '[:space:]'`
+	if [ "${trimmed}" != '' ]; then
+		maxrc=8
+		echo "The following pre-requisite product ids had no CSI specification for any release:" >&2                      
+		for prod in ${skipprod}; do
+			echo "  ${prod}" >&2
+		done
+		echo "At least one pre-requisite product release must have a CSI specification provided" >&2
+	fi
 	return $maxrc
 }
 
