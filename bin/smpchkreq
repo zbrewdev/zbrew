@@ -1,0 +1,205 @@
+#!/bin/sh
+
+. zbrewfuncs
+InvalidOption=1
+TooFewParms=2
+UnknownAction=3
+
+#
+# Temporary hack - replace with a proper message file
+#
+msg() {
+	pgm=$1
+	msgnum=$2
+	msgtype=$3
+	
+	shift 3
+	args=$*
+
+	case ${msgnum} in 
+		${InvalidOption}) msgtext="Invalid option specified: -";;
+		${TooFewParms}) msgtext="Too few parameters specified. Expected 2 but received: ";;
+		${UnknownAction}) msgtext="Unknown action specified: ";;
+		*) msgtext="Internal Error. Unknow msgnum: ${msgnum}";;
+	esac
+	echo "ZCL000"${msgnum}${msgtype} "${msgtext}${args}" >&2
+}
+
+#
+# Temporary hack - replace with a manpage
+#
+syntax() {
+	echo "\
+smpchkreq [-vd] <swname> <reqjson>
+	    
+Examples:
+	Check that the requirements defined for EQAE20 are satisfied from \$ZBREW_ROOT/../zbrew-eqa/eqae20/eqae20req.json
+	smpchkreq eqae20 \$ZBREW_ROOT/../zbrew-eqa/eqae20/eqae20req.json
+" >&2 
+	exit 16
+}
+
+#
+# If the CSI variable is defined, then the ptfs need to all be applied for the fmid
+# otherwise a return code of 4 is returned (CSI not defined)
+#
+chkreq() {
+	type="$1"
+	prodid="$2"
+	relid="$3"
+	fmid="$4"
+	shift 4
+	ptfs="$*"
+	
+	csienv="\$${relid}_CSI"
+	csi=`eval echo ${csienv}`
+	if [ "${csi}" = '' ]; then
+		if [ "${type}" = "COREQ" ]; then
+			echo "${prodid} PASS ${fmid} ${ptfs}"
+			return 0
+		else
+			echo "${prodid} SKIP ${fmid} ${ptfs}" 
+			return 4
+		fi
+	fi
+	result=`smpchksw ${opts} ${csi} ${fmid} ${ptfs}`
+	rc=$?
+	if [ $rc -eq 0 ]; then
+		echo "${prodid} PASS ${fmid} ${ptfs}"
+	else
+		echo "${result}" >&2
+		echo "${prodid} FAIL ${fmid} ${ptfs}"
+	fi
+	return $rc
+}
+
+#
+# Update skipprod so that all prodids that were ONLY skipped
+# are kept in a string but those that have at least one PASS
+# are removed
+#
+substr() {
+      	str=$1
+	substr=$2
+
+	echo "${str}" | grep -q "${substr}"
+	return $?
+}
+
+updtprereq() {
+      	prodid=$1
+	status=$2
+	fmid=$3
+	shift 3
+	ptfs=$*
+
+	case ${status} in
+		SKIP)
+                     	substr "${skipprod}" "${prodid}"
+                        if [ $? -gt 0 ]; then
+                                substr "${passprod}" "${prodid}"
+                                if [ $? -gt 0 ]; then
+                                        skipprod="${skipprod}${prodid} "
+                                fi
+                        fi
+                        ;;
+		PASS)
+                     	substr "${skipprod}" "${prodid}"
+                        if [ $? -eq 0 ]; then
+                                skipprod=`echo "${skipprod}" | sed "s/ ${prodid} / /g"`
+                        fi
+                        passprod="${passprod}${prodid} "
+                        ;;
+	esac
+	return 0
+}
+	
+readreqvar() {
+	reqs="$1"
+	maxrc=0
+	echo "${reqs}" | while read req; do
+		result=`chkreq ${req}`
+		rc=$?
+		if [ $rc -gt 4 ]; then
+			return $rc
+		fi
+		updtprereq ${result}
+		echo "$skipprod"
+	done | tail -1
+	return 0
+}
+
+runchk() {
+	skipprod=' '
+	passprod=' '
+	reqs=`readreq $1 <$2`
+	skipprod=`readreqvar "${reqs}"`
+
+	trimmed=`echo ${skipprod} | tr -d '[:space:]'`
+	if [ "${trimmed}" != '' ]; then
+		maxrc=8
+		echo "The following pre-requisite product ids had no CSI specification for any release:" >&2                      
+		for prod in ${skipprod}; do
+			echo "  ${prod}" >&2
+		done
+		echo "At least one pre-requisite product release must have a CSI specification provided" >&2
+	fi
+	return $maxrc
+}
+
+debug=0
+verbose=0
+fmid_check=0
+opts=""
+while getopts ":vdf" opt; do
+  case ${opt} in
+    d )
+      debug=1
+      opts="${opts} -d"
+      ;;
+    f )
+      fmid_check=1
+      ;;
+    v )
+      verbose=1
+      opts="${opts} -v"
+      ;;
+    \?)
+      if [ ${OPTARG} != "?" ]; then
+	msg smpchkreq ${InvalidOption} E "${OPTARG}"
+      fi
+      syntax
+      exit 4
+      ;;
+  esac
+done
+shift $(expr $OPTIND - 1 )
+if [ $# -lt 2 ]; then
+	msg smpchkreq ${TooFewParms} E "$#"
+	syntax
+	exit 16
+fi
+
+out=$(whence zbrewfuncs >/dev/null)
+if [ $? -eq 0 ]; then
+	. zbrewfuncs
+else
+    	echo "zbrew tools need to be in your PATH"
+	exit 4
+fi
+mydir=$(callerdir ${0})
+props="${mydir}/../properties/zbrewprops.json"
+zbrewpropse zbrew config "${props}"
+
+props=$(callerdir "$0")"/../../zbrew/properties/globalprops.json"
+zbrewpropse zbrew global ${props}
+
+sw="$(echo $1 | tr '[:lower:]' '[:upper:]')"
+json="$2"
+out=`runchk "${sw}" "${json}"`
+rc=$?
+if [ $rc -gt 0 ]; then
+	echo "${out}" >&2
+	exit $rc
+fi
+exit 0

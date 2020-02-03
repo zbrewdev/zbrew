@@ -26,7 +26,7 @@ Arg swname .
     if (entry = swname) then do
       found = 1
       do p = 1 to json.software.el.prereq.0
-        r = json.software.el.prereq.p.relid.0 
+        pid = json.software.el.prereq.p.prodid 
         do r = 1 to json.software.el.prereq.p.release.0
           rid = json.software.el.prereq.p.release.r.relid
           do f = 1 to json.software.el.prereq.p.release.r.fmids.0
@@ -35,12 +35,12 @@ Arg swname .
             do s = 1 to json.software.el.prereq.p.release.r.fmids.f.ptfs.0
               list = list json.software.el.prereq.p.release.r.fmids.f.ptfs.s
             end
-            say 'PREREQ' rid fid || list
+            say 'PREREQ' pid rid fid || list
           end
         end
       end
       do p = 1 to json.software.el.coreq.0
-        r = json.software.el.coreq.p.relid.0 
+        pid = json.software.el.coreq.p.prodid 
         do r = 1 to json.software.el.coreq.p.release.0
           rid = json.software.el.coreq.p.release.r.relid
           do f = 1 to json.software.el.coreq.p.release.r.fmids.0
@@ -49,7 +49,7 @@ Arg swname .
             do s = 1 to json.software.el.coreq.p.release.r.fmids.f.ptfs.0
               list = list json.software.el.coreq.p.release.r.fmids.f.ptfs.s
             end
-            say 'COREQ' rid fid || list
+            say 'COREQ' pid rid fid || list
           end
         end
       end
