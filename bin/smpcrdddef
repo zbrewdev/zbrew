@@ -96,6 +96,9 @@ opts=$*
 props="${mydir}/../../zbrew/properties/zbrewprops.json"
 zbrewpropse zbrew config "${props}"
 
+props=$(callerdir "$0")"/../../zbrew/properties/globalprops.json"
+zbrewpropse zbrew global ${props}
+
 props="${mydir}/../../zbrew-${prefix}/${zosname}/${zosname}install.json"
 zbrewpropse "${zosname}" install "${props}"
 
