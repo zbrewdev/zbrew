@@ -51,11 +51,13 @@ runapply() {
 		echo "    ${fmid}" >>${tmpCntlHFS}
 	done
 	echo "  )" >>${tmpCntlHFS}
-	echo "  FORFMID(" >>${tmpCntlHFS}
-	for fmid in $fmids; do
-		echo "    ${fmid}" >>${tmpCntlHFS}
-	done
-	echo "  )" >>${tmpCntlHFS}
+	if [ "${ALLPTFS}" = '1' ]; then
+		echo "  FORFMID(" >>${tmpCntlHFS}
+		for fmid in $fmids; do
+			echo "    ${fmid}" >>${tmpCntlHFS}
+		done
+		echo "  )" >>${tmpCntlHFS}
+	fi
 	echo "  GROUPEXTEND(NOAPARS,NOUSERMODS)" >>${tmpCntlHFS}
 	if [ "${check}" = "CHECK" ]; then
 		echo "  CHECK" >>${tmpCntlHFS}

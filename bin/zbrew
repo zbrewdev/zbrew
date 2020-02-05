@@ -114,7 +114,6 @@ receiveshopz() {
 	if [ $rc -gt 0 ]; then
 		return $rc
 	fi
-	`smpfromnts ${sw} $NTS ${opts}`
 	zbrewlog "smpfromshopz RC: ${rc}"
 	return $?
 }
@@ -129,36 +128,37 @@ receiveppa() {
 receivelocal() {
 	zbrewlog "smpfromnts" $*
 	sw=$1
-	ussname=$(echo ${sw} | tr '[:upper:]' '[:lower:]');
-	prefix=`echo "${ussname}" | awk '{ print substr($1, 0, 3) }'`
-
+	ussname=$(echo ${sw} | tr '[:lower:]' '[:upper:]');
+	zosname=$(echo ${sw} | tr '[:upper:]' '[:lower:]');
+	prefix=`echo "${zosname}" | awk '{ print substr($1, 0, 3) }'`
 	NTS="${ZBREW_TMP}/smpnts.${ussname}"
-	REPO_NAME="zbrew-${prefix}"
-	REPODIR="${SMPE_LOCALREPO}/${REPO_NAME}"
-	REPO="${REPODIR}.git"
-	order="ORDER1"
 
-	rm -rf "${NTS}"	
-	mkdir -p "${NTS}/${order}"
-
-      	prodpkg="${mydir}/../../zbrew-${prefix}/${ussname}/${ussname}crtpkg"
-        if [ -f "${prodpkg}" ]; then
-	        ${prodpkg} ${NTS}/${order}
-	        rc=$?
-	else
-	        echo "Unable to find product packaging program: ${prodpkg}. Installation failed."
-		return 16
+	if [ "$prefix" = "zhw" ]; then	
+		zosname=$(echo ${sw} | tr '[:upper:]' '[:lower:]');
+		prefix=`echo "${zosname}" | awk '{ print substr($1, 0, 3) }'`
+		order='order1'
+		mkdir -p "${NTS}/${order}"
+      		prodpkg="${mydir}/../../zbrew-${prefix}/${zosname}/${zosname}crtpkg"
+		if [ -f "${prodpkg}" ]; then
+	        	${prodpkg} ${NTS}/${order}
+	        	rc=$?
+		else
+	        	echo "Unable to find product packaging program: ${prodpkg}. Installation failed."
+			return 16
+		fi
 	fi
 	if [ $rc -gt 0 ]; then
 		return $rc;
 	fi	
-	`smpfromnts ${sw} $NTS`
+	`smpfromnts ${sw} ${NTS} ${opts}`
 	rc=$?
 	zbrewlog "smpfromnts RC: ${rc}"
 	if [ $rc -gt 0 ]; then
 		return $rc;
+	fi
+	if [ "$prefix" = "zhw" ]; then
+		rm -rf "${NTS}"
 	fi	
-	rm -rf "${NTS}" 
 	return
 }
 
@@ -220,12 +220,12 @@ fmids() {
 	smplist="${ZBREW_TMP}/smpfmid.$$.smplist"
 	smpout=`smp -i "${ZBREW_HLQ}${sw}G.GLOBAL.CSI" -l "${smplist}" <<zzz
   SET BDY(GLOBAL).
-  LIST FEATURE.
+  LIST FUNCTIONS.
 zzz`
 	rc=$?
 	zbrewlog "fmids RC: ${rc}"
 	if [ $rc -eq 0 ]; then
-		fmids=`awk ' /FMID/ { $1=$2=""; print $0; }' ${smplist}`
+		fmids=`awk ' /= FUNCTION/ { print $1; }' ${smplist}`
 		uniq_fmids=`echo ${fmids} | tr ' ' '\n' | sort | uniq`
 		echo ${uniq_fmids}
 		
