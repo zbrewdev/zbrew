@@ -1,4 +1,6 @@
 ZHW110 1234-AB5 ZBREW_Hello_World_Unit_Test_Software_V1.1
 IGY630 5655-EC6 IBM_Enterprise_COBOL_for_z/OS_V6.3
 EQAE20 5655-Q50 IBM_z/OS_Debug_V14.2
-BGZ100 xxxx-yyy IBM_Dependency_Based_Build_V1.0
+BGZ106 5737-I22 IBM_Dependency_Based_Build_V1.0.6
+FEK311 5655-EX1 IBM_Explorer_for_z/OS_V3.1.1 
+FEK320 5655-EX1 IBM_Explorer_for_z/OS_V3.2.0 
