@@ -74,8 +74,7 @@ search() {
 	zbrewlog "search" $*
 	search=$1
 	callerdir=`callerdir $0`
-	result=`grep -i "${search}" ${callerdir}/../zbrew.software`
-	echo ${result}
+	grep -i "${search}" ${callerdir}/../zbrew.software
 	zbrewlog "search RC: ${rc}"
 	return 0
 }
