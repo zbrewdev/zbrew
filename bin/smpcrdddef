@@ -30,11 +30,13 @@ for targdddef in ${targdddefs}; do
 done
 
 #for ZFS 
-targdddefs=`echo "${libs}" | awk '($2 == "ZFS" && $5 == "T") {print $1}'`
-for targdddef in ${targdddefs}; do
+targdddefs=`echo "${libs}" | awk '($2 == "ZFS" && $5 == "T") {print $1","$6}'`
+for targddzfs in ${targdddefs}; do
+ targdddef=`echo "${targddzfs}" | awk -F, '{print $1}'`
+ dddefpath=`echo "${targddzfs}" | awk -F, '{print $2}'`
  smpuclin="${smpuclin}
  REP DDDEF(${targdddef})
- PATH('${ZFSROOT}${DDDEFPATH}').
+ PATH('${ZFSROOT}${ZFSDIR}${dddefpath}').
 "
 done
 
@@ -82,7 +84,7 @@ zzz
 		echo "${smpuclin}" >&2
                 exit $rc
         fi
-	exit 0
+
 
 }
 

@@ -127,17 +127,16 @@ receiveppa() {
 receivelocal() {
 	zbrewlog "smpfromnts" $*
 	sw=$1
-	ussname=$(echo ${sw} | tr '[:lower:]' '[:upper:]');
-	zosname=$(echo ${sw} | tr '[:upper:]' '[:lower:]');
+	zosname=$(echo ${sw} | tr '[:lower:]' '[:upper:]');
+	ussname=$(echo ${sw} | tr '[:upper:]' '[:lower:]');
 	prefix=`echo "${zosname}" | awk '{ print substr($1, 0, 3) }'`
-	NTS="${ZBREW_TMP}/smpnts.${ussname}"
+	lprefix=`echo "${ussname}" | awk '{ print substr($1, 0, 3) }'`
+	NTS="${ZBREW_TMP}/smpnts.${zosname}"
 
-	if [ "$prefix" = "zhw" ]; then	
-		zosname=$(echo ${sw} | tr '[:upper:]' '[:lower:]');
-		prefix=`echo "${zosname}" | awk '{ print substr($1, 0, 3) }'`
+	if [ "$prefix" = "ZHW" ]; then	
 		order='order1'
 		mkdir -p "${NTS}/${order}"
-      		prodpkg="${mydir}/../../zbrew-${prefix}/${zosname}/${zosname}crtpkg"
+      		prodpkg="${mydir}/../../zbrew-${lprefix}/${ussname}/${ussname}crtpkg"
 		if [ -f "${prodpkg}" ]; then
 	        	${prodpkg} ${NTS}/${order}
 	        	rc=$?
@@ -155,7 +154,7 @@ receivelocal() {
 	if [ $rc -gt 0 ]; then
 		return $rc;
 	fi
-	if [ "$prefix" = "zhw" ]; then
+	if [ "$prefix" = "ZHW" ]; then
 		rm -rf "${NTS}"
 	fi	
 	return
@@ -266,13 +265,12 @@ fmidset() {
 }
 
 apply() {
-	zbrewlog "apply" $*
-	if [ ${verbose} -gt 0 ]; then
-		echo "apply $*" >&2
-	fi
-	check=$(echo ${1} | tr '[:lower:]' '[:upper:]') 
-	sw=$(echo ${2} | tr '[:lower:]' '[:upper:]')
-	shift 2
+	
+	smpfunc=$(echo ${1} | tr '[:lower:]' '[:upper:]') 
+	zbrewlog "${smpfunc}" $*
+	check=$(echo ${2} | tr '[:lower:]' '[:upper:]') 
+	sw=$(echo ${3} | tr '[:lower:]' '[:upper:]')
+	shift 3
 	opts=$*
 	fmids=`fmids ${sw}`
 	if [ $? -gt 0 ]; then
@@ -282,9 +280,13 @@ apply() {
 	if [ $? -gt 4 ]; then
 		return $?
 	fi
-	smpapply ${opts} ${check} ${sw} ${fmidset}
+
+        if [ ${verbose} -gt 0 ]; then
+                echo "Running ${smpfunc} ${check} ${sw} ${fmidset}" >&2
+        fi
+	smpappacc ${opts} ${smpfunc} ${check} ${sw} ${fmidset}
 	rc=$?
-	zbrewlog "apply RC: ${rc}"
+	zbrewlog "${smpfunc} RC: ${rc}"
 	return $rc
 }
 
@@ -334,11 +336,18 @@ install() {
 	for zbrewfunc in ${install_verbs}; do
 		runfunc="${zbrewfunc}"
 		if [ "${runfunc}" = "smpapplycheck" ]; then
-			runfunc="apply CHECK"
+			runfunc="apply apply CHECK"
 		fi
 		if [ "${runfunc}" = "smpapply" ]; then
-                        runfunc="apply NOCHECK"
+                        runfunc="apply apply NOCHECK"
 		fi
+                if [ "${runfunc}" = "smpacceptcheck" ]; then
+                        runfunc="apply accept CHECK"
+                fi
+                if [ "${runfunc}" = "smpaccept" ]; then
+                        runfunc="apply accept NOCHECK"
+                fi
+
 		if [ "${restart}" != "NORESTART" ]; then
 			if [ "${zbrewfunc}" != "${restart}" ]; then
 				continue
@@ -384,7 +393,7 @@ configure() {
 	fi
 }
 
-install_verbs="prodprereq smpconfig receive smpcrdddefs prodalloc smpapplycheck smpapply"
+install_verbs="prodprereq smpconfig receive smpcrdddefs prodalloc smpapplycheck smpapply smpacceptcheck smpaccept"
 debug=0
 verbose=0
 clean=0
@@ -506,7 +515,7 @@ case ${verb} in
 		fi
 		;;
 	smpapplycheck )
-		out=`apply CHECK $2 ${opts}`
+		out=`apply apply CHECK $2 ${opts}`
 		rc=$?
 		if [ $rc -gt 0 ] || [ $verbose -gt 0 ]; then
                         echo "${out}"
@@ -514,13 +523,30 @@ case ${verb} in
                 fi
                 ;;
 	smpapply )
-		out=`apply NOCHECK $2 ${opts}`;
+		out=`apply apply NOCHECK $2 ${opts}`;
 		rc=$? 
 		if [ $rc -gt 0 ] || [ $verbose -gt 0 ]; then
 			echo "${out}" 
 			exit $rc
 		fi
-		;;	
+		;;
+        smpacceptcheck )
+                out=`apply accept CHECK $2 ${opts}`
+                rc=$?
+                if [ $rc -gt 0 ] || [ $verbose -gt 0 ]; then
+                        echo "${out}"
+                        exit $rc
+                fi
+                ;;
+        smpaccept )
+                out=`apply accept NOCHECK $2 ${opts}`;
+                rc=$?
+                if [ $rc -gt 0 ] || [ $verbose -gt 0 ]; then
+                        echo "${out}"
+                        exit $rc
+                fi
+                ;;
+	
 	install ) 
 		out=`install ${restart} $2 ${opts}`
 		rc=$? 
