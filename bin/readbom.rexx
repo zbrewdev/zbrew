@@ -36,7 +36,9 @@ Arg swname .
         end
         z = json.software.el.datasets.d.zones.1
         if (t = 'ZFS') then do
-          say n t p s z
+          w = json.software.el.datasets.d.dddefpath
+          x = json.software.el.datasets.d.mountpnt
+          say n t p s z w x
         end
         else do 
           l = json.software.el.datasets.d.lrecl

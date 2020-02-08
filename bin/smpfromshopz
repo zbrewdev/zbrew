@@ -73,7 +73,6 @@ zzz
     RECEIVE FROMNETWORK(
       SERVER(SERVER)
       CLIENT(CLIENT)
-      TRANSFERONLY
     )
       .
 zzz

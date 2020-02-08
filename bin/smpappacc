@@ -30,32 +30,40 @@ msg() {
 #
 syntax() {
 	echo "\
-smpapply [-vd] <prefix> <fmid list>
+smpappacc [-vd] <prefix> <fmid list>
 	    
 Examples:
-	smpapply igy630 HADB630 JADB63H JADB631 JADB632 <-- Perform SMP/APPLY on previously RECEIVEed product IGY630
+	smpappacc apply igy630 HADB630 JADB63H JADB631 JADB632 <-- Perform SMP/APPLY on previously RECEIVEed product IGY630
+	smpappacc accept igy630 HADB630 JADB63H JADB631 JADB632 <-- Perform SMP/ACCEPT on previously RECEIVEed product IGY630
 " >&2 
 	exit 16
 }
 
 runapply() {
-	check="$1"
-	sw="$2"
-	fmids="$3"
-
+	
+	smpfunc="$1"
+	check="$2"
+	sw="$3"
+	fmids="$4"
 	tmpCntlHFS=${ZBREW_TMP}/$$.${check}.cntl.xml
 
-	echo "  SET BDY(${sw}T)." >${tmpCntlHFS}
-	echo "  APPLY SELECT(" >>${tmpCntlHFS}
+	if [ "${smpfunc}" = "APPLY" ]; then
+		echo "  SET BDY(${sw}T)." >${tmpCntlHFS}
+	else
+		echo "  SET BDY(${sw}D)." >${tmpCntlHFS}
+	fi
+	echo "  ${smpfunc} SELECT(" >>${tmpCntlHFS}
 	for fmid in $fmids; do
 		echo "    ${fmid}" >>${tmpCntlHFS}
 	done
 	echo "  )" >>${tmpCntlHFS}
-	echo "  FORFMID(" >>${tmpCntlHFS}
-	for fmid in $fmids; do
-		echo "    ${fmid}" >>${tmpCntlHFS}
-	done
-	echo "  )" >>${tmpCntlHFS}
+	if [ "${ALLPTFS}" = '1' ]; then
+		echo "  FORFMID(" >>${tmpCntlHFS}
+		for fmid in $fmids; do
+			echo "    ${fmid}" >>${tmpCntlHFS}
+		done
+		echo "  )" >>${tmpCntlHFS}
+	fi
 	echo "  GROUPEXTEND(NOAPARS,NOUSERMODS)" >>${tmpCntlHFS}
 	if [ "${check}" = "CHECK" ]; then
 		echo "  CHECK" >>${tmpCntlHFS}
@@ -80,12 +88,12 @@ runapply() {
 } 
 
 apply() {
-	sw=$2
+	sw=$3
 	
 	if [ ${check} = "CHECK" ]; then
-		appmsg="APPLY(CHECK)"
+		appmsg="${smpfunc}(CHECK)"
 	else
-		appmsg="APPLY"
+		appmsg="${smpfunc}"
 	fi
 	if [ "${verbose}" -gt '0' ]; then
                 echo "Running SMPE ${appmsg} for ${sw}"
@@ -133,14 +141,16 @@ mydir=$(callerdir ${0})
 props="${mydir}/../properties/zbrewprops.json"
 zbrewpropse zbrew config "${props}"
 
-check=$(echo ${1} | tr '[:lower:]' '[:upper:]') 
-zosname=$(echo ${2} | tr '[:lower:]' '[:upper:]') 
-fmids="$3"
+smpfunc=$(echo ${1} | tr '[:lower:]' '[:upper:]')
+check=$(echo ${2} | tr '[:lower:]' '[:upper:]') 
+zosname=$(echo ${3} | tr '[:lower:]' '[:upper:]') 
+fmids="$4"
 
-out=`apply ${check} ${zosname} ${fmids}`; 
+out=`apply ${smpfunc} ${check} ${zosname} ${fmids}`; 
+
 rc=$? 
 if [ $rc -gt 0 ]; then
-	echo "SMP/E APPLY failed with return code $rc" >&2
+	echo "SMP/E ${smpfunc} failed with return code $rc" >&2
 	echo "${out}" >&2
 fi
 

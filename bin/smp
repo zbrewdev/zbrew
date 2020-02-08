@@ -135,7 +135,7 @@ if [ ${verbose} -gt 0 ]; then
 	start=`date +%H:%M:%S`
 	echo "${start} gimsmp started" >&2
 fi
-mvscmdauth ${opts} --pgm=gimsmp --smpcsi=${SMPCSI} --smpwkdir=${SMPWKDIR} --smplog=${SMPLOG} --smprpt=${SMPRPT} --smplist=${SMPLIST} --smpnts=${SMPNTS} --client=${SMPCLIENT} --server=${SMPSERVER} --sysprint=${SYSPRINT},mod --smpout=stdout --smpcntl=stdin
+mvscmdauth ${opts} --pgm=gimsmp --smpcsi=${SMPCSI} --smpwkdir=${SMPWKDIR} --smplog=${SMPLOG} --smprpt=${SMPRPT} --smplist=${SMPLIST} --smpnts=${SMPNTS} --client=${SMPCLIENT} --server=${SMPSERVER} --sysprint=${SYSPRINT} --smpout=stdout --smpcntl=stdin
 rc=$?
 if [ ${verbose} -gt 0 ]; then
 	end=`date +%H:%M:%S`

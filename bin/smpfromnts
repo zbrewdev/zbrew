@@ -50,11 +50,17 @@ receivefromnts() {
 		echo "Expected exactly one sub-directory in NTS file ${NTS}. ${words} were found" >&2
 		exit 16
 	fi
+	smphold=$NTS'/'$order'/SMPHOLD'
+	rcvcmd='RECEIVE SYSMODS'
+	if [ -d $smphold ]; then
+		rcvcmd='RECEIVE'
+	fi
+
 	tmpCntlHFS=${ZBREW_TMP}/$$.cntl.xml
 
 	cat >${tmpCntlHFS} <<zzz
   SET BDY(GLOBAL).
-  RECEIVE FROMNTS('${order}').
+  ${rcvcmd} FROMNTS('${order}').
 zzz
 
 	smpout=`smp -i ${ZBREW_HLQ}${sw}G.GLOBAL.CSI -w ${ZBREW_TMP} -n ${NTS} -r ${ZBREW_TMP}/rpt -p ${ZBREW_TMP}/sysprint <${tmpCntlHFS}`
