@@ -18,7 +18,7 @@ msg() {
 
 	case ${msgnum} in 
 		${InvalidOption}) msgtext="Invalid option specified: -";;
-		${TooFewParms}) msgtext="Too few parameters specified. Expected 2 but received: ";;
+		${TooFewParms}) msgtext="Too few parameters specified. Expected at least 2 but received: ";;
 		${UnknownAction}) msgtext="Unknown action specified: ";;
 		*) msgtext="Internal Error. Unknow msgnum: ${msgnum}";;
 	esac
@@ -115,6 +115,10 @@ chkptfs() {
 	if [ ${rc} -gt 4 ]; then
 		echo "Warning: Unable to determine PTF list for target zone ${tgtzone}." >&2
 		return ${rc}
+	fi
+
+	if [ "${ptfs}" = "" ]; then
+		return 0
 	fi
 
 	missingptfs=''
@@ -274,7 +278,7 @@ while getopts ":vdf" opt; do
   esac
 done
 shift $(expr $OPTIND - 1 )
-if [ $# -lt 3 ]; then
+if [ $# -lt 2 ]; then
 	msg zbrew ${TooFewParms} E "$#"
 	syntax
 	exit 16

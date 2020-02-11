@@ -53,6 +53,9 @@ chkreq() {
 	
 	csienv="\$${relid}_CSI"
 	csi=`eval echo ${csienv}`
+	if [ "${csi}" = 'NONE' ]; then
+		csi=''
+	fi
 	if [ "${csi}" = '' ]; then
 		if [ "${type}" = "COREQ" ]; then
 			echo "${prodid} PASS ${fmid} ${ptfs}"
