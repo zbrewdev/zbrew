@@ -80,6 +80,7 @@ search() {
 }
 
 #
+opts=$*
 # Temporary hack - replace with proper RESTful call to ShopZ to submit request
 # Response will be an ORDER number that, when complete, will have information needed  
 # for the RECEIVE
@@ -103,76 +104,24 @@ uninstall() {
 	return 4
 }
 
-receiveshopz() {
-	zbrewlog "smpfromshopz" $*
-	sw=$1
-	shift
-	opts=$*
-	NTS=`smpfromshopz ${sw}`
-	rc=$?
-	if [ $rc -gt 0 ]; then
-		return $rc
-	fi
-	zbrewlog "smpfromshopz RC: ${rc}"
-	return $?
-}
 
-receiveppa() {
-	zbrewlog "receiveppa" $*
-
-	rc=$?
-	zbrewlog "receiveppa RC: ${rc}"
-}
-
-receivelocal() {
-	zbrewlog "smpfromnts" $*
-	sw=$1
-	zosname=$(echo ${sw} | tr '[:lower:]' '[:upper:]');
-	ussname=$(echo ${sw} | tr '[:upper:]' '[:lower:]');
-	prefix=`echo "${zosname}" | awk '{ print substr($1, 0, 3) }'`
-	lprefix=`echo "${ussname}" | awk '{ print substr($1, 0, 3) }'`
-	NTS="${ZBREW_TMP}/smpnts.${zosname}"
-
-	if [ "$prefix" = "ZHW" ]; then	
-		order='order1'
-		mkdir -p "${NTS}/${order}"
-      		prodpkg="${mydir}/../../zbrew-${lprefix}/${ussname}/${ussname}crtpkg"
-		if [ -f "${prodpkg}" ]; then
-	        	${prodpkg} ${NTS}/${order}
-	        	rc=$?
-		else
-	        	echo "Unable to find product packaging program: ${prodpkg}. Installation failed."
-			return 16
-		fi
-	fi
-	if [ $rc -gt 0 ]; then
-		return $rc;
-	fi	
-	`smpfromnts ${sw} ${NTS} ${opts}`
-	rc=$?
-	zbrewlog "smpfromnts RC: ${rc}"
-	if [ $rc -gt 0 ]; then
-		return $rc;
-	fi
-	if [ "$prefix" = "ZHW" ]; then
-		rm -rf "${NTS}"
-	fi	
-	return
-}
 
 receive() {
 	if [ ${verbose} -gt 0 ]; then
-		echo "receive $*" >&2
+		echo "Performing SMP/E Receive $*" >&2
 	fi
 	case ${SMPE_DELIVERY} in
 		SHOPZ)
-			out=`receiveshopz $*`
+			zbrewlog "Receiving from ShopZ for: "${sw}
+			out=`smpfromshopz ${opts} ${sw}`
 			;;
 		PPA)
-			out=`receiveppa $*`
+			zbrewlog "Receiving from PPA for: "${sw}
+			out=`smpfromppa ${opts} ${sw}`
 			;;
 		LOCAL)
-			out=`receivelocal $*`
+			zbrewlog "Receiving from LOCAL NTS for: "${sw}
+			out=`smpfromnts ${opts} ${sw}`
 			;;
 		*)
 			echo "SMPE_DELIVERY must be one of SHOPZ, PPA, LOCAL and must be specified in your ORDER file" >&2
@@ -186,9 +135,6 @@ receive() {
 #
 prodprereq() {
 	zbrewlog "prodprereq" $*
-	sw=$1
-	shift 1
-	opts=$*
 	tmp_frspace=$(df -k ${ZBREW_TMP} | tail -1 | awk '{print $3}' | awk -F'/' '{print $1}')
 	if [ "${tmp_frspace}" -lt '307200' ]; then
 		echo "Warning, ${ZBREW_TMP} is low on free space, it is recommended to have at least 300 MB available"
@@ -212,140 +158,28 @@ prodprereq() {
 }
 
 
-fmids() {
-	zbrewlog "fmids" $*
-	sw=$1
-	smplist="${ZBREW_TMP}/smpfmid.$$.smplist"
-	smpout=`smp -i "${ZBREW_HLQ}${sw}G.GLOBAL.CSI" -l "${smplist}" <<zzz
-  SET BDY(GLOBAL).
-  LIST FUNCTIONS.
-zzz`
-	rc=$?
-	zbrewlog "fmids RC: ${rc}"
-	if [ $rc -eq 0 ]; then
-		fmids=`awk ' /= FUNCTION/ { print $1; }' ${smplist}`
-		uniq_fmids=`echo ${fmids} | tr ' ' '\n' | sort | uniq`
-		echo ${uniq_fmids}
-		
-	else
-	    	echo "smpfmid failed with rc:$rc" >&2
-		echo "${smpout}" >&2
-	fi
-	rm -f "${smplist}"
-	return $rc
-}
 
-fmidset() {
-	zbrewlog "fmidset" $*
-	sw=$1
-	shift
-	fmids=$*
-	fmidset="${sw}FS"
-
-	tmpCntlHFS="${ZBREW_TMP}/smpfmid.$$.smpcntl"
-	echo "  SET BDY(GLOBAL)." >>${tmpCntlHFS}
-	echo "  UCLIN." >>${tmpCntlHFS}
-	echo "  REP FMIDSET(${fmidset})" >>${tmpCntlHFS}
-	echo "  FMID(" >>${tmpCntlHFS}
-	for fmid in $fmids; do
-		echo "    ${fmid}" >>${tmpCntlHFS}
-	done
-	echo "  )." >>${tmpCntlHFS}
-	echo "  ENDUCL." >>${tmpCntlHFS}
-	smpout=`smp -i "${ZBREW_HLQ}${sw}G.GLOBAL.CSI" <${tmpCntlHFS}`
-	rc=$?
-	zbrewlog "fmidset RC: ${rc}"
-	rm ${tmpCntlHFS}
-	if [ $rc -gt 4 ] || [ $verbose -gt 0 ]; then
-		echo "fmidset ended with return code: $rc" >&2
-		echo "${smpout}" >&2
-	fi      
-	echo "${fmidset}"
-	return $rc
-}
-
-apply() {
-	
-	smpfunc=$(echo ${1} | tr '[:lower:]' '[:upper:]') 
-	zbrewlog "${smpfunc}" $*
-	check=$(echo ${2} | tr '[:lower:]' '[:upper:]') 
-	sw=$(echo ${3} | tr '[:lower:]' '[:upper:]')
-	shift 3
-	opts=$*
-	fmids=`fmids ${sw}`
-	if [ $? -gt 0 ]; then
-		return $?
-	fi
-	fmidset=`fmidset ${sw} ${fmids}`
-	if [ $? -gt 4 ]; then
-		return $?
-	fi
-
-        if [ ${verbose} -gt 0 ]; then
-                echo "Running ${smpfunc} ${check} ${sw} ${fmidset}" >&2
-        fi
-	smpappacc ${opts} ${smpfunc} ${check} ${sw} ${fmidset}
-	rc=$?
-	zbrewlog "${smpfunc} RC: ${rc}"
-	return $rc
-}
-
-
-prodalloc() {
-	zbrewlog "prodalloc" $*
-        sw=$1
-        shift 1
-        opts=$*
-        ussname=$(echo ${sw} | tr '[:upper:]' '[:lower:]')
-        prefix=`echo ${ussname} | awk '{print substr($0,0,3)}'`
-        if [ ${verbose} -gt 0 ]; then
-                echo "proddsalloc ${prefix} ${ussname}" >&2
-        fi
-        proddsalloc ${prefix} ${ussname} ${opts}
-        rc=$?
-	zbrewlog "prodalloc RC: ${rc}" 
-        return $rc
-}
-
-
-smpcrdddefs() {
-	zbrewlog "smpcrdddef" $*
-        sw=$1
-        shift 1
-        opts=$*
-	ussname=$(echo ${sw} | tr '[:upper:]' '[:lower:]')
-	prefix=`echo ${ussname} | awk '{print substr($0,0,3)}'`
-	if [ ${verbose} -gt 0 ]; then
-		echo "smpcrdddef ${prefix} ${ussname} ${opts}" >&2
-	fi
-	smpcrdddef ${prefix} ${ussname} ${opts}
-	rc=$?
-	zbrewlog "smpcrdddef RC: ${rc}"
-
-	return $rc
-}
 
 
 install() {
 	zbrewlog "install" $*
-	restart=$1
-	sw=$2
-	shift 2
-	opts=$*
-	
 	for zbrewfunc in ${install_verbs}; do
 		runfunc="${zbrewfunc}"
 		if [ "${runfunc}" = "smpapplycheck" ]; then
-			runfunc="apply apply CHECK"
+			opts="$opts -p"
+			runfunc="smpappacc"
 		fi
 		if [ "${runfunc}" = "smpapply" ]; then
-                        runfunc="apply apply NOCHECK"
+			opts="$opts -q"
+                        runfunc="smpappacc"
 		fi
                 if [ "${runfunc}" = "smpacceptcheck" ]; then
-                        runfunc="apply accept CHECK"
+			opts="$opts -r"
+                        runfunc="smpappacc"
                 fi
                 if [ "${runfunc}" = "smpaccept" ]; then
-                        runfunc="apply accept NOCHECK"
+			opts="$opts -s"
+                        runfunc="smpappacc"
                 fi
 
 		if [ "${restart}" != "NORESTART" ]; then
@@ -355,7 +189,7 @@ install() {
 				restart="NORESTART"
 			fi
 		fi
-		out=`${runfunc} ${sw} ${opts}`
+		out=`${runfunc} ${opts} ${sw}`
 		rc=$?
 		zbrewlog "${runfunc} RC: ${rc}"
 		if [ "$rc" -gt 0 ] || [ "$verbose" -gt 0 ]; then
@@ -393,11 +227,11 @@ configure() {
 	fi
 }
 
-install_verbs="prodprereq smpconfig receive smpcrdddefs prodalloc smpapplycheck smpapply smpacceptcheck smpaccept"
+install_verbs="prodprereq smpconfig receive smpcrdddef proddsalloc smpapplycheck smpapply smpacceptcheck smpaccept"
 debug=0
 verbose=0
 clean=0
-restart='NORESTART'
+restart="NORESTART"
 opts=""
 while getopts ":cvdr:" opt; do
   case ${opt} in
@@ -446,6 +280,7 @@ fi
 mydir=$(callerdir ${0})
 props="${mydir}/../properties/zbrewprops.json"
 zbrewpropse zbrew config "${props}"
+sw=$2
 ussname=$(echo ${2} | tr '[:upper:]' '[:lower:]');
 zosname=$(echo ${2} | tr '[:lower:]' '[:upper:]');
 
@@ -470,25 +305,24 @@ case ${verb} in
 		if [ ${verbose} -gt 0 ]; then
 			echo "Allocate SMP/E datasets for $2 " >&2
 		fi
-		smpconfig ${opts} ${zosname}
+		out=`smpconfig ${opts} ${sw}`
 		rc=$?
 		if [ $rc -gt 0 ]; then
 			echo "Unable to configure SMP/E datasets." >&2
+			echo "${out}" >&2
 			exit $rc
 		fi
 		;;
 	smpreceive )
-		NTS=`receive ${zosname}`; 
+		out=`receive ${opts} ${sw}`; 
 		rc=$? 
 		if [ $rc -gt 0 ]; then
+			echo "${out}"
 			exit $rc
-		fi
-		if [ ${clean} -gt 0 ]; then
-			rm -rf ${NTS}
 		fi
 		;;
 	prodprereq )
-		out=`prodprereq $2 ${opts}`
+		out=`prodprereq ${opts} ${sw}`
 		rc=$?
 		if [ $verbose -gt 0 ]; then
 			echo ${out}
@@ -498,16 +332,16 @@ case ${verb} in
 			exit $rc
 		fi
 		;;
-	smpcrdddefs )
-		out=`smpcrdddefs $2 ${opts}`
+	smpcrdddef )
+		out=`smpcrdddef ${opts} ${sw}`
 		rc=$?
 		if [ $rc -gt 0 ]; then
                         echo "${out}"
                         exit $rc
                 fi
                 ;;
-	prodalloc )
-		out=`prodalloc $2 ${opts}`
+	proddsalloc )
+		out=`proddsalloc ${opts} ${sw}`
 		rc=$?
 		if [ $rc -gt 0 ]; then
 			echo "${out}"
@@ -515,7 +349,8 @@ case ${verb} in
 		fi
 		;;
 	smpapplycheck )
-		out=`apply apply CHECK $2 ${opts}`
+		opts="${opts} -p"
+		out=`smpappacc ${opts} ${sw}`
 		rc=$?
 		if [ $rc -gt 0 ] || [ $verbose -gt 0 ]; then
                         echo "${out}"
@@ -523,7 +358,8 @@ case ${verb} in
                 fi
                 ;;
 	smpapply )
-		out=`apply apply NOCHECK $2 ${opts}`;
+		opts="${opts} -q"
+		out=`smpappacc ${opts} ${sw}`
 		rc=$? 
 		if [ $rc -gt 0 ] || [ $verbose -gt 0 ]; then
 			echo "${out}" 
@@ -531,7 +367,8 @@ case ${verb} in
 		fi
 		;;
         smpacceptcheck )
-                out=`apply accept CHECK $2 ${opts}`
+		opts="${opts} -r"
+                out=`smpappacc ${opts} ${sw}`
                 rc=$?
                 if [ $rc -gt 0 ] || [ $verbose -gt 0 ]; then
                         echo "${out}"
@@ -539,7 +376,8 @@ case ${verb} in
                 fi
                 ;;
         smpaccept )
-                out=`apply accept NOCHECK $2 ${opts}`;
+		opts="${opts} -s"
+                out=`smpappacc ${opts} ${sw}`;
                 rc=$?
                 if [ $rc -gt 0 ] || [ $verbose -gt 0 ]; then
                         echo "${out}"
@@ -547,8 +385,8 @@ case ${verb} in
                 fi
                 ;;
 	
-	install ) 
-		out=`install ${restart} $2 ${opts}`
+	install )
+		out=`install ${opts} ${sw}`
 		rc=$? 
 		if [ $rc -gt 0 ] || [ $verbose -gt 0 ]; then
 			echo "${out}" 

@@ -1,5 +1,5 @@
 #!/bin/sh
-
+#set -x
 . zbrewfuncs
 InvalidOption=1
 TooFewParms=2
@@ -39,12 +39,77 @@ Examples:
 	exit 16
 }
 
+
+fmids() {
+        zbrewlog "fmids" $*
+        sw=$1
+        smplist="${ZBREW_TMP}/smpfmid.$$.smplist"
+        smpout=`smp -i "${ZBREW_HLQ}${sw}G.GLOBAL.CSI" -l "${smplist}" <<zzz
+  SET BDY(GLOBAL).
+  LIST FUNCTIONS.
+zzz`
+        rc=$?
+        zbrewlog "fmids RC: ${rc}"
+        if [ $rc -eq 0 ]; then
+                fmids=`awk ' /= FUNCTION/ { print $1; }' ${smplist}`
+                uniq_fmids=`echo ${fmids} | tr ' ' '\n' | sort | uniq`
+                echo ${uniq_fmids}
+
+        else
+                echo "smpfmid failed with rc:$rc" >&2
+                echo "${smpout}" >&2
+        fi
+        rm -f "${smplist}"
+        return $rc
+}
+
+fmidset() {
+        zbrewlog "fmidset" $*
+        sw=$1
+        shift
+        fmids=$*
+        fmidset="${sw}FS"
+
+        tmpCntlHFS="${ZBREW_TMP}/smpfmid.$$.smpcntl"
+        echo "  SET BDY(GLOBAL)." >>${tmpCntlHFS}
+        echo "  UCLIN." >>${tmpCntlHFS}
+        echo "  REP FMIDSET(${fmidset})" >>${tmpCntlHFS}
+        echo "  FMID(" >>${tmpCntlHFS}
+        for fmid in $fmids; do
+                echo "    ${fmid}" >>${tmpCntlHFS}
+        done
+        echo "  )." >>${tmpCntlHFS}
+        echo "  ENDUCL." >>${tmpCntlHFS}
+        smpout=`smp -i "${ZBREW_HLQ}${sw}G.GLOBAL.CSI" <${tmpCntlHFS}`
+        rc=$?
+        zbrewlog "fmidset RC: ${rc}"
+        rm ${tmpCntlHFS}
+        if [ $rc -gt 4 ] || [ $verbose -gt 0 ]; then
+                echo "fmidset ended with return code: $rc" >&2
+                echo "${smpout}" >&2
+        fi
+        echo "${fmidset}"
+        return $rc
+}
+
+
+
 runapply() {
+	sw="$1"
+
+        fmids=`fmids ${sw}`
+        if [ $? -gt 0 ]; then
+                return $?
+        fi
+
+        fmidset=`fmidset ${sw} ${fmids}`
+        if [ $? -gt 4 ]; then
+                return $?
+        fi
+        if [ ${verbose} -gt 0 ]; then
+                echo "Running ${smpfunc} ${check} ${sw} ${fmidset}" >&2
+        fi
 	
-	smpfunc="$1"
-	check="$2"
-	sw="$3"
-	fmids="$4"
 	tmpCntlHFS=${ZBREW_TMP}/$$.${check}.cntl.xml
 
 	if [ "${smpfunc}" = "APPLY" ]; then
@@ -76,9 +141,10 @@ runapply() {
 	
 	smpout=`smp -w ${ZBREW_TMP} -r "${smprpt}" -p "${smpsysprint}" -i ${ZBREW_HLQ}${sw}G.GLOBAL.CSI <${tmpCntlHFS}`
 	rc=$?
+	zbrewlog "${smpfunc} ${check} ${sw} Return Code: ${rc}"
 	rm "${tmpCntlHFS}"
 	if [ $rc -gt 0 ] || [ $verbose -gt 0 ]; then
-		echo "${smpout}"
+		echo "${smpout}" >&2 
 	else
 		rm "${smprpt}"
 		rm "${smpsysprint}"
@@ -87,32 +153,28 @@ runapply() {
         return ${rc}
 } 
 
-apply() {
-	sw=$3
-	
-	if [ ${check} = "CHECK" ]; then
-		appmsg="${smpfunc}(CHECK)"
-	else
-		appmsg="${smpfunc}"
-	fi
-	if [ "${verbose}" -gt '0' ]; then
-                echo "Running SMPE ${appmsg} for ${sw}"
-        fi
-	out=`runapply $*`
-	rc=$?
-	if [ ${rc} -gt 0 ] || [ ${verbose} -gt 0 ]; then
- 		echo "SMP/E ${appmsg} of ${sw} returned code ${rc}. ${out}" >&2
-		return ${rc}
-	fi
-
-        return ${rc}
-}
 
 debug=0
 verbose=0
 opts=""
-while getopts ":vd" opt; do
+while getopts ":vdcpqrs" opt; do
   case ${opt} in
+    p )
+      smpfunc="APPLY"
+      check="CHECK"
+      ;;
+    q ) 
+      smpfunc="APPLY"
+      check="NOCHECK"
+      ;;
+    r )
+      smpfunc="ACCEPT"
+      check="CHECK"
+      ;;
+    s )
+      smpfunc="ACCEPT"
+      check="NOCHECK"
+      ;;
     d )
       debug=1
       opts="${opts} -d"
@@ -131,7 +193,7 @@ while getopts ":vd" opt; do
   esac
 done
 shift $(expr $OPTIND - 1 )
-if [ $# -lt 2 ]; then
+if [ $# -lt 1 ]; then
 	msg zbrew ${TooFewParms} E "$#"
 	syntax
 	exit 16
@@ -141,12 +203,10 @@ mydir=$(callerdir ${0})
 props="${mydir}/../properties/zbrewprops.json"
 zbrewpropse zbrew config "${props}"
 
-smpfunc=$(echo ${1} | tr '[:lower:]' '[:upper:]')
-check=$(echo ${2} | tr '[:lower:]' '[:upper:]') 
-zosname=$(echo ${3} | tr '[:lower:]' '[:upper:]') 
-fmids="$4"
+zosname=$(echo ${1} | tr '[:lower:]' '[:upper:]') 
+fmids="$2"
 
-out=`apply ${smpfunc} ${check} ${zosname} ${fmids}`; 
+out=`runapply ${zosname}`; 
 
 rc=$? 
 if [ $rc -gt 0 ]; then
