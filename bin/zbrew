@@ -133,8 +133,10 @@ receive() {
 #
 # Temporary hack - need a better way to locate where pre-req script is
 #
-prodprereq() {
-	zbrewlog "prodprereq" $*
+
+prodreq() {
+	zbrewlog "prodreq" $*
+	
 	tmp_frspace=$(df -k ${ZBREW_TMP} | tail -1 | awk '{print $3}' | awk -F'/' '{print $1}')
 	if [ "${tmp_frspace}" -lt '307200' ]; then
 		echo "Warning, ${ZBREW_TMP} is low on free space, it is recommended to have at least 300 MB available"
@@ -145,14 +147,15 @@ prodprereq() {
 	ussname=$(echo ${sw} | tr '[:upper:]' '[:lower:]');
 	prefix=`echo ${ussname} | awk '{print substr($0,0,3)}'`
 	if [ ${verbose} -gt 0 ]; then
-		echo "Checking prerequisites ${opts} ${sw}" >&2
+		echo "Checking requisites ${opts} ${sw}" >&2
 	fi
-	prereq="${mydir}/../../zbrew-${prefix}/${ussname}/${ussname}prereq"
-	if [ -f "${prereq}" ]; then
-		${prereq} ${opts}
+	SWDIR="${mydir}/../../zbrew-${prefix}/${ussname}/"
+	json="${SWDIR}${ussname}req.json"
+	if [ -f "${json}" ]; then
+		smpchkreq ${opts} ${ussname} ${json}
 		return $?
 	else
-		echo "Unable to find product pre-requisite check program: ${prereq}. Installation failed."
+		echo "Unable to find product requisite JSON file: ${json}. Installation failed."
 		return 16
 	fi
 }
@@ -227,7 +230,8 @@ configure() {
 	fi
 }
 
-install_verbs="prodprereq smpconfig receive smpcrdddef proddsalloc smpapplycheck smpapply smpacceptcheck smpaccept"
+install_verbs="prodreq smpconfig receive smpcrdddef proddsalloc smpapplycheck smpapply smpacceptcheck smpaccept"
+
 debug=0
 verbose=0
 clean=0
@@ -321,8 +325,10 @@ case ${verb} in
 			exit $rc
 		fi
 		;;
-	prodprereq )
-		out=`prodprereq ${opts} ${sw}`
+
+	prodreq )
+		out=`prodreq ${opts} ${sw}`
+
 		rc=$?
 		if [ $verbose -gt 0 ]; then
 			echo ${out}
