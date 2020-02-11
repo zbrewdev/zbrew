@@ -95,15 +95,6 @@ order() {
 	return 0
 }
 
-uninstall() {
-	zbrewlog "uninstall" $*
-	if [ ${verbose} -gt 0 ]; then
-		echo "uninstall $*" >&2
-	fi
-	zbrewlog "uninstall RC: ${rc}"
-	return 4
-}
-
 
 
 receive() {
@@ -401,7 +392,7 @@ case ${verb} in
 		fi
 		;;	
 	uninstall ) 
-		out=`uninstall $2 ${opts}`
+		out=`prodclean ${opts} ${sw}`
 		rc=$?
 		;;	
 	* ) msg zbrew ${UnknownAction} E ${verb}; exit 16;;
