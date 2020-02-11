@@ -107,8 +107,8 @@ dsnl=`echo "${libs}" | awk -v pfx="${ZBREW_HLQ}${ussname}." '($2 == "ZFS") {prin
 
 out=`/usr/sbin/unmount -R ${ZFSROOT}${ZFSDIR} 2>/dev/null`
 rc=$?
-if [ $rc -gt 0 ]; then
-        echo "ZFS unmount. UnInstall aborted"
+if [ $rc -gt 2 ]; then
+        echo "ZFS unmount failed. UnInstall aborted: ${rc}"
         exit $rc
 fi
 

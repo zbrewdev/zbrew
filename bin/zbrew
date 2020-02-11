@@ -394,6 +394,14 @@ case ${verb} in
 	uninstall ) 
 		out=`prodclean ${opts} ${sw}`
 		rc=$?
+		zbrewlog "Uninstall ${sw} Return Code: ${rc}"
+		if [ "${verbose}" = "1" ]; then
+			echo "Uninstall completed: ${rc}"
+		fi
+                if [ $rc -gt 0 ]; then
+                        echo "${out}"
+                fi
+		
 		;;	
 	* ) msg zbrew ${UnknownAction} E ${verb}; exit 16;;
 esac
