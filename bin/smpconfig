@@ -310,8 +310,12 @@ fi
 mydir=$(callerdir ${0})
 props="${mydir}/../properties/zbrewprops.json"
 zbrewpropse zbrew config "${props}"
+sw=$1
+ussname=$(echo ${sw} | tr '[:upper:]' '[:lower:]');
+zosname=$(echo ${sw} | tr '[:lower:]' '[:upper:]');
+prefix=`echo "${ussname}" | awk '{ print substr($1, 0, 3) }'`
 
-PFX=$(echo ${1} | tr '[:lower:]' '[:upper:]');
+PFX=$(echo ${sw} | tr '[:lower:]' '[:upper:]');
 HLQ="${ZBREW_HLQ}"
 
 if [ ${#PFX} -gt 6 ]; then

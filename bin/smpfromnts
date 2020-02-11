@@ -40,7 +40,6 @@ receivefromnts() {
 	sw="$1"
 	NTS="$2"
 	order=`ls $NTS`
-	echo ${order}
 	if [ $? -gt 0 ]; then
 		echo "Unable to list contents of NTS file ${NTS}" >&2
 		exit 16
@@ -83,8 +82,12 @@ zbrewpropse zbrew config "${props}"
 debug=0
 verbose=0
 opts=""
-while getopts ":vd" opt; do
+while getopts ":vdc" opt; do
   case ${opt} in
+    c )
+      clean=1
+      opts="${opts} -c"
+      ;;
     d )
       debug=1
       opts="${opts} -d"
@@ -103,19 +106,40 @@ while getopts ":vd" opt; do
   esac
 done
 shift $(expr $OPTIND - 1 )
-if [ $# -lt 2 ]; then
+if [ $# -lt 1 ]; then
 	msg smpfromnts ${TooFewParms} E "$#"
 	syntax
 	exit 16
 fi
+sw=$1
+zosname=$(echo ${sw} | tr '[:lower:]' '[:upper:]');
+ussname=$(echo ${sw} | tr '[:upper:]' '[:lower:]');
+prefix=`echo "${zosname}" | awk '{ print substr($1, 0, 3) }'`
+lprefix=`echo "${ussname}" | awk '{ print substr($1, 0, 3) }'`
+NTS="${ZBREW_TMP}/smpnts.${zosname}"
 
-zosname=$(echo ${1} | tr '[:lower:]' '[:upper:]'); 
-ntsdir=$2
+if [ "$prefix" = "ZHW" ]; then
+	order='order1'
+        mkdir -p "${NTS}/${order}"
+        prodpkg="${mydir}/../../zbrew-${lprefix}/${ussname}/${ussname}crtpkg"
+        if [ -f "${prodpkg}" ]; then
+                ${prodpkg} ${NTS}/${order}
+                rc=$?
+        else
+                echo "Unable to find product packaging program: ${prodpkg}. Installation failed."
+                return 16
+        fi
+fi
 
-out=`receivefromnts ${zosname} ${ntsdir}`; 
+
+out=`receivefromnts ${zosname} ${NTS}`; 
 rc=$? 
 if [ $rc -gt 0 ]; then
 	echo "SMP/E RECEIVE FROMNTS failed with return code $rc" >&2
+else
+	if [ "$prefix" = "ZHW" ]; then
+		rm -rf /$ZBREW_TMP/smpnts.ZHW110 2>/dev/null
+	fi
 fi
 
 exit $rc
