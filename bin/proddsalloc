@@ -165,7 +165,7 @@ ds=`echo "${libs}" | awk -v pfx="${ZBREW_HLQ}${ussname}." '($2 == "ZFS") {print 
 zfscnt=`echo "${ds}" | awk -F, '{}END {print NF}'`
 
 if [ "${clean}" = "1" ]; then
-	/usr/sbin/unmount -R ${ZFSROOT}${ZFSDIR}
+	/usr/sbin/unmount -R ${ZFSROOT}${ZFSDIR} 2>/dev/null
 	out=`delds "${dsnl}"`
         rc=$?
         if [ $rc -gt 0 ]; then

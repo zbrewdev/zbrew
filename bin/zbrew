@@ -198,9 +198,6 @@ install() {
 #
 configure() {
 	zbrewlog "smpconfig" $*
-	sw=$1
- 	shift 1
-        opts=$*
 
         ussname=$(echo ${sw} | tr '[:upper:]' '[:lower:]');
 	prefix=`echo ${ussname} | awk '{print substr($0,0,3)}'`
@@ -385,7 +382,7 @@ case ${verb} in
 		fi
 		;;
 	configure ) 
-		out=`configure $2 ${opts}`
+		out=`configure ${opts} ${sw}`
 		rc=$?
 		if [ $rc -gt 0 ]; then
 			echo "${out}" 
