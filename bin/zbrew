@@ -184,8 +184,8 @@ receive() {
 #
 # Temporary hack - need a better way to locate where pre-req script is
 #
-prodprereq() {
-	zbrewlog "prodprereq" $*
+prodreq() {
+	zbrewlog "prodreq" $*
 	sw=$1
 	shift 1
 	opts=$*
@@ -199,14 +199,15 @@ prodprereq() {
 	ussname=$(echo ${sw} | tr '[:upper:]' '[:lower:]');
 	prefix=`echo ${ussname} | awk '{print substr($0,0,3)}'`
 	if [ ${verbose} -gt 0 ]; then
-		echo "Checking prerequisites ${opts} ${sw}" >&2
+		echo "Checking requisites ${opts} ${sw}" >&2
 	fi
-	prereq="${mydir}/../../zbrew-${prefix}/${ussname}/${ussname}prereq"
-	if [ -f "${prereq}" ]; then
-		${prereq} ${opts}
+	SWDIR="${mydir}/../../zbrew-${prefix}/${ussname}/"
+	json="${SWDIR}${ussname}req.json"
+	if [ -f "${json}" ]; then
+		smpchkreq ${opts} ${ussname} ${json}
 		return $?
 	else
-		echo "Unable to find product pre-requisite check program: ${prereq}. Installation failed."
+		echo "Unable to find product requisite JSON file: ${json}. Installation failed."
 		return 16
 	fi
 }
@@ -393,7 +394,7 @@ configure() {
 	fi
 }
 
-install_verbs="prodprereq smpconfig receive smpcrdddefs prodalloc smpapplycheck smpapply smpacceptcheck smpaccept"
+install_verbs="prodreq smpconfig receive smpcrdddefs prodalloc smpapplycheck smpapply smpacceptcheck smpaccept"
 debug=0
 verbose=0
 clean=0
@@ -487,8 +488,8 @@ case ${verb} in
 			rm -rf ${NTS}
 		fi
 		;;
-	prodprereq )
-		out=`prodprereq $2 ${opts}`
+	prodreq )
+		out=`prodreq $2 ${opts}`
 		rc=$?
 		if [ $verbose -gt 0 ]; then
 			echo ${out}

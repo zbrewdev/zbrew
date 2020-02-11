@@ -84,7 +84,7 @@ fi
 rm ${errout} 
 
 # Too few parms
-result=`smpchksw ${CSI} ${FMID}`  2>${errout}
+result=`smpchksw ${CSI}`  2>${errout}
 rc=$?
 if [ $rc -eq 0 ]; then
         echo "smpchksw should have failed with too few parms" >&2
