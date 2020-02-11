@@ -1,0 +1,133 @@
+#!/bin/sh
+#set -x
+
+out=$(whence zbrewfuncs >/dev/null)
+if [ $? -eq 0 ]; then
+	. zbrewfuncs
+else
+	echo "zbrew tools need to be in your PATH"
+	exit 4
+fi
+
+InvalidOption=1
+TooFewParms=2
+UnknownAction=3
+PrefixTooLong=4
+
+#
+# Temporary hack - replace with a proper message file
+#
+msg() {
+        pgm=$1
+        msgnum=$2
+        msgtype=$3
+
+        shift 3
+        args=$*
+
+        case ${msgnum} in
+                ${InvalidOption}) msgtext="Invalid option specified: -";;
+                ${TooFewParms}) msgtext="Too few Parameters specified. Expected 2 but received: ";;
+                ${UnknownAction}) msgtext="Unknown action specified: ";;
+                ${PrefixTooLong}) msgtext="Prefix must be 6 characters or less. Received: ";;
+                *) msgtext="Internal Error. Unknow msgnum: ${msgnum}";;
+        esac
+        echo "ZCL000"${msgnum}${msgtype} "${msgtext}${args}" >&2
+}
+
+delds() {
+        echo "$1" | awk '{ ds=$1; $1=""; if ($ds != "") { rc=system("drm -f " ds); if (rc > 0) { exit(rc); } } }'
+        exit $?
+}
+
+
+while getopts ":vdc" opt; do
+  case ${opt} in
+    c )
+      clean=1
+      ;;
+    d )
+      debug=1
+      ;;
+    v )
+      verbose=1
+      opts="-v"
+      ;;
+    \?)
+      if [ ${OPTARG} != "?" ]; then
+        msg smpconfig ${InvalidOption} E "${OPTARG}"
+      fi
+      syntax
+      exit 4
+      ;;
+  esac
+done
+shift $(expr $OPTIND - 1 )
+if [ $# -lt 1 ]; then
+        msg smpconfig ${TooFewParms} E "$#"
+        syntax
+        exit 16
+fi
+
+mydir=$(callerdir ${0})
+
+sw=$1
+ussname=$(echo ${sw} | tr '[:upper:]' '[:lower:]');
+zosname=$(echo ${sw} | tr '[:lower:]' '[:upper:]');
+prefix=`echo "${ussname}" | awk '{ print substr($1, 0, 3) }'`
+
+props="${mydir}/../../zbrew/properties/zbrewprops.json"
+zbrewpropse zbrew config "${props}"
+
+props="${mydir}/../../zbrew-${prefix}/${ussname}/${ussname}install.json"
+zbrewpropse "${ussname}" install "${props}"
+
+smpelibs="${mydir}/../../zbrew-${prefix}/${ussname}/${ussname}bom.json"
+ussname=$(echo ${ussname} | tr '[:lower:]' '[:upper:]')
+
+libs=`readbom ${ussname} <${smpelibs}`
+rc=$?     
+if [ $rc -gt 0 ]; then
+	echo "${libs}"
+	exit $rc
+fi
+# Obtain list of all Target and Distribution Datasets to allocate, exclude ZFS
+ds=`echo "${libs}" | awk -v pfx="${ZBREW_HLQ}${ussname}." '($2 != "ZFS") {print pfx$1" -t"$2" -r"$3" -l"$4" -s"$5*56"K"}'`
+
+out=`delds "${ds}"`
+rc=$?
+if [ $rc -gt 0 ]; then
+       	echo "Dataset cleanup failed. Installation aborted"
+       	exit $rc
+fi
+
+
+# Obtain list of ZFS and allocate/mount
+dsnl=`echo "${libs}" | awk -v pfx="${ZBREW_HLQ}${ussname}." '($2 == "ZFS") {print pfx""$1" "$3" "$4" "$7","}'`
+
+out=`/usr/sbin/unmount -R ${ZFSROOT}${ZFSDIR} 2>/dev/null`
+rc=$?
+if [ $rc -gt 0 ]; then
+        echo "ZFS unmount. UnInstall aborted"
+        exit $rc
+fi
+
+out=`delds "${dsnl}"`
+rc=$?
+if [ $rc -gt 0 ]; then
+	echo "ZFS cleanup failed. UnInstall aborted"
+	exit $rc
+fi
+
+PFX=$(echo ${sw} | tr '[:lower:]' '[:upper:]');
+HLQ="${ZBREW_HLQ}"
+
+out=`drm -f "${HLQ}${PFX}*.**"`
+rc=$?
+if [ $rc -gt 0 ]; then
+        echo "Dataset cleanup failed. UnInstall aborted"
+        exit $rc
+fi
+
+
+exit 0
