@@ -1,6 +1,8 @@
 #!/bin/sh
 #set -x
 
+
+
 out=$(whence zbrewfuncs >/dev/null)
 if [ $? -eq 0 ]; then
 	. zbrewfuncs
@@ -9,8 +11,38 @@ else
 	exit 4
 fi
 
+InvalidOption=1
+TooFewParms=2
+UnknownAction=3
+PrefixTooLong=4
+
+#
+# Temporary hack - replace with a proper message file
+#
+msg() {
+        pgm=$1
+        msgnum=$2
+        msgtype=$3
+
+        shift 3
+        args=$*
+
+        case ${msgnum} in
+                ${InvalidOption}) msgtext="Invalid option specified: -";;
+                ${TooFewParms}) msgtext="Too few Parameters specified. Expected 2 but received: ";;
+                ${UnknownAction}) msgtext="Unknown action specified: ";;
+                ${PrefixTooLong}) msgtext="Prefix must be 6 characters or less. Received: ";;
+                *) msgtext="Internal Error. Unknow msgnum: ${msgnum}";;
+        esac
+        echo "ZCL000"${msgnum}${msgtype} "${msgtext}${args}" >&2
+}
+
+delds() {
+        echo "$1" | awk '{ ds=$1; $1=""; if ($ds != "") { rc=system("drm -f " ds); if (rc > 0) { exit(rc); } } }'
+        exit $?
+}
+
 crtds() {
-	echo $1
 	echo "$1" | awk '{ ds=$1; $1=""; attrs=$0; if ($ds != "") { rc=system("dtouch " attrs " " ds); if (rc > 0) { exit(rc); } } }'
 	exit $?
 }
@@ -58,11 +90,40 @@ zzz
 	exit 0
 }
 
+while getopts ":vdc" opt; do
+  case ${opt} in
+    c )
+      clean=1
+      ;;
+    d )
+      debug=1
+      ;;
+    v )
+      verbose=1
+      opts="-v"
+      ;;
+    \?)
+      if [ ${OPTARG} != "?" ]; then
+        msg smpconfig ${InvalidOption} E "${OPTARG}"
+      fi
+      syntax
+      exit 4
+      ;;
+  esac
+done
+shift $(expr $OPTIND - 1 )
+if [ $# -lt 1 ]; then
+        msg smpconfig ${TooFewParms} E "$#"
+        syntax
+        exit 16
+fi
+
 mydir=$(callerdir ${0})
-prefix=$1
-ussname=$2
-shift 2
-opts=$*
+
+sw=$1
+ussname=$(echo ${sw} | tr '[:upper:]' '[:lower:]');
+zosname=$(echo ${sw} | tr '[:lower:]' '[:upper:]');
+prefix=`echo "${ussname}" | awk '{ print substr($1, 0, 3) }'`
 
 props="${mydir}/../../zbrew/properties/zbrewprops.json"
 zbrewpropse zbrew config "${props}"
@@ -82,6 +143,15 @@ fi
 # Obtain list of all Target and Distribution Datasets to allocate, exclude ZFS
 ds=`echo "${libs}" | awk -v pfx="${ZBREW_HLQ}${ussname}." '($2 != "ZFS") {print pfx$1" -t"$2" -r"$3" -l"$4" -s"$5*56"K"}'`
 
+if [ "${clean}" = "1" ]; then
+	out=`delds "${ds}"`
+	rc=$?
+	if [ $rc -gt 0 ]; then
+        	echo "Dataset cleanup failed. Installation aborted"
+        	exit $rc
+	fi
+fi
+
 out=`crtds "${ds}"`
 rc=$?
 if [ $rc -gt 0 ]; then
@@ -90,8 +160,21 @@ if [ $rc -gt 0 ]; then
 fi
 
 # Obtain list of ZFS and allocate/mount
+dsnl=`echo "${libs}" | awk -v pfx="${ZBREW_HLQ}${ussname}." '($2 == "ZFS") {print pfx""$1" "$3" "$4" "$7","}'`
 ds=`echo "${libs}" | awk -v pfx="${ZBREW_HLQ}${ussname}." '($2 == "ZFS") {print pfx""$1" "$3" "$4" "$7","}' | tr -d "\n"`
 zfscnt=`echo "${ds}" | awk -F, '{}END {print NF}'`
+
+if [ "${clean}" = "1" ]; then
+	/usr/sbin/unmount -R ${ZFSROOT}${ZFSDIR}
+	out=`delds "${dsnl}"`
+        rc=$?
+        if [ $rc -gt 0 ]; then
+                echo "ZFS cleanup failed. Installation aborted"
+                exit $rc
+        fi
+
+fi
+
 cntr=1
 while [ $cntr -le $zfscnt ];  
 do
