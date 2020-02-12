@@ -119,6 +119,9 @@ updtprereq() {
 	
 readreqvar() {
 	reqs="$1"
+	if [ "${reqs}" = '' ]; then
+		return 0
+	fi
 	maxrc=0
 	echo "${reqs}" | while read req; do
 		result=`chkreq ${req}`
