@@ -177,11 +177,6 @@ while getopts ":vdcpqrstu" opt; do
     t )
       subfunc="UPDATE"
       ;;
-    u )
-      smpfunc="APPLY"
-      subfunc="UPDATE"
-      check="NOCHECK"
-      ;;
     q ) 
       smpfunc="APPLY"
       check="NOCHECK"
