@@ -31,7 +31,7 @@ msg() {
 #
 syntax() {
 	echo "\
-zbrew [-cvdr] search|order|receive|install|configure|uninstall <software>
+zbrew [-cvdr] search|order|smpreceiveptf|install|update|receivezos|configure|uninstall <software>
 	and <software> is the software to search for
 	(Note that install invokes several functions which are: ${install_verbs})
 	-c: clean files before processing (e.g. delete SMP/E CSI datasets) and clean temporary files after processing (e.g. SMPNTS directory)
@@ -60,9 +60,12 @@ zbrew Examples:
 	zbrew search cobol     <-- search for products with COBOL in their description
 	zbrew order igy630     <-- submit an order for IGY630J software (receive can not be performed until complete)
 	zbrew install igy630   <-- check that all pre-reqs required for COBOL are satisfied, then SMP/E RECEIVE the product, then run IGY630-specific install steps, then SMP/E APPLY the product
+	zbrew -c -v install igy630   <-- do uninstall and verbose install
 	zbrew -r smpconfig install igy630   <-- restart install at the smpconfig step
-	zbrew uninstall igy630 <-- check that uninstallation will not break other products, then remove SMP/E datasets and product-specific datasets
+	zbrew update igy630 <-- apply all PTFs currently in receive status 
+	zbrew uninstall igy630 <-- remove all SMP/E datasets and product-specific datasets
 	zbrew configure igy630 <-- run product-specific configuration after SMP/E APPLY step
+	zbrew smpreceiveptf igy630 zos.file.name <-- receive a PTF from a z/OS sequential or PDS file
 " >&2 
 	exit 16
 }
@@ -187,6 +190,7 @@ update() {
 
 
 install() {
+	export ALLPTFS=0
 	zbrewlog "install" $*
 	for zbrewfunc in ${install_verbs}; do
 		runfunc="${zbrewfunc}"
@@ -241,7 +245,7 @@ configure() {
 	prodconfig="${mydir}/../../zbrew-${prefix}/${ussname}/${ussname}config"
         if [ -f "${prodconfig}" ]; then
      	        ${prodconfig} ${opts}
-		zbrewlog "smpconfigure RC: ${rc}"
+		zbrewlog "smpconfigure RC: $?"
 		return $?
         else                            
 		echo "Unable to find product configuration program: ${prodconfig}. Installation failed."
@@ -305,8 +309,9 @@ mydir=$(callerdir ${0})
 props="${mydir}/../properties/zbrewprops.json"
 zbrewpropse zbrew config "${props}"
 sw=$2
-ussname=$(echo ${2} | tr '[:upper:]' '[:lower:]');
-zosname=$(echo ${2} | tr '[:lower:]' '[:upper:]');
+ussname=$(echo ${sw} | tr '[:upper:]' '[:lower:]');
+zosname=$(echo ${sw} | tr '[:lower:]' '[:upper:]');
+zosfile=$(echo ${3} | tr '[:lower:]' '[:upper:]');
 
 verb=$1
 
@@ -341,7 +346,14 @@ case ${verb} in
 			exit $rc
 		fi
 		;;
-
+        smpreceiveptf )
+                out=`smpfromfile ${opts} ${sw} ${zosfile}`;
+                rc=$?
+                if [ $rc -gt 0 ]; then
+                        echo "${out}"
+                        exit $rc
+                fi
+                ;;
 	prodreq )
 		out=`prodreq ${opts} ${sw}`
 
