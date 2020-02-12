@@ -10,6 +10,7 @@ syntax() {
 	echo "  -d: debug output" >&2
 	echo "  -i <csi file>: location of SMPCSI dataset" >&2
 	echo "  -r <report file>: write SMPRPT output to <report file>" >&2
+	echo "  -f <smpptfin>: receive ptf from sequential or pds file" >&2
 	echo "  -l <list file>: write SMPLIST output to <list file>" >&2
 	echo "  -p <sysprint file>: write SYSPRINT output to <sysprint file>" >&2
 	echo "  -w <working directory>: set SMPWKDIR to <working directory>" >&2
@@ -74,12 +75,15 @@ fi
 if [ "${SMPSERVER}" = "" ]; then
 	SMPSERVER=DUMMY
 fi
+if [ "${SMPPTFIN}" = "" ]; then
+        SMPPTFIN=DUMMY
+fi
 
 debug=0
 verbose=0
 opts=""
 
-while getopts ":r:l:p:i:w:n:c:s:vd" opt; do
+while getopts ":r:f:l:p:i:w:n:c:s:vd" opt; do
   case ${opt} in
     d )
       debug=1
@@ -87,6 +91,9 @@ while getopts ":r:l:p:i:w:n:c:s:vd" opt; do
       ;;
     v )
       verbose=1
+      ;;
+    f )
+      SMPPTFIN=${OPTARG}
       ;;
     i ) 
       SMPCSI=${OPTARG}
@@ -135,7 +142,7 @@ if [ ${verbose} -gt 0 ]; then
 	start=`date +%H:%M:%S`
 	echo "${start} gimsmp started" >&2
 fi
-mvscmdauth ${opts} --pgm=gimsmp --smpcsi=${SMPCSI} --smpwkdir=${SMPWKDIR} --smplog=${SMPLOG} --smprpt=${SMPRPT} --smplist=${SMPLIST} --smpnts=${SMPNTS} --client=${SMPCLIENT} --server=${SMPSERVER} --sysprint=${SYSPRINT} --smpout=stdout --smpcntl=stdin
+mvscmdauth ${opts} --pgm=gimsmp --smpcsi=${SMPCSI} --smpwkdir=${SMPWKDIR} --smpptfin=${SMPPTFIN} --smplog=${SMPLOG} --smprpt=${SMPRPT} --smplist=${SMPLIST} --smpnts=${SMPNTS} --client=${SMPCLIENT} --server=${SMPSERVER} --sysprint=${SYSPRINT} --smpout=stdout --smpcntl=stdin
 rc=$?
 if [ ${rc} = 0 ]; then
 	unlink "${SMPRPT}" 2>/dev/null
