@@ -98,6 +98,9 @@ order() {
 
 
 receive() {
+       	props="${ZBREW_ORDERROOT}/${ussname}order.json"
+       	zbrewpropse "${ussname}" order "${props}"
+
 	if [ ${verbose} -gt 0 ]; then
 		echo "Performing SMP/E Receive $*" >&2
 	fi
@@ -277,10 +280,6 @@ ussname=$(echo ${2} | tr '[:upper:]' '[:lower:]');
 zosname=$(echo ${2} | tr '[:lower:]' '[:upper:]');
 
 verb=$1
-if [ "${verb}" != 'search' ]; then
-	props="${ZBREW_ORDERROOT}/${ussname}order.json"
-	zbrewpropse "${ussname}" order "${props}"
-fi
 
 case ${verb} in
 	search ) 

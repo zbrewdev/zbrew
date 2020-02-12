@@ -77,9 +77,6 @@ zbrewpropse zbrew config "${props}"
 props="${mydir}/../../zbrew-${prefix}/${ussname}/${ussname}install.json"
 zbrewpropse "${ussname}" install "${props}"
 
-smpelibs="${mydir}/../../zbrew-${prefix}/${ussname}/${ussname}bom.json"
-ussname=$(echo ${ussname} | tr '[:lower:]' '[:upper:]')
-
 out=`/usr/sbin/unmount -R ${ZFSROOT}${ZFSDIR} 2>/dev/null`
 rc=$?
 if [ $rc -gt 2 ]; then
@@ -87,10 +84,9 @@ if [ $rc -gt 2 ]; then
         exit $rc
 fi
 
-PFX=$(echo ${sw} | tr '[:lower:]' '[:upper:]');
 HLQ="${ZBREW_HLQ}"
 
-out=`drm -f "${HLQ}${PFX}*.**"`
+out=`drm -f "${HLQ}${zosname}*.**"`
 rc=$?
 if [ $rc -gt 0 ]; then
         echo "Dataset cleanup failed. UnInstall aborted"

@@ -59,7 +59,7 @@ zzz`
                 echo "smpfmid failed with rc:$rc" >&2
                 echo "${smpout}" >&2
         fi
-        rm -f "${smplist}"
+        rm -f "${smplist}" 2>/dev/null
         return $rc
 }
 
@@ -83,7 +83,7 @@ fmidset() {
         smpout=`smp -i "${ZBREW_HLQ}${sw}G.GLOBAL.CSI" <${tmpCntlHFS}`
         rc=$?
         zbrewlog "fmidset RC: ${rc}"
-        rm ${tmpCntlHFS}
+        rm ${tmpCntlHFS} 2>/dev/null
         if [ $rc -gt 4 ] || [ $verbose -gt 0 ]; then
                 echo "fmidset ended with return code: $rc" >&2
                 echo "${smpout}" >&2
@@ -142,12 +142,12 @@ runapply() {
 	smpout=`smp -w ${ZBREW_TMP} -r "${smprpt}" -p "${smpsysprint}" -i ${ZBREW_HLQ}${sw}G.GLOBAL.CSI <${tmpCntlHFS}`
 	rc=$?
 	zbrewlog "${smpfunc} ${check} ${sw} Return Code: ${rc}"
-	rm "${tmpCntlHFS}"
+	rm "${tmpCntlHFS}" 2>/dev/null
 	if [ $rc -gt 0 ] || [ $verbose -gt 0 ]; then
 		echo "${smpout}" >&2 
 	else
-		rm "${smprpt}"
-		rm "${smpsysprint}"
+		rm "${smprpt}" 2>/dev/null
+		rm "${smpsysprint}" 2>/dev/null
 	fi
 	
         return ${rc}
