@@ -132,8 +132,8 @@ prodreq() {
 	zbrewlog "prodreq" $*
 	
 	tmp_frspace=$(df -k ${ZBREW_TMP} | tail -1 | awk '{print $3}' | awk -F'/' '{print $1}')
-	if [ "${tmp_frspace}" -lt '307200' ]; then
-		echo "Warning, ${ZBREW_TMP} is low on free space, it is recommended to have at least 300 MB available"
+	if [ "${tmp_frspace}" -lt '250000' ]; then
+		echo "Warning, ${ZBREW_TMP} is low on free space, it is recommended to have at least 250 MB available"
 		echo "Current free space available is: ${tmp_frspace} KB"
 		return 16
 	fi
