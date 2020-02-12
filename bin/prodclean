@@ -35,11 +35,6 @@ msg() {
         echo "ZCL000"${msgnum}${msgtype} "${msgtext}${args}" >&2
 }
 
-delds() {
-        echo "$1" | awk '{ ds=$1; $1=""; if ($ds != "") { rc=system("drm -f " ds); if (rc > 0) { exit(rc); } } }'
-        exit $?
-}
-
 
 while getopts ":vdc" opt; do
   case ${opt} in
@@ -85,38 +80,11 @@ zbrewpropse "${ussname}" install "${props}"
 smpelibs="${mydir}/../../zbrew-${prefix}/${ussname}/${ussname}bom.json"
 ussname=$(echo ${ussname} | tr '[:lower:]' '[:upper:]')
 
-libs=`readbom ${ussname} <${smpelibs}`
-rc=$?     
-if [ $rc -gt 0 ]; then
-	echo "${libs}"
-	exit $rc
-fi
-# Obtain list of all Target and Distribution Datasets to allocate, exclude ZFS
-ds=`echo "${libs}" | awk -v pfx="${ZBREW_HLQ}${ussname}." '($2 != "ZFS") {print pfx$1" -t"$2" -r"$3" -l"$4" -s"$5*56"K"}'`
-
-out=`delds "${ds}"`
-rc=$?
-if [ $rc -gt 0 ]; then
-       	echo "Dataset cleanup failed. Installation aborted"
-       	exit $rc
-fi
-
-
-# Obtain list of ZFS and allocate/mount
-dsnl=`echo "${libs}" | awk -v pfx="${ZBREW_HLQ}${ussname}." '($2 == "ZFS") {print pfx""$1" "$3" "$4" "$7","}'`
-
 out=`/usr/sbin/unmount -R ${ZFSROOT}${ZFSDIR} 2>/dev/null`
 rc=$?
 if [ $rc -gt 2 ]; then
         echo "ZFS unmount failed. UnInstall aborted: ${rc}"
         exit $rc
-fi
-
-out=`delds "${dsnl}"`
-rc=$?
-if [ $rc -gt 0 ]; then
-	echo "ZFS cleanup failed. UnInstall aborted"
-	exit $rc
 fi
 
 PFX=$(echo ${sw} | tr '[:lower:]' '[:upper:]');
@@ -128,6 +96,5 @@ if [ $rc -gt 0 ]; then
         echo "Dataset cleanup failed. UnInstall aborted"
         exit $rc
 fi
-
 
 exit 0
