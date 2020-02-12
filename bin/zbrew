@@ -95,18 +95,12 @@ order() {
 	return 0
 }
 
-uninstall() {
-	zbrewlog "uninstall" $*
-	if [ ${verbose} -gt 0 ]; then
-		echo "uninstall $*" >&2
-	fi
-	zbrewlog "uninstall RC: ${rc}"
-	return 4
-}
-
 
 
 receive() {
+       	props="${ZBREW_ORDERROOT}/${ussname}order.json"
+       	zbrewpropse "${ussname}" order "${props}"
+
 	if [ ${verbose} -gt 0 ]; then
 		echo "Performing SMP/E Receive $*" >&2
 	fi
@@ -163,6 +157,34 @@ prodreq() {
 
 
 
+update() {
+	export ALLPTFS=1
+	for zbrewfunc in ${update_verbs}; do
+		runfunc="${zbrewfunc}"
+                if [ "${runfunc}" = "smpapplycheck" ]; then
+                        opts="$opts -p"
+                        runfunc="smpappacc"
+                fi
+                if [ "${runfunc}" = "smpapply" ]; then
+                        opts="$opts -q"
+                        runfunc="smpappacc"
+                fi
+                out=`${runfunc} ${opts} ${sw}`
+                rc=$?
+		zbrewlog "${runfunc} ${opts}" $*
+                zbrewlog "${runfunc} RC: ${rc}"
+                if [ "$rc" -gt 0 ] || [ "$verbose" -gt 0 ]; then
+                        echo "${out}" >&2
+                fi
+                if [ "$rc" -gt 0 ]; then
+                        return $rc
+                fi
+        done
+        return $rc
+	unset ALLPTFS	
+}
+
+
 
 install() {
 	zbrewlog "install" $*
@@ -210,9 +232,6 @@ install() {
 #
 configure() {
 	zbrewlog "smpconfig" $*
-	sw=$1
- 	shift 1
-        opts=$*
 
         ussname=$(echo ${sw} | tr '[:upper:]' '[:lower:]');
 	prefix=`echo ${ussname} | awk '{print substr($0,0,3)}'`
@@ -231,6 +250,7 @@ configure() {
 }
 
 install_verbs="prodreq smpconfig receive smpcrdddef proddsalloc smpapplycheck smpapply smpacceptcheck smpaccept"
+update_verbs="smpapplycheck smpapply"
 
 debug=0
 verbose=0
@@ -289,10 +309,6 @@ ussname=$(echo ${2} | tr '[:upper:]' '[:lower:]');
 zosname=$(echo ${2} | tr '[:lower:]' '[:upper:]');
 
 verb=$1
-if [ "${verb}" != 'search' ]; then
-	props="${ZBREW_ORDERROOT}/${ussname}order.json"
-	zbrewpropse "${ussname}" order "${props}"
-fi
 
 case ${verb} in
 	search ) 
@@ -390,7 +406,6 @@ case ${verb} in
                         exit $rc
                 fi
                 ;;
-	
 	install )
 		out=`install ${opts} ${sw}`
 		rc=$? 
@@ -399,16 +414,33 @@ case ${verb} in
 			exit $rc
 		fi
 		;;
+        update  )
+		opts="${opts} -t"
+                out=`update ${opts} ${sw}`
+                rc=$?
+                if [ $rc -gt 0 ] || [ $verbose -gt 0 ]; then
+                        echo "${out}"
+                        exit $rc
+                fi
+                ;;
 	configure ) 
-		out=`configure $2 ${opts}`
+		out=`configure ${opts} ${sw}`
 		rc=$?
 		if [ $rc -gt 0 ]; then
 			echo "${out}" 
 		fi
 		;;	
 	uninstall ) 
-		out=`uninstall $2 ${opts}`
+		out=`prodclean ${opts} ${sw}`
 		rc=$?
+		zbrewlog "Uninstall ${sw} Return Code: ${rc}"
+		if [ "${verbose}" = "1" ]; then
+			echo "Uninstall completed: ${rc}"
+		fi
+                if [ $rc -gt 0 ]; then
+                        echo "${out}"
+                fi
+		
 		;;	
 	* ) msg zbrew ${UnknownAction} E ${verb}; exit 16;;
 esac

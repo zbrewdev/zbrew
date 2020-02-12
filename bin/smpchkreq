@@ -157,7 +157,7 @@ debug=0
 verbose=0
 fmid_check=0
 opts=""
-while getopts ":vdf" opt; do
+while getopts ":vdfc" opt; do
   case ${opt} in
     d )
       debug=1
