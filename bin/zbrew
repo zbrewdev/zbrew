@@ -157,6 +157,34 @@ prodreq() {
 
 
 
+update() {
+	export ALLPTFS=1
+	for zbrewfunc in ${update_verbs}; do
+		runfunc="${zbrewfunc}"
+                if [ "${runfunc}" = "smpapplycheck" ]; then
+                        opts="$opts -p"
+                        runfunc="smpappacc"
+                fi
+                if [ "${runfunc}" = "smpapply" ]; then
+                        opts="$opts -q"
+                        runfunc="smpappacc"
+                fi
+                out=`${runfunc} ${opts} ${sw}`
+                rc=$?
+		zbrewlog "${runfunc} ${opts}" $*
+                zbrewlog "${runfunc} RC: ${rc}"
+                if [ "$rc" -gt 0 ] || [ "$verbose" -gt 0 ]; then
+                        echo "${out}" >&2
+                fi
+                if [ "$rc" -gt 0 ]; then
+                        return $rc
+                fi
+        done
+        return $rc
+	unset ALLPTFS	
+}
+
+
 
 install() {
 	zbrewlog "install" $*
@@ -222,6 +250,7 @@ configure() {
 }
 
 install_verbs="prodreq smpconfig receive smpcrdddef proddsalloc smpapplycheck smpapply smpacceptcheck smpaccept"
+update_verbs="smpapplycheck smpapply"
 
 debug=0
 verbose=0
@@ -377,7 +406,6 @@ case ${verb} in
                         exit $rc
                 fi
                 ;;
-	
 	install )
 		out=`install ${opts} ${sw}`
 		rc=$? 
@@ -386,6 +414,15 @@ case ${verb} in
 			exit $rc
 		fi
 		;;
+        update  )
+		opts="${opts} -t"
+                out=`update ${opts} ${sw}`
+                rc=$?
+                if [ $rc -gt 0 ] || [ $verbose -gt 0 ]; then
+                        echo "${out}"
+                        exit $rc
+                fi
+                ;;
 	configure ) 
 		out=`configure ${opts} ${sw}`
 		rc=$?
