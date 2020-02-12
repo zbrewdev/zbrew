@@ -9,7 +9,6 @@ syntax() {
 	echo "  -v: verbose output" >&2
 	echo "  -d: debug output" >&2
 	echo "  -i <csi file>: location of SMPCSI dataset" >&2
-	echo "  -f <smpptfin>: receive ptf from file " >&2
 	echo "  -r <report file>: write SMPRPT output to <report file>" >&2
 	echo "  -l <list file>: write SMPLIST output to <list file>" >&2
 	echo "  -p <sysprint file>: write SYSPRINT output to <sysprint file>" >&2

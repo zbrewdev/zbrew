@@ -29,7 +29,7 @@ msg() {
 #
 syntax() {
 	echo "\
-zbrew smpfromfile [-vd] <prefix> <sequential_or_pds_filename>
+zbrew smpreceiveptf <prefix> <sequential_or_pds_filename>
 	    
 Examples:
 	zbrew smpreceiveptf igy630 'igy630.ptfs(UI12345)' >&2 
