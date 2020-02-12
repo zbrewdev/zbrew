@@ -83,7 +83,7 @@ fmidset() {
         smpout=`smp -i "${ZBREW_HLQ}${sw}G.GLOBAL.CSI" <${tmpCntlHFS}`
         rc=$?
         zbrewlog "fmidset RC: ${rc}"
-        rm ${tmpCntlHFS} 2>/dev/null
+        rm ${tmpCntlHFS}
         if [ $rc -gt 4 ] || [ $verbose -gt 0 ]; then
                 echo "fmidset ended with return code: $rc" >&2
                 echo "${smpout}" >&2
@@ -152,7 +152,7 @@ runapply() {
 	smpout=`smp -w ${ZBREW_TMP} -r "${smprpt}" -p "${smpsysprint}" -i ${ZBREW_HLQ}${sw}G.GLOBAL.CSI <${tmpCntlHFS}`
 	rc=$?
 	zbrewlog "${smpfunc} ${check} ${sw} Return Code: ${rc}"
-	rm "${tmpCntlHFS}" 2>/dev/null
+	rm "${tmpCntlHFS}"
 	if [ $rc -gt 0 ] || [ $verbose -gt 0 ]; then
 		echo "${smpout}" >&2 
 	else
@@ -168,7 +168,7 @@ debug=0
 verbose=0
 subfunc="NULL"
 opts=""
-while getopts ":vdcpqrstu" opt; do
+while getopts ":vdcpqrst" opt; do
   case ${opt} in
     p )
       smpfunc="APPLY"
