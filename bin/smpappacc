@@ -168,7 +168,7 @@ debug=0
 verbose=0
 subfunc="NULL"
 opts=""
-while getopts ":vdcpqrst" opt; do
+while getopts ":vdpqrst" opt; do
   case ${opt} in
     p )
       smpfunc="APPLY"
