@@ -34,36 +34,40 @@ syntax() {
 zbrew [-cvdr] search|order|smpreceiveptf|install|update|receivezos|configure|uninstall <software>
 	and <software> is the software to search for
 	(Note that install invokes several functions which are: ${install_verbs})
-	-c: clean files before processing (e.g. delete SMP/E CSI datasets) and clean temporary files after processing (e.g. SMPNTS directory)
+	-c: clean files before processing (e.g. delete SMP/E CSI datasets) 
 	-r function_name install: restart install at specific function (function_name must be one of: ${install_verbs})
-	
+
 Note:
 	zbrew has a properties file called zbrew.properties. The following properties need to be specified:
 		ZBREW_ORDERROOT: 	The writable directory root where ORDER information will be placed by SMP/E (currently this needs to be done manually)
-					Each product you ORDER will have a corresponding order file called <software>.order
-		ZBREW_PROPSROOT: 	The writable directory root where custom properties for a product can be specified. 
-					Each product you customize can have an optional <software>custominst.properties and/or <software>customconfig.properties file
-	If any installation customization is required, edit the <software>custominstall.properties before you INSTALL.   
-	If any configuration customization is required, edit the <software>customconfig.properties file after you INSTALL <software> but before you CONFIGURE.   
+					Each product you ORDER will have a corresponding order file called <software>order.json
 
-Here is a sample order file for COBOL 6.3.0 you would create at ${ZBREW_ORDERROOT}/igy630.order
+	
+Here is a sample order file for COBOL 6.3.0 you would create at ${ZBREW_ORDERROOT}/igy630order.json
+{
+   "software": [{
+   "name":"IGY630",
+   "order":{
+     "SMPE_DELIVERY":"SHOPZ",
+     "SMPE_FTPHOST":"deliverycb-mul.dhe.ibm.com",
+     "SMPE_FTPUSER":"ABC12345",
+     "SMPE_FTPPW":"XYZABC18949493E",
+     "SMPE_FTPFILE":"2020011450035/PROD/GIMPAF.XML",
+     "SMPE_FTPHASH":"75359EA9BEDC78CD4E37F574BFCA71AA31501AB0",
+     "SMPE_FTPID":"STP55086"
+     }
+   }]
+}
 
-SMPE_DELIVERY=SHOPZ
-SMPE_FTPHOST=deliverycb-mul.dhe.ibm.com
-SMPE_FTPFILE=2019110150147/PROD/GIMPAF.XML
-SMPE_FTPUSER=AUserFromShopZ
-SMPE_FTPPW=APasswordFromShopZ
-SMPE_FTPHASH=AHashValueFromShopZ
-SMPE_FTPID=AnIDFromShopZ
 	    
 zbrew Examples:
 	zbrew search cobol     <-- search for products with COBOL in their description
-	zbrew order igy630     <-- submit an order for IGY630J software (receive can not be performed until complete)
-	zbrew install igy630   <-- check that all pre-reqs required for COBOL are satisfied, then SMP/E RECEIVE the product, then run IGY630-specific install steps, then SMP/E APPLY the product
-	zbrew -c -v install igy630   <-- do uninstall and verbose install
+	zbrew order igy630     <-- submit an order for IGY630 software (receive can not be performed until complete)
+	zbrew install igy630   <-- check that all pre-reqs required for COBOL are satisfied, then SMP/E RECEIVE/APPLY/ACCEPT the product (with and w/o CHECK)
+	zbrew -c -v install igy630   <-- do uninstall first and then verbose install
 	zbrew -r smpconfig install igy630   <-- restart install at the smpconfig step
 	zbrew update igy630 <-- apply all PTFs currently in receive status 
-	zbrew uninstall igy630 <-- remove all SMP/E datasets and product-specific datasets
+	zbrew uninstall igy630 <-- remove all SMP/E datasets and product-specific datasets/filesystems
 	zbrew configure igy630 <-- run product-specific configuration after SMP/E APPLY step
 	zbrew smpreceiveptf igy630 zos.file.name <-- receive a PTF from a z/OS sequential or PDS file
 " >&2 
@@ -90,7 +94,7 @@ opts=$*
 #
 order() {
 	zbrewlog "order" $*
-	# currently no-op. ORDER directory for COBOL IGY630E pre-populated
+	# currently no-op. ORDER directory for COBOL IGY630 pre-populated
 	if [ ${verbose} -gt 0 ]; then
 		echo "order $1" >&2
 	fi
@@ -283,7 +287,6 @@ while getopts ":cvdr:" opt; do
       ;;
     c )
       clean=1
-      opts="${opts} -c"
       ;;
     v )
       verbose=1
@@ -313,6 +316,20 @@ ussname=$(echo ${sw} | tr '[:upper:]' '[:lower:]');
 zosname=$(echo ${sw} | tr '[:lower:]' '[:upper:]');
 zosfile=$(echo ${3} | tr '[:lower:]' '[:upper:]');
 
+if [ "${clean}" = "1" ]; then
+                out=`prodclean ${opts} ${sw}`
+                rc=$?
+                zbrewlog "Cleanup for ${sw} Return Code: ${rc}"
+                if [ "${verbose}" = "1" ]; then
+                        echo "Cleanup completed: ${rc}"
+                fi
+                if [ $rc -gt 0 ]; then
+			"Cleanup failed with Return code: ${rc}"
+                        echo "${out}"
+			exit ${rc}
+                fi
+
+fi
 verb=$1
 
 case ${verb} in
