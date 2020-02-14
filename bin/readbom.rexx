@@ -36,7 +36,7 @@ Arg swname .
         end
         z = json.software.el.datasets.d.zones.1
         select 
-        when (t = 'ZFS') then do
+          when (t = 'ZFS') then do
             w = json.software.el.datasets.d.dddefpath
             x = json.software.el.datasets.d.mountpnt
             say n t p s z w x
