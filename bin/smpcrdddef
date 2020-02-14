@@ -42,6 +42,7 @@ targ_dddefs(){
 libs=`readbom ${zosname} <${smpelibs}`
 rc=$?
 if [ $rc -gt 0 ]; then
+  echo $libs >&2
   exit $rc
 fi
 
