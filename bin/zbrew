@@ -36,6 +36,7 @@ zbrew [-cvdr] search|order|smpreceiveptf|install|update|receivezos|configure|uni
 	(Note that install invokes several functions which are: ${install_verbs})
 	-c: clean files before processing (e.g. delete SMP/E CSI datasets) 
 	-r function_name install: restart install at specific function (function_name must be one of: ${install_verbs})
+	   If concatenating options and using -r it must be the last option..  (eg -cvr)
 
 Note:
 	zbrew has a properties file called zbrew.properties. The following properties need to be specified:
