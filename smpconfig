@@ -1,0 +1,347 @@
+#!/bin/sh
+#set -x
+
+. zbrewfuncs
+
+InvalidOption=1
+TooFewParms=2
+UnknownAction=3
+PrefixTooLong=4
+
+#
+# Temporary hack - replace with a proper message file
+#
+msg() {
+       	pgm=$1
+	msgnum=$2
+	msgtype=$3
+
+	shift 3
+	args=$*
+
+	case ${msgnum} in
+		${InvalidOption}) msgtext="Invalid option specified: -";;
+		${TooFewParms}) msgtext="Too few Parameters specified. Expected 2 but received: ";;
+		${UnknownAction}) msgtext="Unknown action specified: ";;
+		${PrefixTooLong}) msgtext="Prefix must be 6 characters or less. Received: ";;
+		*) msgtext="Internal Error. Unknow msgnum: ${msgnum}";;
+	esac
+	echo "ZCL000"${msgnum}${msgtype} "${msgtext}${args}" >&2
+}
+
+#
+# Temporary hack - replace with a manpage
+#
+syntax() {
+	echo "\
+smpconfig [-vcd] <prefix>
+	and <prefix> is the prefix used for SMP global, target, distribution zones
+
+Examples:
+        smpconfig igy630          <-- create SMP/E zones prefixed with IGY630
+		IGY630G: global zone
+		IGY630T: target library zone
+		IGY630D: distribution library zone
+" >&2
+     	exit 16
+}
+
+
+definecsicluster() {
+     name="$1"
+
+     echo "  LISTCAT ENTRIES(${dataset})" | mvscmdauth --pgm=idcams --sysprint=dummy --sysin=stdin 
+     rc=$?
+     if [ $rc -eq 0 ]; then
+	echo "SMP/E dataset: ${name} already exists. Run with -c to re-create if required" >&2
+	return 16
+     fi
+
+     echo "
+     DEFINE CLUSTER( +
+              NAME(${name}) +
+              CYLINDERS(200 200) +
+              FREESPACE(10 5) +
+              KEYS(24 0) +
+              RECORDSIZE(24 143) +
+              SHAREOPTIONS(2 3) +
+                  ) +
+         DATA ( +
+              NAME(${name}.DATA) +
+              CONTROLINTERVALSIZE(8192) +
+              ) +
+        INDEX (NAME(${name}.INDEX) +
+              CONTROLINTERVALSIZE(4096) +
+              )
+     REPRO INFILE(REPRO) +
+              OUTDATASET(${name})
+     "
+     return 0
+}
+
+definecsidatasets() {
+
+     for v in $*; do
+          name="${v%%:*}"
+          attrs="${v##*:}"
+          attrs=`echo ${attrs} | tr ',' '\t'`
+          dtouch ${attrs} ${name}
+     done
+     return 0
+}
+
+definesmpcntl() {
+     HLQ="$1"
+     PFX="$2"
+
+     echo "
+  SET BOUNDARY(GLOBAL).
+  UCLIN.
+    ADD OPTIONS(${PFX}G)
+          ASM(ASMUTIL)  
+          LKED(LINKEDIT)
+          COPY(IEBCOPY) 
+          DSPREFIX(${HLQ}${PFX}G.SMPTLIB)
+          DSSPACE(${DSSPACE})
+          MSGFILTER(YES)
+          MSGWIDTH(80)
+          RECZGRP(ALLZONES)
+          RETRYDDN(ALL).
+    ADD UTILITY(ASMUTIL)
+          NAME(ASMA90)
+          RC(4)          
+          PARM(DECK,NOOBJECT,USING(WARN(2))) .
+    ADD UTILITY(LINKEDIT)
+          NAME(IEWL)          
+          RC(4)               
+          PRINT(SYSPRINT)     
+          PARM(SIZE=(1024K,32K),NCAL,LET,LIST,XREF).
+    ADD UTILITY(IEBCOPY)
+          NAME(IEBCOPY)    
+          RC(0) .    
+
+    ADD GLOBALZONE
+          OPTIONS(${PFX}G)
+          SREL(Z038)
+          ZONEINDEX(
+                    (${PFX}T,${HLQ}${PFX}T.TARGET.CSI,TARGET)
+                    (${PFX}D,${HLQ}${PFX}D.DLIB.CSI,DLIB)
+                   ).
+    ADD DDDEF(SMPDEBUG) SYSOUT(*).
+    ADD DDDEF(SMPLIST)  SYSOUT(*).
+    ADD DDDEF(SMPRPT)   SYSOUT(*).
+    ADD DDDEF(SMPSNAP)  SYSOUT(*).
+    ADD DDDEF(SYSPRINT) SYSOUT(*).
+    ADD DDDEF(SMPLOG)   DA(${HLQ}${PFX}G.GLOBAL.SMPLOG) MOD.
+    ADD DDDEF(SMPLOGA)  DA(${HLQ}${PFX}G.GLOBAL.SMPLOGA) MOD.
+    ADD DDDEF(SMPOUT)   SYSOUT(*).
+    ADD DDDEF(SMPPTS)   DA(${HLQ}${PFX}G.SMPPTS) SHR.
+    ADD DDDEF(SMPTLOAD) UNIT(SYSALLDA) CYLINDERS SPACE(25,25) DIR(20).
+    ADD DDDEF(SYSUT1)   UNIT(SYSALLDA) CYLINDERS SPACE(25,25).
+    ADD DDDEF(SYSUT2)   UNIT(SYSALLDA) CYLINDERS SPACE(50,50).
+    ADD DDDEF(SYSUT3)   UNIT(SYSALLDA) CYLINDERS SPACE(50,50).
+    ADD DDDEF(SYSUT4)   UNIT(SYSALLDA) CYLINDERS SPACE(50,50).
+    ADD DDDEF(SMPWRK1)  UNIT(SYSALLDA) CYLINDERS SPACE(100,100)
+                        DIR(100).
+    ADD DDDEF(SMPWRK2)  UNIT(SYSALLDA) CYLINDERS SPACE(10,100)
+                        DIR(100).
+    ADD DDDEF(SMPWRK3)  UNIT(SYSALLDA) CYLINDERS SPACE(150,500)
+                        DIR(1000).
+    ADD DDDEF(SMPWRK4)  UNIT(SYSALLDA) CYLINDERS SPACE(50,50)
+                        DIR(50).
+    ADD DDDEF(SMPWRK6)  UNIT(SYSALLDA) CYLINDERS SPACE(150,500)
+                        DIR(1000).
+  ENDUCL.
+  SET BOUNDARY(${PFX}T).
+  UCLIN.
+    ADD TARGETZONE(${PFX}T)
+          OPTIONS(${PFX}G)
+          SREL(Z038)
+          RELATED(${PFX}D).
+    ADD DDDEF(SMPDEBUG) SYSOUT(*).
+    ADD DDDEF(SMPLIST)  SYSOUT(*).
+    ADD DDDEF(SMPLOG)   DA(${HLQ}${PFX}T.TARGET.SMPLOG) MOD.
+    ADD DDDEF(SMPLOGA)  DA(${HLQ}${PFX}T.TARGET.SMPLOGA) MOD.
+    ADD DDDEF(SMPOUT)   SYSOUT(*).
+    ADD DDDEF(SMPRPT)   SYSOUT(*).
+    ADD DDDEF(SMPSNAP)  SYSOUT(*).
+    ADD DDDEF(SYSPRINT) SYSOUT(*).
+    ADD DDDEF(SMPPTS)   DA(${HLQ}${PFX}G.SMPPTS) SHR.
+    ADD DDDEF(SMPTLOAD) UNIT(SYSALLDA) CYLINDERS SPACE(25,25) DIR(20).
+    ADD DDDEF(SMPSTS)   DA(${HLQ}${PFX}T.TARGET.SMPSTS) OLD.
+    ADD DDDEF(SMPMTS)   DA(${HLQ}${PFX}T.TARGET.SMPMTS) OLD.
+    ADD DDDEF(SMPLTS)   DA(${HLQ}${PFX}T.TARGET.SMPLTS) OLD.
+    ADD DDDEF(SMPSCDS)  DA(${HLQ}${PFX}T.TARGET.SMPSCDS) OLD.
+    ADD DDDEF(SYSLIB)   CONCAT(SMPMTS).
+    ADD DDDEF(SYSUT1)   UNIT(SYSALLDA) CYLINDERS SPACE(250,250).
+    ADD DDDEF(SYSUT2)   UNIT(SYSALLDA) CYLINDERS SPACE(50,50).
+    ADD DDDEF(SYSUT3)   UNIT(SYSALLDA) CYLINDERS SPACE(50,50).
+    ADD DDDEF(SYSUT4)   UNIT(SYSALLDA) CYLINDERS SPACE(50,50).
+    ADD DDDEF(SMPWRK1)  UNIT(SYSALLDA) CYLINDERS SPACE(100,100)
+                        DIR(100).
+    ADD DDDEF(SMPWRK2)  UNIT(SYSALLDA) CYLINDERS SPACE(100,100)
+                        DIR(100).
+    ADD DDDEF(SMPWRK3)  UNIT(SYSALLDA) CYLINDERS SPACE(150,500)
+                        DIR(1000).
+    ADD DDDEF(SMPWRK4)  UNIT(SYSALLDA) CYLINDERS SPACE(50,50)
+                        DIR(50).
+    ADD DDDEF(SMPWRK6)  UNIT(SYSALLDA) CYLINDERS SPACE(150,500)
+                        DIR(1000).
+  ENDUCL.
+  SET BOUNDARY(${PFX}D).
+  UCLIN.
+    ADD DLIBZONE(${PFX}D)
+          OPTIONS(${PFX}G)
+          SREL(Z038)
+          ACCJCLIN
+          RELATED(${PFX}T).
+    ADD DDDEF(SMPDEBUG) SYSOUT(*).
+    ADD DDDEF(SMPLIST)  SYSOUT(*).
+    ADD DDDEF(SMPLOG)   DA(${HLQ}${PFX}D.DLIB.SMPLOG) MOD.
+    ADD DDDEF(SMPLOGA)  DA(${HLQ}${PFX}D.DLIB.SMPLOGA) MOD.
+    ADD DDDEF(SMPOUT)   SYSOUT(*).
+    ADD DDDEF(SMPRPT)   SYSOUT(*).
+    ADD DDDEF(SMPSNAP)  SYSOUT(*).
+    ADD DDDEF(SYSPRINT) SYSOUT(*).
+    ADD DDDEF(SMPTLOAD) UNIT(SYSALLDA) CYLINDERS SPACE(25,25) DIR(20).
+    ADD DDDEF(SMPPTS)   DA(${HLQ}${PFX}G.SMPPTS) SHR.
+    ADD DDDEF(SMPSTS)   DA(${HLQ}${PFX}T.TARGET.SMPSTS) OLD.
+    ADD DDDEF(SMPMTS)   DA(${HLQ}${PFX}T.TARGET.SMPMTS) OLD.
+    ADD DDDEF(SMPLTS)   DA(${HLQ}${PFX}T.TARGET.SMPLTS) OLD.
+    ADD DDDEF(SMPSCDS)  DA(${HLQ}${PFX}T.TARGET.SMPSCDS) OLD.
+    ADD DDDEF(SYSLIB)   CONCAT(SMPMTS).
+    ADD DDDEF(SYSUT1)   UNIT(SYSALLDA) CYLINDERS SPACE(250,250).
+    ADD DDDEF(SYSUT2)   UNIT(SYSALLDA) CYLINDERS SPACE(50,50).
+    ADD DDDEF(SYSUT3)   UNIT(SYSALLDA) CYLINDERS SPACE(50,50).
+    ADD DDDEF(SYSUT4)   UNIT(SYSALLDA) CYLINDERS SPACE(50,50).
+    ADD DDDEF(SMPWRK1)  UNIT(SYSALLDA) CYLINDERS SPACE(100,100)
+                        DIR(100).
+    ADD DDDEF(SMPWRK2)  UNIT(SYSALLDA) CYLINDERS SPACE(100,100)
+                        DIR(100).
+    ADD DDDEF(SMPWRK3)  UNIT(SYSALLDA) CYLINDERS SPACE(150,500)
+                        DIR(1000).
+    ADD DDDEF(SMPWRK4)  UNIT(SYSALLDA) CYLINDERS SPACE(50,50)
+                        DIR(50).
+    ADD DDDEF(SMPWRK6)  UNIT(SYSALLDA) CYLINDERS SPACE(150,500)
+                        DIR(1000).
+  ENDUCL.
+       "
+       return 0
+}
+
+configureCSI() {
+	#
+	#********************************************************************
+	# Prime the CSI data sets with:
+	# - zone definitions for a global, target, and dlib zone
+	# - basic OPTIONS entry
+	# - DDDEF entries for operational and temporary data sets
+	#********************************************************************
+	#
+	smpcntl=`definesmpcntl "${HLQ}" "${PFX}"`
+	mvscmdauth --pgm=GIMSMP --smpcsi=${GLOBAL_CSI} --smppts=${HLQ}${PFX}G.SMPPTS --smplog='*' --smpout='*' --smprpt='*' --smplist='*' --sysprint='*' --smpcntl=stdin <<zzz
+${smpcntl}
+zzz
+	exit $?
+}
+
+defineClusters() {
+	gcsi=`definecsicluster "${GLOBAL_CSI}"`
+	rc1=$?
+	tcsi=`definecsicluster "${TARGET_CSI}"`
+	rc2=$?
+	dcsi=`definecsicluster "${DLIB_CSI}"`
+	rc3=$?
+
+	if [ "${rc1}${rc2}${rc3}" != "000" ]; then 
+		return 16
+	fi
+
+	mvscmdauth --pgm=IDCAMS --sysprint='*' --repro=${REPRO_FROM} --sysin=stdin <<zzz
+${gcsi}
+${tcsi}
+${dcsi}
+zzz
+	return $?
+}
+
+debug=0
+verbose=0
+while getopts ":vd" opt; do
+  case ${opt} in
+    d )         
+      debug=1
+      ;;
+    v ) 
+      verbose=1
+      opts="-v"
+      ;;
+    \?)
+      if [ ${OPTARG} != "?" ]; then
+        msg smpconfig ${InvalidOption} E "${OPTARG}"
+      fi
+      syntax
+      exit 4    
+      ;;        
+  esac
+done
+shift $(expr $OPTIND - 1 )
+if [ $# -lt 1 ]; then
+	msg smpconfig ${TooFewParms} E "$#"
+	syntax  
+	exit 16
+fi      
+
+mydir=$(callerdir ${0})
+props="${mydir}/../properties/zbrewprops.json"
+zbrewpropse zbrew config "${props}"
+sw=$1
+ussname=$(echo ${sw} | tr '[:upper:]' '[:lower:]');
+zosname=$(echo ${sw} | tr '[:lower:]' '[:upper:]');
+prefix=`echo "${ussname}" | awk '{ print substr($1, 0, 3) }'`
+
+PFX=$(echo ${sw} | tr '[:lower:]' '[:upper:]');
+HLQ="${ZBREW_HLQ}"
+
+if [ ${#PFX} -gt 6 ]; then
+	msg smpconfig ${PrefixTooLong} E "${#HLQ}"
+	exit 16
+fi 
+GLOBAL_CSI="${HLQ}${PFX}G.GLOBAL.CSI"
+TARGET_CSI="${HLQ}${PFX}T.TARGET.CSI"
+DLIB_CSI="${HLQ}${PFX}D.DLIB.CSI"
+REPRO_FROM="SYS1.MACLIB(GIMZPOOL)"
+
+## msf - need to move CSI allocation to be product specific for size reasons
+DSSPACE="1500,1500,1500"
+
+out=`defineClusters`
+rc=$?
+if [ $rc -gt 0 ]; then
+	echo "$out"
+	exit $rc
+fi
+
+datasets="${HLQ}${PFX}G.SMPPTS:-s500M,-tpdse
+          ${HLQ}${PFX}T.TARGET.SMPMTS:-tpds
+          ${HLQ}${PFX}T.TARGET.SMPSTS:-tpds
+          ${HLQ}${PFX}T.TARGET.SMPLTS:-tpds
+          ${HLQ}${PFX}T.TARGET.SMPSCDS:-tpds
+          ${HLQ}${PFX}G.GLOBAL.SMPLOG:-tseq,-rvb,-l150
+          ${HLQ}${PFX}G.GLOBAL.SMPLOGA:-tseq,-rvb,-l150
+          ${HLQ}${PFX}T.TARGET.SMPLOG:-tseq,-rvb,-l150
+          ${HLQ}${PFX}T.TARGET.SMPLOGA:-tseq,-rvb,-l150
+          ${HLQ}${PFX}D.DLIB.SMPLOG:-tseq,-rvb,-l150
+          ${HLQ}${PFX}D.DLIB.SMPLOGA:-tseq,-rvb,-l150"
+
+definecsidatasets ${datasets}
+if [ $? -gt 0 ]; then
+     exit 16
+fi
+
+out=`configureCSI`
+rc=$?
+if [ $rc -gt 0 ]; then
+	echo "${out}"
+fi
+exit $rc 
