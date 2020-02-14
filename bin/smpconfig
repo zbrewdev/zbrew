@@ -50,7 +50,7 @@ Examples:
 definecsicluster() {
      name="$1"
 
-     vls ${name} 2>/dev/null
+     echo "  LISTCAT ENTRIES(${dataset})" | mvscmdauth --pgm=idcams --sysprint=dummy --sysin=stdin
      rc=$?
      if [ $rc -eq 0 ]; then
 	echo "SMP/E dataset: ${name} already exists. Run with -c to re-create if required" >&2
