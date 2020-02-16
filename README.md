@@ -45,7 +45,7 @@ You can download zbrew from github directly into _ZBREWROOT_. You will need to '
 - ./build.sh
 
 *From artifactory*
-You can also get zbrew from artifactory: https://bintray.com/fultonm/zbrew
+You can also get zbrew from artifactory: https://bintray.com/zbrew/zbrew
 To install from artifactory:
 - download the latest pax file, and unpax it into a directory _ZBREWROOT_
 
