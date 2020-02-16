@@ -59,7 +59,7 @@ zzz`
                 echo "smpfmid failed with rc:$rc" >&2
                 echo "${smpout}" >&2
         fi
-        rm -f "${smplist}"
+        rm -f "${smplist}" 2>/dev/null
         return $rc
 }
 
@@ -97,15 +97,18 @@ fmidset() {
 runapply() {
 	sw="$1"
 
-        fmids=`fmids ${sw}`
-        if [ $? -gt 0 ]; then
-                return $?
-        fi
+	if [ "$subfunc" != 'UPDATE' ]; then
+	        fmids=`fmids ${sw}`
+	        if [ $? -gt 0 ]; then
+	                return $?
+	        fi
 
-        fmidset=`fmidset ${sw} ${fmids}`
-        if [ $? -gt 4 ]; then
-                return $?
-        fi
+	        fmidset=`fmidset ${sw} ${fmids}`
+	        if [ $? -gt 4 ]; then
+	                return $?
+	        fi
+	fi
+
         if [ ${verbose} -gt 0 ]; then
                 echo "Running ${smpfunc} ${check} ${sw} ${fmidset}" >&2
         fi
@@ -117,12 +120,19 @@ runapply() {
 	else
 		echo "  SET BDY(${sw}D)." >${tmpCntlHFS}
 	fi
-	echo "  ${smpfunc} SELECT(" >>${tmpCntlHFS}
-	for fmid in $fmids; do
-		echo "    ${fmid}" >>${tmpCntlHFS}
-	done
-	echo "  )" >>${tmpCntlHFS}
-	if [ "${ALLPTFS}" = '1' ]; then
+
+	if [ "${subfunc}" != 'UPDATE' ]; then
+	
+		echo "  ${smpfunc} SELECT(" >>${tmpCntlHFS}
+		for fmid in $fmids; do
+			echo "    ${fmid}" >>${tmpCntlHFS}
+		done
+		echo "  )" >>${tmpCntlHFS}
+	else
+		echo "  ${smpfunc} " >>${tmpCntlHFS}
+	fi
+	
+	if [ "${ALLPTFS}" = '1' ] && [ "${subfunc}" != 'UPDATE' ]; then
 		echo "  FORFMID(" >>${tmpCntlHFS}
 		for fmid in $fmids; do
 			echo "    ${fmid}" >>${tmpCntlHFS}
@@ -146,8 +156,8 @@ runapply() {
 	if [ $rc -gt 0 ] || [ $verbose -gt 0 ]; then
 		echo "${smpout}" >&2 
 	else
-		rm "${smprpt}"
-		rm "${smpsysprint}"
+		rm "${smprpt}" 2>/dev/null
+		rm "${smpsysprint}" 2>/dev/null
 	fi
 	
         return ${rc}
@@ -156,12 +166,16 @@ runapply() {
 
 debug=0
 verbose=0
+subfunc="NULL"
 opts=""
-while getopts ":vdcpqrs" opt; do
+while getopts ":vdpqrst" opt; do
   case ${opt} in
     p )
       smpfunc="APPLY"
       check="CHECK"
+      ;;
+    t )
+      subfunc="UPDATE"
       ;;
     q ) 
       smpfunc="APPLY"

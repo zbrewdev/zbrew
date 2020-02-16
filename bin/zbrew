@@ -31,38 +31,46 @@ msg() {
 #
 syntax() {
 	echo "\
-zbrew [-cvdr] search|order|receive|install|configure|uninstall <software>
+zbrew [-cvdr] search|order|smpreceiveptf|install|update|receivezos|configure|uninstall <software>
 	and <software> is the software to search for
 	(Note that install invokes several functions which are: ${install_verbs})
-	-c: clean files before processing (e.g. delete SMP/E CSI datasets) and clean temporary files after processing (e.g. SMPNTS directory)
+	-c: clean files before processing (e.g. delete SMP/E CSI datasets) 
 	-r function_name install: restart install at specific function (function_name must be one of: ${install_verbs})
-	
+	   If concatenating options and using -r it must be the last option..  (eg -cvr)
+
 Note:
 	zbrew has a properties file called zbrew.properties. The following properties need to be specified:
 		ZBREW_ORDERROOT: 	The writable directory root where ORDER information will be placed by SMP/E (currently this needs to be done manually)
-					Each product you ORDER will have a corresponding order file called <software>.order
-		ZBREW_PROPSROOT: 	The writable directory root where custom properties for a product can be specified. 
-					Each product you customize can have an optional <software>custominst.properties and/or <software>customconfig.properties file
-	If any installation customization is required, edit the <software>custominstall.properties before you INSTALL.   
-	If any configuration customization is required, edit the <software>customconfig.properties file after you INSTALL <software> but before you CONFIGURE.   
+					Each product you ORDER will have a corresponding order file called <software>order.json
 
-Here is a sample order file for COBOL 6.3.0 you would create at ${ZBREW_ORDERROOT}/igy630.order
+	
+Here is a sample order file for COBOL 6.3.0 you would create at ${ZBREW_ORDERROOT}/igy630order.json
+{
+   "software": [{
+   "name":"IGY630",
+   "order":{
+     "SMPE_DELIVERY":"SHOPZ",
+     "SMPE_FTPHOST":"deliverycb-mul.dhe.ibm.com",
+     "SMPE_FTPUSER":"ABC12345",
+     "SMPE_FTPPW":"XYZABC18949493E",
+     "SMPE_FTPFILE":"2020011450035/PROD/GIMPAF.XML",
+     "SMPE_FTPHASH":"75359EA9BEDC78CD4E37F574BFCA71AA31501AB0",
+     "SMPE_FTPID":"STP55086"
+     }
+   }]
+}
 
-SMPE_DELIVERY=SHOPZ
-SMPE_FTPHOST=deliverycb-mul.dhe.ibm.com
-SMPE_FTPFILE=2019110150147/PROD/GIMPAF.XML
-SMPE_FTPUSER=AUserFromShopZ
-SMPE_FTPPW=APasswordFromShopZ
-SMPE_FTPHASH=AHashValueFromShopZ
-SMPE_FTPID=AnIDFromShopZ
 	    
 zbrew Examples:
 	zbrew search cobol     <-- search for products with COBOL in their description
-	zbrew order igy630     <-- submit an order for IGY630J software (receive can not be performed until complete)
-	zbrew install igy630   <-- check that all pre-reqs required for COBOL are satisfied, then SMP/E RECEIVE the product, then run IGY630-specific install steps, then SMP/E APPLY the product
+	zbrew order igy630     <-- submit an order for IGY630 software (receive can not be performed until complete)
+	zbrew install igy630   <-- check that all pre-reqs required for COBOL are satisfied, then SMP/E RECEIVE/APPLY/ACCEPT the product (with and w/o CHECK)
+	zbrew -c -v install igy630   <-- do uninstall first and then verbose install
 	zbrew -r smpconfig install igy630   <-- restart install at the smpconfig step
-	zbrew uninstall igy630 <-- check that uninstallation will not break other products, then remove SMP/E datasets and product-specific datasets
+	zbrew update igy630 <-- apply all PTFs currently in receive status 
+	zbrew uninstall igy630 <-- remove all SMP/E datasets and product-specific datasets/filesystems
 	zbrew configure igy630 <-- run product-specific configuration after SMP/E APPLY step
+	zbrew smpreceiveptf igy630 zos.file.name <-- receive a PTF from a z/OS sequential or PDS file
 " >&2 
 	exit 16
 }
@@ -87,7 +95,7 @@ opts=$*
 #
 order() {
 	zbrewlog "order" $*
-	# currently no-op. ORDER directory for COBOL IGY630E pre-populated
+	# currently no-op. ORDER directory for COBOL IGY630 pre-populated
 	if [ ${verbose} -gt 0 ]; then
 		echo "order $1" >&2
 	fi
@@ -95,18 +103,12 @@ order() {
 	return 0
 }
 
-uninstall() {
-	zbrewlog "uninstall" $*
-	if [ ${verbose} -gt 0 ]; then
-		echo "uninstall $*" >&2
-	fi
-	zbrewlog "uninstall RC: ${rc}"
-	return 4
-}
-
 
 
 receive() {
+       	props="${ZBREW_ORDERROOT}/${ussname}order.json"
+       	zbrewpropse "${ussname}" order "${props}"
+
 	if [ ${verbose} -gt 0 ]; then
 		echo "Performing SMP/E Receive $*" >&2
 	fi
@@ -138,8 +140,8 @@ prodreq() {
 	zbrewlog "prodreq" $*
 	
 	tmp_frspace=$(df -k ${ZBREW_TMP} | tail -1 | awk '{print $3}' | awk -F'/' '{print $1}')
-	if [ "${tmp_frspace}" -lt '307200' ]; then
-		echo "Warning, ${ZBREW_TMP} is low on free space, it is recommended to have at least 300 MB available"
+	if [ "${tmp_frspace}" -lt '250000' ]; then
+		echo "Warning, ${ZBREW_TMP} is low on free space, it is recommended to have at least 250 MB available"
 		echo "Current free space available is: ${tmp_frspace} KB"
 		return 16
 	fi
@@ -163,8 +165,37 @@ prodreq() {
 
 
 
+update() {
+	export ALLPTFS=1
+	for zbrewfunc in ${update_verbs}; do
+		runfunc="${zbrewfunc}"
+                if [ "${runfunc}" = "smpapplycheck" ]; then
+                        opts="$opts -p"
+                        runfunc="smpappacc"
+                fi
+                if [ "${runfunc}" = "smpapply" ]; then
+                        opts="$opts -q"
+                        runfunc="smpappacc"
+                fi
+                out=`${runfunc} ${opts} ${sw}`
+                rc=$?
+		zbrewlog "${runfunc} ${opts}" $*
+                zbrewlog "${runfunc} RC: ${rc}"
+                if [ "$rc" -gt 0 ] || [ "$verbose" -gt 0 ]; then
+                        echo "${out}" >&2
+                fi
+                if [ "$rc" -gt 0 ]; then
+                        return $rc
+                fi
+        done
+        return $rc
+	unset ALLPTFS	
+}
+
+
 
 install() {
+	export ALLPTFS=0
 	zbrewlog "install" $*
 	for zbrewfunc in ${install_verbs}; do
 		runfunc="${zbrewfunc}"
@@ -210,9 +241,6 @@ install() {
 #
 configure() {
 	zbrewlog "smpconfig" $*
-	sw=$1
- 	shift 1
-        opts=$*
 
         ussname=$(echo ${sw} | tr '[:upper:]' '[:lower:]');
 	prefix=`echo ${ussname} | awk '{print substr($0,0,3)}'`
@@ -222,7 +250,7 @@ configure() {
 	prodconfig="${mydir}/../../zbrew-${prefix}/${ussname}/${ussname}config"
         if [ -f "${prodconfig}" ]; then
      	        ${prodconfig} ${opts}
-		zbrewlog "smpconfigure RC: ${rc}"
+		zbrewlog "smpconfigure RC: $?"
 		return $?
         else                            
 		echo "Unable to find product configuration program: ${prodconfig}. Installation failed."
@@ -231,6 +259,7 @@ configure() {
 }
 
 install_verbs="prodreq smpconfig receive smpcrdddef proddsalloc smpapplycheck smpapply smpacceptcheck smpaccept"
+update_verbs="smpapplycheck smpapply"
 
 debug=0
 verbose=0
@@ -259,7 +288,6 @@ while getopts ":cvdr:" opt; do
       ;;
     c )
       clean=1
-      opts="${opts} -c"
       ;;
     v )
       verbose=1
@@ -285,14 +313,25 @@ mydir=$(callerdir ${0})
 props="${mydir}/../properties/zbrewprops.json"
 zbrewpropse zbrew config "${props}"
 sw=$2
-ussname=$(echo ${2} | tr '[:upper:]' '[:lower:]');
-zosname=$(echo ${2} | tr '[:lower:]' '[:upper:]');
+ussname=$(echo ${sw} | tr '[:upper:]' '[:lower:]');
+zosname=$(echo ${sw} | tr '[:lower:]' '[:upper:]');
+zosfile=$(echo ${3} | tr '[:lower:]' '[:upper:]');
 
-verb=$1
-if [ "${verb}" != 'search' ]; then
-	props="${ZBREW_ORDERROOT}/${ussname}order.json"
-	zbrewpropse "${ussname}" order "${props}"
+if [ "${clean}" = "1" ]; then
+                out=`prodclean ${opts} ${sw}`
+                rc=$?
+                zbrewlog "Cleanup for ${sw} Return Code: ${rc}"
+                if [ "${verbose}" = "1" ]; then
+                        echo "Cleanup completed: ${rc}"
+                fi
+                if [ $rc -gt 0 ]; then
+			"Cleanup failed with Return code: ${rc}"
+                        echo "${out}"
+			exit ${rc}
+                fi
+
 fi
+verb=$1
 
 case ${verb} in
 	search ) 
@@ -325,7 +364,14 @@ case ${verb} in
 			exit $rc
 		fi
 		;;
-
+        smpreceiveptf )
+                out=`smpfromfile ${opts} ${sw} ${zosfile}`;
+                rc=$?
+                if [ $rc -gt 0 ]; then
+                        echo "${out}"
+                        exit $rc
+                fi
+                ;;
 	prodreq )
 		out=`prodreq ${opts} ${sw}`
 
@@ -390,7 +436,6 @@ case ${verb} in
                         exit $rc
                 fi
                 ;;
-	
 	install )
 		out=`install ${opts} ${sw}`
 		rc=$? 
@@ -399,16 +444,33 @@ case ${verb} in
 			exit $rc
 		fi
 		;;
+        update  )
+		opts="${opts} -t"
+                out=`update ${opts} ${sw}`
+                rc=$?
+                if [ $rc -gt 0 ] || [ $verbose -gt 0 ]; then
+                        echo "${out}"
+                        exit $rc
+                fi
+                ;;
 	configure ) 
-		out=`configure $2 ${opts}`
+		out=`configure ${opts} ${sw}`
 		rc=$?
 		if [ $rc -gt 0 ]; then
 			echo "${out}" 
 		fi
 		;;	
 	uninstall ) 
-		out=`uninstall $2 ${opts}`
+		out=`prodclean ${opts} ${sw}`
 		rc=$?
+		zbrewlog "Uninstall ${sw} Return Code: ${rc}"
+		if [ "${verbose}" = "1" ]; then
+			echo "Uninstall completed: ${rc}"
+		fi
+                if [ $rc -gt 0 ]; then
+                        echo "${out}"
+                fi
+		
 		;;	
 	* ) msg zbrew ${UnknownAction} E ${verb}; exit 16;;
 esac

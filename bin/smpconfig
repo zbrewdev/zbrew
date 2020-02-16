@@ -49,13 +49,8 @@ Examples:
 
 definecsicluster() {
      name="$1"
-     clean="$2"
 
-     if [ ${clean} -gt 0 ]; then
-	drm -f ${name}
-     fi   
-
-     vls ${name} 2>/dev/null
+     echo "  LISTCAT ENTRIES(${dataset})" | mvscmdauth --pgm=idcams --sysprint=dummy --sysin=stdin
      rc=$?
      if [ $rc -eq 0 ]; then
 	echo "SMP/E dataset: ${name} already exists. Run with -c to re-create if required" >&2
@@ -85,16 +80,11 @@ definecsicluster() {
 }
 
 definecsidatasets() {
-     clean=$1
-     shift 1
 
      for v in $*; do
           name="${v%%:*}"
           attrs="${v##*:}"
           attrs=`echo ${attrs} | tr ',' '\t'`
-          if [ ${clean} -gt 0 ]; then
-		drm -f ${name}
-          fi
           dtouch ${attrs} ${name}
      done
      return 0
@@ -256,12 +246,11 @@ zzz
 }
 
 defineClusters() {
-	clean=$1
-	gcsi=`definecsicluster "${GLOBAL_CSI}" ${clean}`
+	gcsi=`definecsicluster "${GLOBAL_CSI}"`
 	rc1=$?
-	tcsi=`definecsicluster "${TARGET_CSI}" ${clean}`
+	tcsi=`definecsicluster "${TARGET_CSI}"`
 	rc2=$?
-	dcsi=`definecsicluster "${DLIB_CSI}" ${clean}`
+	dcsi=`definecsicluster "${DLIB_CSI}"`
 	rc3=$?
 
 	if [ "${rc1}${rc2}${rc3}" != "000" ]; then 
@@ -277,13 +266,9 @@ zzz
 }
 
 debug=0
-clean=0
 verbose=0
-while getopts ":vdc" opt; do
+while getopts ":vd" opt; do
   case ${opt} in
-    c )         
-      clean=1
-      ;;
     d )         
       debug=1
       ;;
@@ -330,7 +315,7 @@ REPRO_FROM="SYS1.MACLIB(GIMZPOOL)"
 ## msf - need to move CSI allocation to be product specific for size reasons
 DSSPACE="1500,1500,1500"
 
-out=`defineClusters ${clean}`
+out=`defineClusters`
 rc=$?
 if [ $rc -gt 0 ]; then
 	echo "$out"
@@ -349,7 +334,7 @@ datasets="${HLQ}${PFX}G.SMPPTS:-s500M,-tpdse
           ${HLQ}${PFX}D.DLIB.SMPLOG:-tseq,-rvb,-l150
           ${HLQ}${PFX}D.DLIB.SMPLOGA:-tseq,-rvb,-l150"
 
-definecsidatasets ${clean} ${datasets}
+definecsidatasets ${datasets}
 if [ $? -gt 0 ]; then
      exit 16
 fi

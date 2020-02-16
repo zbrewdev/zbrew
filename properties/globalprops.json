@@ -15,7 +15,6 @@
 			"IGY610_CSI":"NONE",
 			"IGY520_CSI":"NONE",
 			"IGY510_CSI":"NONE",
-			"ALLPTFS":"0",
 			"JOBPARMS":"''MSGCLASS=S,NOTIFY=&SYSUID''",
 			"JOBOPTS":""
                  }

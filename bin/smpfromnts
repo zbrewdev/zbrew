@@ -82,12 +82,8 @@ zbrewpropse zbrew config "${props}"
 debug=0
 verbose=0
 opts=""
-while getopts ":vdc" opt; do
+while getopts ":vd" opt; do
   case ${opt} in
-    c )
-      clean=1
-      opts="${opts} -c"
-      ;;
     d )
       debug=1
       opts="${opts} -d"

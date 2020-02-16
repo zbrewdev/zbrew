@@ -1,0 +1,118 @@
+#!/bin/sh
+. zbrewfuncs
+InvalidOption=1
+TooFewParms=3
+UnknownAction=3
+
+#
+# Temporary hack - replace with a proper message file
+#
+msg() {
+	pgm=$1
+	msgnum=$2
+	msgtype=$3
+	
+	shift 3
+	args=$*
+
+	case ${msgnum} in 
+		${InvalidOption}) msgtext="Invalid option specified: -";;
+		${TooFewParms}) msgtext="Too few Parameters specified. Expected 3 but received: ";;
+		${UnknownAction}) msgtext="Unknown action specified: ";;
+		*) msgtext="Internal Error. Unknow msgnum: ${msgnum}";;
+	esac
+	echo "ZCL000"${msgnum}${msgtype} "${msgtext}${args}" >&2
+}
+
+#
+# Temporary hack - replace with a manpage
+#
+syntax() {
+	echo "\
+zbrew smpreceiveptf <prefix> <sequential_or_pds_filename>
+	    
+Examples:
+	zbrew smpreceiveptf igy630 'igy630.ptfs(UI12345)' >&2 
+	zbrew smpreceiveptf igy630 'igy630.ptf1'" >&2 
+	exit 16
+}
+
+receivefromzos() {
+	sw="$1"
+	SMPPTFIN="$2"
+	if [ "${verbose}" = "1" ]; then
+		echo "SMP/E attempting to receive PTF(s) from ${SMPPTFIN}" >&2
+	fi
+	rcvcmd='RECEIVE SYSMODS'
+
+	tmpCntlHFS=${ZBREW_TMP}/$$.cntl.xml
+
+	cat >${tmpCntlHFS} <<zzz
+  SET BDY(GLOBAL).
+  ${rcvcmd} .
+zzz
+
+	smpout=`smp -i ${ZBREW_HLQ}${sw}G.GLOBAL.CSI -f ${SMPPTFIN} -w ${ZBREW_TMP} -r ${ZBREW_TMP}/rpt -p ${ZBREW_TMP}/sysprint <${tmpCntlHFS}`
+	rc=$?
+	if [ ${rc} -gt 0 ]; then
+		echo "SMP/E RECEIVE for ${SMPPTFIN} failed." >&2
+		echo "${smpout}" >&2
+	else
+		if [ "${verbose}" = "1" ]; then
+        	        echo "SMP/E Receive processing successful for ${SMPPTFIN}" >&2
+			echo "${smpout}" >&2
+	        fi
+
+		rm ${tmpCntlHFS}
+	fi
+
+	return ${rc} 
+}
+
+mydir=$(callerdir ${0})
+props="${mydir}/../properties/zbrewprops.json"
+zbrewpropse zbrew config "${props}"
+
+debug=0
+verbose=0
+opts=""
+while getopts ":vd" opt; do
+  case ${opt} in
+    d )
+      debug=1
+      opts="${opts} -d"
+      ;;
+    v )
+      verbose=1
+      opts="${opts} -v"
+      ;;
+    \?)
+      if [ ${OPTARG} != "?" ]; then
+	msg smpfromfile ${InvalidOption} E "${OPTARG}"
+      fi
+      syntax
+      exit 4
+      ;;
+  esac
+done
+shift $(expr $OPTIND - 1 )
+if [ $# -lt 2 ]; then
+	msg smpfromfile ${TooFewParms} E "$#"
+	syntax
+	exit 16
+fi
+
+sw=$1
+zosfile=$2
+zosname=$(echo ${sw} | tr '[:lower:]' '[:upper:]');
+ussname=$(echo ${sw} | tr '[:upper:]' '[:lower:]');
+smpptfin=$(echo ${zosfile} | tr '[:lower:]' '[:upper:]');
+prefix=`echo "${zosname}" | awk '{ print substr($1, 0, 3) }'`
+
+out=`receivefromzos ${zosname} ${smpptfin}`; 
+rc=$? 
+if [ $rc -gt 0 ]; then
+	echo "SMP/E RECEIVE of PTF(s) failed with return code $rc" >&2
+fi
+
+exit $rc
