@@ -52,7 +52,7 @@ To install from artifactory:
 You will want to get zbrew latest package. It is a pax file - unpax it into the _ZBREWROOT_ directory. You will then want to pick up pax files for each product you want to install. Start with _zbrew-zhw_, which is just a hello world to ensure it all works. Install all pax files in the _ZBREWROOT_ directory. 
 
 If you want to look at any of the source for zbrew, you can see it at:
-- https://github.com/mikefultonbluemix/zbrew
+- https://github.com/zbrewdev/zbrew
 There are corresponding git repos for the product which have a -<product> after them, e.g.
 - https://github.com/mikefultonbluemix/zbrew-eqa
 
