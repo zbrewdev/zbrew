@@ -98,5 +98,6 @@ else
  		exit 3
         fi
 fi
+rm ${errout}
 
 exit 0
