@@ -3,6 +3,9 @@ README.md
 zbrew.software
 bin/prodclean
 bin/proddsalloc
+bin/readbom
+bin/readprops
+bin/readreq
 bin/secmgr
 bin/smp
 bin/smpappacc
