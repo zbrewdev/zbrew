@@ -2,6 +2,7 @@
  	"software": [{
 		"name":"ZBREW",
 		"global":{
+			"ZBREW_ZFSROOT":"/zbrew/",
 			"CEEHLQ":"CEE",
 			"CSSHLQ":"SYS1",
 			"EZAHLQ":"TCPIP",
