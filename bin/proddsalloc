@@ -54,6 +54,7 @@ crtzfs() {
 	primary="${zfsarg2}"
 	secondary="${zfsarg3}"
 	mountpnt=`echo "${zfsarg4}"`
+        leaves=`echo "${zfsarg5}" | tr -d "\n" | tr -s "," " "`
 	mkdir -p -m 755 ${root}${mountpnt}
 	rc=$?
 	if [ $rc -gt 0 ]; then
@@ -84,7 +85,6 @@ zzz
 		exit $rc
 	fi
 
-        leaves=`echo "${zfsarg5}" | tr -d "\n" | tr -s "," " "`
         for mkleaf in $leaves; do
                 mkdir -p -m 755 ${root}${mountpnt}${mkleaf}
 	        rc=$?
