@@ -14,20 +14,12 @@ if ! [ -e "${zbrewzhw_dir}" ]; then
 	exit 1
 fi
 
-actual=`readprops ZHW110 install <${zbrewzhw_dir}/zhw110/zhw110install.json`
-zbrewtest "Properties file parsing failed" "0" "$?" 
-
-expected='ZFSROOT=/zbrew/
-ZFSDIR=usr/lpp/IBM/zhw/zhw110/
-LEAVES="hw sepzfs"'
-
-zbrewtest "Unexpected properties" "${expected}" "${actual}"
 
 actual=`readbom zhw110 <${zbrewzhw_dir}/zhw110/zhw110bom.json`
 zbrewtest "Bill of Materials (BoM) file parsing failed" "0" "$?" 
 
-expected="SZHWHFS ZFS 10 10 T  
-SZHWHFS2 ZFS 10 10 T sepzfs/ sepzfs/
+expected="SZHWHFS ZFS 10 10 T usr/lpp/IBM/zhw/zhw110/ usr/lpp/IBM/zhw/zhw110/ hw,sepzfs
+SZHWHFS2 ZFS 10 10 T usr/lpp/IBM/zhw/zhw110/sepzfs/ usr/lpp/IBM/zhw/zhw110/sepzfs/ 
 SZHWSM PDSE FB 80 15 2 T
 AZHWSM PDSE FB 80 15 2 D
 AZHWHFS PDSE FB 80 15 2 D"

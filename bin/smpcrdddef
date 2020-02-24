@@ -63,17 +63,20 @@ for targddzfs in ${targdddefs}; do
  dddefpath=`echo "${targddzfs}" | awk -F, '{print $2}'`
  smpuclin="${smpuclin}
  REP DDDEF(${targdddef})
- PATH('${ZFSROOT}${ZFSDIR}${dddefpath}').
+ PATH('${ZBREW_ZFSROOT}${dddefpath}').
 "
 done
 
 
 #for CALLLIBS 
-for targdddef in ${CALLLIBS}; do
- llq=`echo ${targdddef} | awk -F'.' '{print $2}'`
- smpuclin="${smpuclin}
+targdddefs=`echo "${libs}" | awk '($2 == "C") {print $1}'`
+for targdddef in ${targdddefs}; do
+  llq=`echo ${targdddef} | awk -F'.' '{print $2}'`
+  chlq=`echo ${targdddef} | awk -F'.' '{print $1}'`
+  eval shlq=${chlq}
+  smpuclin="${smpuclin}
   REP DDDEF(${llq})
-  DA(${targdddef})
+  DA(${shlq}"."${llq})
   UNIT(SYSALLDA)
   WAITFORDSN
   SHR.
@@ -152,9 +155,6 @@ zbrewpropse zbrew config "${props}"
 
 props=$(callerdir "$0")"/../../zbrew/properties/globalprops.json"
 zbrewpropse zbrew global ${props}
-
-props="${mydir}/../../zbrew-${prefix}/${ussname}/${ussname}install.json"
-zbrewpropse "${zosname}" install "${props}"
 
 smpelibs="${mydir}/../../zbrew-${prefix}/${ussname}/${ussname}bom.json"
 

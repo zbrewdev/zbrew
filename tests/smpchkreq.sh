@@ -18,10 +18,10 @@ fi
 
 # first, unset any CSI's that might be specified
 # this should fail because at least one pre-req LE has to be provided
-unset CEE220_CSI
-unset CEE230_CSI
-unset DFH520_CSI
-unset ASM160_CSI
+unset ZBREW_CEE220_CSI
+unset ZBREW_CEE230_CSI
+unset ZBREW_DFH520_CSI
+unset ZBREW_ASM160_CSI
 
 actual=`smpchkreq zhw110 ${ZHW110DIR}/zhw110req.json 2>&1`
 rc=$?
@@ -38,7 +38,7 @@ fi
 
 # Specify a pre-req CSI dataset for LE 2.3 and co-req Assembler 1.6 but not the others
 # This should pass because a pre-req LE is specified and co-reqs do not need to be specified
-export CEE230_CSI="MVS.GLOBAL.CSI"
+export ZBREW_CEE230_CSI="MVS.GLOBAL.CSI"
 
 actual=`smpchkreq zhw110 ${ZHW110DIR}/zhw110req.json`
 rc=$?

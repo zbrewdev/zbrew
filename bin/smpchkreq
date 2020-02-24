@@ -50,8 +50,7 @@ chkreq() {
 	fmid="$4"
 	shift 4
 	ptfs="$*"
-	
-	csienv="\$${relid}_CSI"
+	csienv="\$ZBREW_${relid}_CSI"
 	csi=`eval echo ${csienv}`
 	if [ "${csi}" = 'NONE' ]; then
 		csi=''

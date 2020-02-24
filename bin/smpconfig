@@ -91,8 +91,7 @@ definecsidatasets() {
 }
 
 definesmpcntl() {
-     HLQ="$1"
-     PFX="$2"
+     PFX="$1"
 
      echo "
   SET BOUNDARY(GLOBAL).
@@ -101,7 +100,7 @@ definesmpcntl() {
           ASM(ASMUTIL)  
           LKED(LINKEDIT)
           COPY(IEBCOPY) 
-          DSPREFIX(${HLQ}${PFX}G.SMPTLIB)
+          DSPREFIX(${ZBREW_HLQ}${PFX}G.SMPTLIB)
           DSSPACE(${DSSPACE})
           MSGFILTER(YES)
           MSGWIDTH(80)
@@ -124,18 +123,18 @@ definesmpcntl() {
           OPTIONS(${PFX}G)
           SREL(Z038)
           ZONEINDEX(
-                    (${PFX}T,${HLQ}${PFX}T.TARGET.CSI,TARGET)
-                    (${PFX}D,${HLQ}${PFX}D.DLIB.CSI,DLIB)
+                    (${PFX}T,${ZBREW_HLQ}${PFX}T.TARGET.CSI,TARGET)
+                    (${PFX}D,${ZBREW_HLQ}${PFX}D.DLIB.CSI,DLIB)
                    ).
     ADD DDDEF(SMPDEBUG) SYSOUT(*).
     ADD DDDEF(SMPLIST)  SYSOUT(*).
     ADD DDDEF(SMPRPT)   SYSOUT(*).
     ADD DDDEF(SMPSNAP)  SYSOUT(*).
     ADD DDDEF(SYSPRINT) SYSOUT(*).
-    ADD DDDEF(SMPLOG)   DA(${HLQ}${PFX}G.GLOBAL.SMPLOG) MOD.
-    ADD DDDEF(SMPLOGA)  DA(${HLQ}${PFX}G.GLOBAL.SMPLOGA) MOD.
+    ADD DDDEF(SMPLOG)   DA(${ZBREW_HLQ}${PFX}G.GLOBAL.SMPLOG) MOD.
+    ADD DDDEF(SMPLOGA)  DA(${ZBREW_HLQ}${PFX}G.GLOBAL.SMPLOGA) MOD.
     ADD DDDEF(SMPOUT)   SYSOUT(*).
-    ADD DDDEF(SMPPTS)   DA(${HLQ}${PFX}G.SMPPTS) SHR.
+    ADD DDDEF(SMPPTS)   DA(${ZBREW_HLQ}${PFX}G.SMPPTS) SHR.
     ADD DDDEF(SMPTLOAD) UNIT(SYSALLDA) CYLINDERS SPACE(25,25) DIR(20).
     ADD DDDEF(SYSUT1)   UNIT(SYSALLDA) CYLINDERS SPACE(25,25).
     ADD DDDEF(SYSUT2)   UNIT(SYSALLDA) CYLINDERS SPACE(50,50).
@@ -160,18 +159,18 @@ definesmpcntl() {
           RELATED(${PFX}D).
     ADD DDDEF(SMPDEBUG) SYSOUT(*).
     ADD DDDEF(SMPLIST)  SYSOUT(*).
-    ADD DDDEF(SMPLOG)   DA(${HLQ}${PFX}T.TARGET.SMPLOG) MOD.
-    ADD DDDEF(SMPLOGA)  DA(${HLQ}${PFX}T.TARGET.SMPLOGA) MOD.
+    ADD DDDEF(SMPLOG)   DA(${ZBREW_HLQ}${PFX}T.TARGET.SMPLOG) MOD.
+    ADD DDDEF(SMPLOGA)  DA(${ZBREW_HLQ}${PFX}T.TARGET.SMPLOGA) MOD.
     ADD DDDEF(SMPOUT)   SYSOUT(*).
     ADD DDDEF(SMPRPT)   SYSOUT(*).
     ADD DDDEF(SMPSNAP)  SYSOUT(*).
     ADD DDDEF(SYSPRINT) SYSOUT(*).
-    ADD DDDEF(SMPPTS)   DA(${HLQ}${PFX}G.SMPPTS) SHR.
+    ADD DDDEF(SMPPTS)   DA(${ZBREW_HLQ}${PFX}G.SMPPTS) SHR.
     ADD DDDEF(SMPTLOAD) UNIT(SYSALLDA) CYLINDERS SPACE(25,25) DIR(20).
-    ADD DDDEF(SMPSTS)   DA(${HLQ}${PFX}T.TARGET.SMPSTS) OLD.
-    ADD DDDEF(SMPMTS)   DA(${HLQ}${PFX}T.TARGET.SMPMTS) OLD.
-    ADD DDDEF(SMPLTS)   DA(${HLQ}${PFX}T.TARGET.SMPLTS) OLD.
-    ADD DDDEF(SMPSCDS)  DA(${HLQ}${PFX}T.TARGET.SMPSCDS) OLD.
+    ADD DDDEF(SMPSTS)   DA(${ZBREW_HLQ}${PFX}T.TARGET.SMPSTS) OLD.
+    ADD DDDEF(SMPMTS)   DA(${ZBREW_HLQ}${PFX}T.TARGET.SMPMTS) OLD.
+    ADD DDDEF(SMPLTS)   DA(${ZBREW_HLQ}${PFX}T.TARGET.SMPLTS) OLD.
+    ADD DDDEF(SMPSCDS)  DA(${ZBREW_HLQ}${PFX}T.TARGET.SMPSCDS) OLD.
     ADD DDDEF(SYSLIB)   CONCAT(SMPMTS).
     ADD DDDEF(SYSUT1)   UNIT(SYSALLDA) CYLINDERS SPACE(250,250).
     ADD DDDEF(SYSUT2)   UNIT(SYSALLDA) CYLINDERS SPACE(50,50).
@@ -197,18 +196,18 @@ definesmpcntl() {
           RELATED(${PFX}T).
     ADD DDDEF(SMPDEBUG) SYSOUT(*).
     ADD DDDEF(SMPLIST)  SYSOUT(*).
-    ADD DDDEF(SMPLOG)   DA(${HLQ}${PFX}D.DLIB.SMPLOG) MOD.
-    ADD DDDEF(SMPLOGA)  DA(${HLQ}${PFX}D.DLIB.SMPLOGA) MOD.
+    ADD DDDEF(SMPLOG)   DA(${ZBREW_HLQ}${PFX}D.DLIB.SMPLOG) MOD.
+    ADD DDDEF(SMPLOGA)  DA(${ZBREW_HLQ}${PFX}D.DLIB.SMPLOGA) MOD.
     ADD DDDEF(SMPOUT)   SYSOUT(*).
     ADD DDDEF(SMPRPT)   SYSOUT(*).
     ADD DDDEF(SMPSNAP)  SYSOUT(*).
     ADD DDDEF(SYSPRINT) SYSOUT(*).
     ADD DDDEF(SMPTLOAD) UNIT(SYSALLDA) CYLINDERS SPACE(25,25) DIR(20).
-    ADD DDDEF(SMPPTS)   DA(${HLQ}${PFX}G.SMPPTS) SHR.
-    ADD DDDEF(SMPSTS)   DA(${HLQ}${PFX}T.TARGET.SMPSTS) OLD.
-    ADD DDDEF(SMPMTS)   DA(${HLQ}${PFX}T.TARGET.SMPMTS) OLD.
-    ADD DDDEF(SMPLTS)   DA(${HLQ}${PFX}T.TARGET.SMPLTS) OLD.
-    ADD DDDEF(SMPSCDS)  DA(${HLQ}${PFX}T.TARGET.SMPSCDS) OLD.
+    ADD DDDEF(SMPPTS)   DA(${ZBREW_HLQ}${PFX}G.SMPPTS) SHR.
+    ADD DDDEF(SMPSTS)   DA(${ZBREW_HLQ}${PFX}T.TARGET.SMPSTS) OLD.
+    ADD DDDEF(SMPMTS)   DA(${ZBREW_HLQ}${PFX}T.TARGET.SMPMTS) OLD.
+    ADD DDDEF(SMPLTS)   DA(${ZBREW_HLQ}${PFX}T.TARGET.SMPLTS) OLD.
+    ADD DDDEF(SMPSCDS)  DA(${ZBREW_HLQ}${PFX}T.TARGET.SMPSCDS) OLD.
     ADD DDDEF(SYSLIB)   CONCAT(SMPMTS).
     ADD DDDEF(SYSUT1)   UNIT(SYSALLDA) CYLINDERS SPACE(250,250).
     ADD DDDEF(SYSUT2)   UNIT(SYSALLDA) CYLINDERS SPACE(50,50).
@@ -238,8 +237,8 @@ configureCSI() {
 	# - DDDEF entries for operational and temporary data sets
 	#********************************************************************
 	#
-	smpcntl=`definesmpcntl "${HLQ}" "${PFX}"`
-	mvscmdauth --pgm=GIMSMP --smpcsi=${GLOBAL_CSI} --smppts=${HLQ}${PFX}G.SMPPTS --smplog='*' --smpout='*' --smprpt='*' --smplist='*' --sysprint='*' --smpcntl=stdin <<zzz
+	smpcntl=`definesmpcntl "${PFX}"`
+	mvscmdauth --pgm=GIMSMP --smpcsi=${GLOBAL_CSI} --smppts=${ZBREW_HLQ}${PFX}G.SMPPTS --smplog='*' --smpout='*' --smprpt='*' --smplist='*' --sysprint='*' --smpcntl=stdin <<zzz
 ${smpcntl}
 zzz
 	exit $?
@@ -301,15 +300,14 @@ zosname=$(echo ${sw} | tr '[:lower:]' '[:upper:]');
 prefix=`echo "${ussname}" | awk '{ print substr($1, 0, 3) }'`
 
 PFX=$(echo ${sw} | tr '[:lower:]' '[:upper:]');
-HLQ="${ZBREW_HLQ}"
 
 if [ ${#PFX} -gt 6 ]; then
-	msg smpconfig ${PrefixTooLong} E "${#HLQ}"
+	msg smpconfig ${PrefixTooLong} E "${#ZBREW_HLQ}"
 	exit 16
 fi 
-GLOBAL_CSI="${HLQ}${PFX}G.GLOBAL.CSI"
-TARGET_CSI="${HLQ}${PFX}T.TARGET.CSI"
-DLIB_CSI="${HLQ}${PFX}D.DLIB.CSI"
+GLOBAL_CSI="${ZBREW_HLQ}${PFX}G.GLOBAL.CSI"
+TARGET_CSI="${ZBREW_HLQ}${PFX}T.TARGET.CSI"
+DLIB_CSI="${ZBREW_HLQ}${PFX}D.DLIB.CSI"
 REPRO_FROM="SYS1.MACLIB(GIMZPOOL)"
 
 ## msf - need to move CSI allocation to be product specific for size reasons
@@ -322,17 +320,17 @@ if [ $rc -gt 0 ]; then
 	exit $rc
 fi
 
-datasets="${HLQ}${PFX}G.SMPPTS:-s500M,-tpdse
-          ${HLQ}${PFX}T.TARGET.SMPMTS:-tpds
-          ${HLQ}${PFX}T.TARGET.SMPSTS:-tpds
-          ${HLQ}${PFX}T.TARGET.SMPLTS:-tpds
-          ${HLQ}${PFX}T.TARGET.SMPSCDS:-tpds
-          ${HLQ}${PFX}G.GLOBAL.SMPLOG:-tseq,-rvb,-l150
-          ${HLQ}${PFX}G.GLOBAL.SMPLOGA:-tseq,-rvb,-l150
-          ${HLQ}${PFX}T.TARGET.SMPLOG:-tseq,-rvb,-l150
-          ${HLQ}${PFX}T.TARGET.SMPLOGA:-tseq,-rvb,-l150
-          ${HLQ}${PFX}D.DLIB.SMPLOG:-tseq,-rvb,-l150
-          ${HLQ}${PFX}D.DLIB.SMPLOGA:-tseq,-rvb,-l150"
+datasets="${ZBREW_HLQ}${PFX}G.SMPPTS:-s500M,-tpdse
+          ${ZBREW_HLQ}${PFX}T.TARGET.SMPMTS:-tpds
+          ${ZBREW_HLQ}${PFX}T.TARGET.SMPSTS:-tpds
+          ${ZBREW_HLQ}${PFX}T.TARGET.SMPLTS:-tpds
+          ${ZBREW_HLQ}${PFX}T.TARGET.SMPSCDS:-tpds
+          ${ZBREW_HLQ}${PFX}G.GLOBAL.SMPLOG:-tseq,-rvb,-l150
+          ${ZBREW_HLQ}${PFX}G.GLOBAL.SMPLOGA:-tseq,-rvb,-l150
+          ${ZBREW_HLQ}${PFX}T.TARGET.SMPLOG:-tseq,-rvb,-l150
+          ${ZBREW_HLQ}${PFX}T.TARGET.SMPLOGA:-tseq,-rvb,-l150
+          ${ZBREW_HLQ}${PFX}D.DLIB.SMPLOG:-tseq,-rvb,-l150
+          ${ZBREW_HLQ}${PFX}D.DLIB.SMPLOGA:-tseq,-rvb,-l150"
 
 definecsidatasets ${datasets}
 if [ $? -gt 0 ]; then

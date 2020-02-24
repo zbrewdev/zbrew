@@ -2,21 +2,22 @@
  	"software": [{
 		"name":"ZBREW",
 		"global":{
-			"CEEHLQ":"CEE",
-			"CSSHLQ":"SYS1",
-			"EZAHLQ":"TCPIP",
-			"ISPHLQ":"ISP",
-			"CEE220_CSI":"NONE",
-			"CEE230_CSI":"NONE",
-			"CEE240_CSI":"NONE",
-			"ASM160_CSI":"NONE",
-			"DFH520_CSI":"NONE",
-			"IGY620_CSI":"NONE",
-			"IGY610_CSI":"NONE",
-			"IGY520_CSI":"NONE",
-			"IGY510_CSI":"NONE",
-			"JOBPARMS":"''MSGCLASS=S,NOTIFY=&SYSUID''",
-			"JOBOPTS":""
+			"ZBREW_ZFSROOT":"/zbrew/",
+			"ZBREW_CEEHLQ":"CEE",
+			"ZBREW_CSSHLQ":"SYS1",
+			"ZBREW_EZAHLQ":"TCPIP",
+			"ZBREW_ISPHLQ":"ISP",
+			"ZBREW_CEE220_CSI":"NONE",
+			"ZBREW_CEE230_CSI":"NONE",
+			"ZBREW_CEE240_CSI":"NONE",
+			"ZBREW_ASM160_CSI":"NONE",
+			"ZBREW_DFH520_CSI":"NONE",
+			"ZBREW_IGY620_CSI":"NONE",
+			"ZBREW_IGY610_CSI":"NONE",
+			"ZBREW_IGY520_CSI":"NONE",
+			"ZBREW_IGY510_CSI":"NONE",
+			"ZBREW_JOBPARMS":"''MSGCLASS=S,NOTIFY=&SYSUID''",
+			"ZBREW_JOBOPTS":""
                  }
 	}]
 }

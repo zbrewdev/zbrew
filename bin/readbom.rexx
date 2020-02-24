@@ -35,24 +35,30 @@ Arg swname .
           return 4
         end
         z = json.software.el.datasets.d.zones.1
-        select 
-          when (t = 'ZFS') then do
-            w = json.software.el.datasets.d.dddefpath
-            x = json.software.el.datasets.d.mountpnt
-            say n t p s z w x
-          end
-          when (t = 'PDS') then do
-            l = json.software.el.datasets.d.lrecl
-            o = json.software.el.datasets.d.dirblks
-            r = json.software.el.datasets.d.recfm
-            say n t r l p s z o 
-          end
-          otherwise do
-            l = json.software.el.datasets.d.lrecl
-            r = json.software.el.datasets.d.recfm
-            say n t r l p s z
-          end
+        if (z = 'C') then do
+          say n z 
         end
+        else do
+          select 
+            when (t = 'ZFS') then do
+              w = json.software.el.datasets.d.dddefpath
+              x = json.software.el.datasets.d.mountpnt
+              y = json.software.el.datasets.d.leaves
+              say n t p s z w x y
+            end
+            when (t = 'PDS') then do
+              l = json.software.el.datasets.d.lrecl
+              o = json.software.el.datasets.d.dirblks
+              r = json.software.el.datasets.d.recfm
+              say n t r l p s z o 
+            end
+            otherwise do
+              l = json.software.el.datasets.d.lrecl
+              r = json.software.el.datasets.d.recfm
+              say n t r l p s z
+             end
+          end
+        end 
       end
       return 0
     end
