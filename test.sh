@@ -24,7 +24,7 @@ rm -f *.actual
 # Override the ZBREW_HLQ to ensure test datasets go to ZBREWT instead of ZBREW
 #
 export ZBREW_HLQ=ZBREWT.
-export ZBREW_ZFSROOT=ZBREWT.
+export ZBREW_ZFSROOT="/ZBREWT/"
 
 if [ -z $1 ] ; then
 	tests=*.sh
