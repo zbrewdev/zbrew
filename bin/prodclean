@@ -71,19 +71,24 @@ prefix=`echo "${ussname}" | awk '{ print substr($1, 0, 3) }'`
 props="${mydir}/../../zbrew/properties/zbrewprops.json"
 zbrewpropse zbrew config "${props}"
 
-props="${mydir}/../../zbrew-${prefix}/${ussname}/${ussname}install.json"
-zbrewpropse "${ussname}" install "${props}"
+props=$(callerdir "$0")"/../../zbrew/properties/globalprops.json"
+zbrewpropse zbrew global ${props}
 
-out=`/usr/sbin/unmount -R ${ZFSROOT}${ZFSDIR} 2>/dev/null`
+smpelibs="${mydir}/../../zbrew-${prefix}/${ussname}/${ussname}bom.json"
+ussname=$(echo ${ussname} | tr '[:lower:]' '[:upper:]')
+
+libs=`readbom ${ussname} <${smpelibs}`
 rc=$?
-if [ $rc -gt 2 ]; then
-        echo "ZFS unmount failed. UnInstall aborted: ${rc}"
+if [ $rc -gt 0 ]; then
+        echo "${libs}"
         exit $rc
 fi
 
-HLQ="${ZBREW_HLQ}"
+mountpoints=`echo "${libs}" | awk '($2 == "ZFS") {print $7}'`
 
-out=`drm -f "${HLQ}${zosname}*.**"`
+unm=`echo "${libs}" | awk -v zbr="$ZBREW_ZFSROOT" '($2 == "ZFS") {system("/usr/sbin/unmount -R "zbr""$7" 2>/dev/null")}'`
+
+out=`drm -f "${ZBREW_HLQ}${zosname}*.**"`
 rc=$?
 if [ $rc -gt 0 ]; then
         echo "Dataset cleanup failed. UnInstall aborted"

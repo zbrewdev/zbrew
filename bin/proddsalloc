@@ -44,7 +44,7 @@ crtds() {
 }
 
 crtzfs() {
-	root="${ZFSROOT}"
+	root="${ZBREW_ZFSROOT}"
 	arg=0
 	for zfsarg in ${1}; do
 		arg=`expr ${arg} + 1`
@@ -53,14 +53,14 @@ crtzfs() {
 	zfsname="${zfsarg1}"
 	primary="${zfsarg2}"
 	secondary="${zfsarg3}"
-	mountpnt=`echo "${zfsarg4}" | tr -d "\n"`
-	middle="${ZFSDIR}"
-	mkdir -p -m 755 ${root}${middle}${mountpnt}
+	mountpnt=`echo "${zfsarg4}"`
+	mkdir -p -m 755 ${root}${mountpnt}
 	rc=$?
 	if [ $rc -gt 0 ]; then
-		echo "Error creating ${root}${middle} ZFS directory RC: $rc"
+		echo "Error creating ${root}${mountpnt} ZFS directory RC: $rc"
 		exit $rc
 	fi
+	
 
 	mvscmdauth --pgm=IDCAMS --sysprint='*' --sysin=stdin <<zzz
    DEFINE CLUSTER(NAME(${zfsname}) -
@@ -77,12 +77,23 @@ zzz
 		echo "Error formatting ZFS: $rc"
 		exit $rc
 	fi
-	/usr/sbin/mount -t zfs -f ${zfsname} ${root}${middle}${mountpnt}
+	/usr/sbin/mount -t zfs -f ${zfsname} ${root}${mountpnt}
 	rc=$?
 	if [ $rc -gt 0 ]; then
 		echo "Error mounting ZFS:  $rc"
 		exit $rc
 	fi
+
+        leaves=`echo "${zfsarg5}" | tr -d "\n" | tr -s "," " "`
+        for mkleaf in $leaves; do
+                mkdir -p -m 755 ${root}${mountpnt}${mkleaf}
+	        rc=$?
+	        if [ $rc -gt 0 ]; then
+                echo "Error creating ${root}${mountpnt}${mkleaf} ZFS directory leaves RC: $rc"
+		exit $rc
+        	fi
+        done
+
 	exit 0
 }
 
@@ -121,8 +132,8 @@ prefix=`echo "${ussname}" | awk '{ print substr($1, 0, 3) }'`
 props="${mydir}/../../zbrew/properties/zbrewprops.json"
 zbrewpropse zbrew config "${props}"
 
-props="${mydir}/../../zbrew-${prefix}/${ussname}/${ussname}install.json"
-zbrewpropse "${ussname}" install "${props}"
+props=$(callerdir "$0")"/../../zbrew/properties/globalprops.json"
+zbrewpropse zbrew global ${props}
 
 smpelibs="${mydir}/../../zbrew-${prefix}/${ussname}/${ussname}bom.json"
 ussname=$(echo ${ussname} | tr '[:lower:]' '[:upper:]')
@@ -135,8 +146,8 @@ if [ $rc -gt 0 ]; then
 fi
 # Obtain list of all Target and Distribution Datasets to allocate, exclude ZFS
 dspds=`echo "${libs}" | awk -v pfx="${ZBREW_HLQ}${ussname}." '($2 == "PDS") {print pfx$1" -t"$2" -r"$3" -l"$4" -b"$8" -s"$5*56"K"}'`
-dszfs=`echo "${libs}" | awk -v pfx="${ZBREW_HLQ}${ussname}." '($2 == "ZFS") {print pfx""$1" "$3" "$4" "$7","}' | tr -d "\n"`
-dsoth=`echo "${libs}" | awk -v pfx="${ZBREW_HLQ}${ussname}." '($2 != "ZFS" && $2 != "PDS") {print pfx$1" -t"$2" -r"$3" -l"$4" -s"$5*56"K"}'`
+dszfs=`echo "${libs}" | awk -v pfx="${ZBREW_HLQ}${ussname}." '($2 == "ZFS") {print pfx""$1" "$3" "$4" "$7" "$8":"}' | tr -d "\n"`
+dsoth=`echo "${libs}" | awk -v pfx="${ZBREW_HLQ}${ussname}." '($2 != "C" && $2 != "ZFS" && $2 != "PDS") {print pfx$1" -t"$2" -r"$3" -l"$4" -s"$5*56"K"}'`
 
 out=`crtds "${dspds}"`
 rc=$?
@@ -154,12 +165,12 @@ fi
 
 
 # Obtain list of ZFS and allocate/mount
-zfscnt=`echo "${dszfs}" | awk -F, '{}END {print NF}'`
+zfscnt=`echo "${dszfs}" | awk -F: '{}END {print NF}'`
 
 cntr=1
 while [ $cntr -le $zfscnt ];  
 do
-        zfsds=`echo "${dszfs}" | awk -F, -v zfsv=$cntr '{print $zfsv}'`
+        zfsds=`echo "${dszfs}" | awk -F: -v zfsv=$cntr '{print $zfsv}'`
         if [ "$zfsds" != "" ]; then
 		zfsout=`crtzfs "${zfsds}"`
 	fi
@@ -170,14 +181,5 @@ if [ $rc -gt 0 ]; then
         echo "ZFS creation/mount failed. Installation aborted"
         exit $rc
 fi
-
-for l in $LEAVES; do
-	mkdir -p -m 755 ${ZFSROOT}${ZFSDIR}${l} 
- 	rc=$? 
- 	if [ ${rc} -gt 0 ]; then
-		exit $rc 
- 	fi 
-done 
-
 
 exit 0
