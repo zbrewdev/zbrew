@@ -138,12 +138,28 @@ receive() {
 
 prodreq() {
 	zbrewlog "prodreq" $*
-	
+		
 	tmp_frspace=$(df -k ${ZBREW_TMP} | tail -1 | awk '{print $3}' | awk -F'/' '{print $1}')
-	if [ "${tmp_frspace}" -lt '250000' ]; then
-		echo "Warning, ${ZBREW_TMP} is low on free space, it is recommended to have at least 250 MB available"
-		echo "Current free space available is: ${tmp_frspace} KB"
-		return 16
+	if [ "${tmp_frspace}" -lt "${ZBREW_TMP_MINSPACE}" ]; then
+		zfstmpinf=`df -kP ${ZBREW_TMP} | awk '!/Filesystem/ {print $1,$2,$4}'`
+		arinx=0
+		for words in ${zfstmpinf}; do
+		        zfsparm[$arinx]=${words}
+		        arinx=`expr ${arinx} + 1`
+		done
+		zfstmpnm=${zfsparm[0]}
+		zfstmpts=${zfsparm[1]}
+		zfstmpas=${zfsparm[2]}
+		newsize=`expr ${ZBREW_TMP_MINSPACE} - ${zfstmpas} + ${zfstmpts}`
+		resizezfs=`zfsadm grow -aggregate "$zfstmpnm" -s "${newsize}"`
+		rc=$?
+		if [ "${rc}" != "0" ]; then
+			echo "Warning, ${ZBREW_TMP} is low on free space, it is recommended to have at least ${ZBREW_TMP_MINSPACE} KB available"
+			echo "Current free space available is: ${tmp_frspace} KB"
+		        echo "zBrew Failed to automatically extend zfs ${zfstmpnm} to new size: ${newsize}. Return code: ${rc}"
+			rc=16		
+		fi
+		return ${rc}
 	fi
         
 	ussname=$(echo ${sw} | tr '[:upper:]' '[:lower:]');
@@ -312,6 +328,11 @@ fi
 mydir=$(callerdir ${0})
 props="${mydir}/../properties/zbrewprops.json"
 zbrewpropse zbrew config "${props}"
+
+props="${mydir}/../properties/globalprops.json"
+zbrewpropse zbrew global ${props}
+
+
 sw=$2
 ussname=$(echo ${sw} | tr '[:upper:]' '[:lower:]');
 zosname=$(echo ${sw} | tr '[:lower:]' '[:upper:]');
