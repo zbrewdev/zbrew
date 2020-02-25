@@ -266,8 +266,9 @@ configure() {
 	prodconfig="${mydir}/../../zbrew-${prefix}/${ussname}/${ussname}config"
         if [ -f "${prodconfig}" ]; then
      	        ${prodconfig} ${opts}
+		rc=$?
 		zbrewlog "smpconfigure RC: $?"
-		return $?
+		return $rc
         else                            
 		echo "Unable to find product configuration program: ${prodconfig}. Installation failed."
                 return 16               
