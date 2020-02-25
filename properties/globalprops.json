@@ -2,6 +2,7 @@
  	"software": [{
 		"name":"ZBREW",
 		"global":{
+			"ZBREW_TMP_MINSPACE":"402000",
 			"ZBREW_ZFSROOT":"/zbrew/",
 			"ZBREW_CEEHLQ":"CEE",
 			"ZBREW_CSSHLQ":"SYS1",
