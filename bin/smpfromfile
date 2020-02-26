@@ -103,9 +103,15 @@ if [ $# -lt 2 ]; then
 fi
 
 sw=$1
-zosfile=$2
 zosname=$(echo ${sw} | tr '[:lower:]' '[:upper:]');
 ussname=$(echo ${sw} | tr '[:upper:]' '[:lower:]');
+testin=`echo "$2" | awk -F. '{print $2}'`
+if [ "${testin}" = "" ]; then
+        zosfile="ZBREW.PTF.${zosname}.$2"
+else
+        zosfile=$2
+fi
+
 smpptfin=$(echo ${zosfile} | tr '[:lower:]' '[:upper:]');
 prefix=`echo "${zosname}" | awk '{ print substr($1, 0, 3) }'`
 
