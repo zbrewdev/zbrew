@@ -107,7 +107,7 @@ zosname=$(echo ${sw} | tr '[:lower:]' '[:upper:]');
 ussname=$(echo ${sw} | tr '[:upper:]' '[:lower:]');
 testin=`echo "$2" | awk -F. '{print $2}'`
 if [ "${testin}" = "" ]; then
-        zosfile="ZBREW.PTF.${zosname}.$2"
+        zosfile="${ZBREW_HLQ}PTF.${zosname}.$2"
 else
         zosfile=$2
 fi
