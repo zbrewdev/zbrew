@@ -138,6 +138,10 @@ runchk() {
 	skipprod=' '
 	passprod=' '
 	reqs=`readreq $1 <$2`
+	rc=$?
+	if [ $rc -gt 0 ]; then
+		return ${rc}
+	fi
 	skipprod=`readreqvar "${reqs}"`
 
 	trimmed=`echo ${skipprod} | tr -d '[:space:]'`

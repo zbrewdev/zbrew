@@ -16,6 +16,7 @@ end
 
 rc=readJSON()
 if (rc <> 0) then do
+  call SayErr 'readprops failed'
   return rc
 end
 
@@ -32,5 +33,5 @@ do el = 1 to json.software.0
   end
 end
 
-SayErr 'Unable to find software: ' || swname
+SayErr 'readprops: Unable to find software: ' || swname
 return 4

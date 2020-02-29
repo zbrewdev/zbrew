@@ -86,7 +86,7 @@ zbrewprops() {
 	category=$1
 	shift 1
 	for props in $*; do
-		if [ -f ${props} ]; then
+		if [ -f "${props}" ]; then
 			props=`readprops ${swname} ${category} <${props}`
 			OLDIFS=$IFS; IFS="
 		"
@@ -119,7 +119,7 @@ zbrewprops() {
 			return 16
 		fi
 		if [ ${line} -eq 0 ]; then
-			echo "No properties were read for swname: ${swname}, category: ${category}, file: ${props}" >&2
+			echo "No properties were read for swname: ${swname}, category: ${category}, file:${props}." >&2
 			return 8
 		fi
 	done

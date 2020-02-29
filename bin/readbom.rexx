@@ -17,6 +17,7 @@ Arg swname .
 
   rc = readJSON()
   if (rc <> 0) then do
+    call SayErr 'readbom failed'
     return rc
   end
 
@@ -31,7 +32,7 @@ Arg swname .
         zn= json.software.el.datasets.d.zones.0
         zn= 1
         if (zn <> 1) then do
-          call SayErr 'Expected exactly one zone for dataset: ' name 'but:' zn 'were specified.'
+          call SayErr 'readbom: Expected exactly one zone for dataset: ' name 'but:' zn 'were specified.'
           return 4
         end
         z = json.software.el.datasets.d.zones.1
@@ -64,5 +65,5 @@ Arg swname .
     end
   end
 
-  call SayErr 'Unable to find software: ' || swname
+  call SayErr 'readbom: Unable to find software: ' || swname
   return 4

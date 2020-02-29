@@ -83,8 +83,9 @@ search() {
 	search=$1
 	callerdir=`callerdir $0`
 	grep -i "${search}" ${callerdir}/../zbrew.software
+	rc=$?
 	zbrewlog "search RC: ${rc}"
-	return 0
+	return ${rc}
 }
 
 #
@@ -120,6 +121,10 @@ receive() {
 		PPA)
 			zbrewlog "Receiving from PPA for: "${sw}
 			out=`smpfromppa ${opts} ${sw}`
+			rc=$?
+			if [ ${rc} -eq 0 ]; then
+				out=`smpfromnts ${opts} ${sw}`
+			fi	
 			;;
 		LOCAL)
 			zbrewlog "Receiving from LOCAL NTS for: "${sw}

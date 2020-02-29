@@ -17,6 +17,7 @@ Arg swname .
 
   rc = readJSON()
   if (rc <> 0) then do
+    call SayErr 'readreq failed'
     return rc
   end
 
@@ -57,7 +58,7 @@ Arg swname .
   end
 
   if (\found) then do
-    call SayErr 'Unable to find software: ' || swname
+    call SayErr 'readreq: Unable to find software: ' || swname
     return 4
   end
 
