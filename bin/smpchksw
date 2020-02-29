@@ -122,7 +122,7 @@ chkptfs() {
 	fi
 
 	missingptfs=''
-	allptfs=`awk ' { if (NF == 4 && $2 == "TYPE" && $3 == "=" && ($4 == "PTF" || $4 == "SUPERSEDED")) { print $1; }}' <$ptflist `
+	allptfs=`awk ' { if (NF == 4 && $2 == "TYPE" && $3 == "=" && ($4 == "PTF" || $4 == "SUPERSEDED" || $4 == "FUNCTION")) { print $1; }}' <$ptflist `
 	for requiredptf in ${requiredptfs}; do
 		case ${allptfs} in
 			*${requiredptf}* )

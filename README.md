@@ -1,5 +1,5 @@
 # zbrew
-_zbrew_ is an experiment, patterned after the popular Mac install technology **brew**. 
+_zbrew_ is an experimental idea for z/OS package management.
 
 _zbrew_ lets you search, secure, install, and configure software on z/OS using a prescriptive approach, 
 especially with respect to naming conventions for the software. 
