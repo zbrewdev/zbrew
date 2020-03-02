@@ -171,6 +171,10 @@ prodreq() {
 	json="${SWDIR}${ussname}req.json"
 	if [ -f "${json}" ]; then
 		smpchkreq ${opts} ${ussname} ${json}
+		rc=$?
+		if [ "${rc}" != "0" ]; then
+			exit $rc
+		fi
 		return $?
 	else
 		echo "Unable to find product requisite JSON file: ${json}. Installation failed."
@@ -256,7 +260,7 @@ install() {
 # Temporary hack - need a better way to locate where installation script is
 #
 configure() {
-	zbrewlog "smpconfig" $*
+	zbrewlog "configure" $*
 
         ussname=$(echo ${sw} | tr '[:upper:]' '[:lower:]');
 	prefix=`echo ${ussname} | awk '{print substr($0,0,3)}'`
@@ -267,7 +271,7 @@ configure() {
         if [ -f "${prodconfig}" ]; then
      	        ${prodconfig} ${opts}
 		rc=$?
-		zbrewlog "smpconfigure RC: $?"
+		zbrewlog "configure RC: $?"
 		return $rc
         else                            
 		echo "Unable to find product configuration program: ${prodconfig}. Installation failed."
@@ -332,7 +336,6 @@ zbrewpropse zbrew config "${props}"
 
 props="${mydir}/../properties/globalprops.json"
 zbrewpropse zbrew global ${props}
-
 
 sw=$2
 ussname=$(echo ${sw} | tr '[:upper:]' '[:lower:]');

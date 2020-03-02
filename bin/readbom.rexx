@@ -5,7 +5,7 @@
  */
 
 trace 'o'
-Arg swname .
+Arg swname readtype .
 
   if (swname = '' | swname = '?') then do
     call SayErr 'Syntax: readbom <swname>'
@@ -19,7 +19,7 @@ Arg swname .
   if (rc <> 0) then do
     return rc
   end
-
+  if readtype = "BOMFILES" then
   do el = 1 to json.software.0
     entry = json.software.el.name
     if (entry = swname) then do
@@ -62,6 +62,14 @@ Arg swname .
       end
       return 0
     end
+  end
+  else
+  do
+    do el = 1 to json.software.0
+      parent = json.software.el.parent
+      say parent
+    end
+    return 0
   end
 
   call SayErr 'Unable to find software: ' || swname

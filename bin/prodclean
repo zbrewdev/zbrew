@@ -77,15 +77,13 @@ zbrewpropse zbrew global ${props}
 smpelibs="${mydir}/../../zbrew-${prefix}/${ussname}/${ussname}bom.json"
 ussname=$(echo ${ussname} | tr '[:lower:]' '[:upper:]')
 
-libs=`readbom ${ussname} <${smpelibs}`
+libs=`readbom ${ussname} bomfiles <${smpelibs}`
 rc=$?
 if [ $rc -gt 0 ]; then
         echo "${libs}"
         exit $rc
 fi
-
 mountpoints=`echo "${libs}" | awk '($2 == "ZFS") {print $7}'`
-
 unm=`echo "${libs}" | awk -v zbr="$ZBREW_ZFSROOT" '($2 == "ZFS") {system("/usr/sbin/unmount -R "zbr""$7" 2>/dev/null")}'`
 
 out=`drm -f "${ZBREW_HLQ}${zosname}*.**"`
