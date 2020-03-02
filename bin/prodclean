@@ -104,7 +104,7 @@ unm=`echo "${libs}" | awk -v zbr="$ZBREW_ZFSROOT" '($2 == "ZFS") {system("/usr/s
 out=`drm -f "${ZBREW_HLQ}${zosname}*.**"`
 rc=$?
 if [ $rc -gt 0 ]; then
-        echo "Dataset cleanup failed. UnInstall aborted" >&2
+        echo "Dataset cleanup failed. UnInstall aborted"
         exit $rc
 fi
 
