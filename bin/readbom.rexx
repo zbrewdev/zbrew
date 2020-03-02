@@ -20,7 +20,6 @@ Arg swname .
     call SayErr 'readbom failed'
     return rc
   end
-
   do el = 1 to json.software.0
     entry = json.software.el.name
     if (entry = swname) then do

@@ -261,7 +261,7 @@ install() {
 # Temporary hack - need a better way to locate where installation script is
 #
 configure() {
-	zbrewlog "smpconfig" $*
+	zbrewlog "configure" $*
 
         ussname=$(echo ${sw} | tr '[:upper:]' '[:lower:]');
 	prefix=`echo ${ussname} | awk '{print substr($0,0,3)}'`
@@ -272,7 +272,7 @@ configure() {
         if [ -f "${prodconfig}" ]; then
      	        ${prodconfig} ${opts}
 		rc=$?
-		zbrewlog "smpconfigure RC: $?"
+		zbrewlog "configure RC: $?"
 		return $rc
         else                            
 		echo "Unable to find product configuration program: ${prodconfig}. Installation failed."
@@ -338,24 +338,45 @@ zbrewpropse zbrew config "${props}"
 props="${mydir}/../properties/globalprops.json"
 zbrewpropse zbrew global ${props}
 
-
 sw=$2
 ussname=$(echo ${sw} | tr '[:upper:]' '[:lower:]');
 zosname=$(echo ${sw} | tr '[:lower:]' '[:upper:]');
 zosfile=$(echo ${3} | tr '[:lower:]' '[:upper:]');
 
 if [ "${clean}" = "1" ]; then
-                out=`prodclean ${opts} ${sw}`
-                rc=$?
-                zbrewlog "Cleanup for ${sw} Return Code: ${rc}"
-                if [ "${verbose}" = "1" ]; then
-                        echo "Cleanup completed: ${rc}"
-                fi
-                if [ $rc -gt 0 ]; then
-			"Cleanup failed with Return code: ${rc}"
-                        echo "${out}"
-			exit ${rc}
-                fi
+	prefix=`echo "${ussname}" | awk '{ print substr($1, 0, 3) }'`
+	bomfile="${mydir}/../../zbrew-${prefix}/${ussname}/${ussname}bom.json"
+	swparent=`readparent ${ussname} <${bomfile}`
+	rc=$?
+	if [ $rc -gt 0 ]; then
+        	echo "$swparent"
+        	exit $rc
+	fi
+
+	if [ "$swparent" != "0" ]; then
+        	echo "Warning: Product $zosname is installed into the SMP/E zone for $swparent" >&2
+        	echo "Using the -c option is invalid under these conditions" >&2
+        	echo " " >&2
+        	echo "If you need to install $zosname, then remove the -c option" >&2
+        	echo " " >&2
+        	echo "If you need to RE-install $zosname, then manual actions may be required for $swparent" >&2
+        	echo "to clean up SMP/E or alternatively you will need to first uninstall and reinstall $swparent" >&2
+        	echo " " >&2
+        	echo "If you really wish to uninstal $zosname then run zbrew uninstall $zosname" >&2
+		exit 16
+	fi
+
+	out=`prodclean ${opts} ${sw}`
+	rc=$?
+	zbrewlog "Cleanup for ${sw} Return Code: ${rc}"
+	if [ "${verbose}" = "1" ]; then
+		echo "Cleanup completed: ${rc}"
+	fi
+	if [ $rc -gt 0 ]; then
+		"Cleanup failed with Return code: ${rc}"
+		echo "${out}"
+		exit ${rc}
+	fi
 
 fi
 verb=$1

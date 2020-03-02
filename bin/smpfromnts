@@ -62,7 +62,7 @@ receivefromnts() {
   ${rcvcmd} FROMNTS('${order}').
 zzz
 
-	smpout=`smp -i ${ZBREW_HLQ}${sw}G.GLOBAL.CSI -w ${ZBREW_TMP} -n ${NTS} -r ${ZBREW_TMP}/rpt -p ${ZBREW_TMP}/sysprint <${tmpCntlHFS}`
+	smpout=`smp -i ${ZBREW_HLQ}${csiname}G.GLOBAL.CSI -w ${ZBREW_TMP} -n ${NTS} -r ${ZBREW_TMP}/rpt -p ${ZBREW_TMP}/sysprint <${tmpCntlHFS}`
 	rc=$?
 	if [ ${rc} -gt 0 ]; then
 		echo "SMP/E RECEIVE FROMNTS of ${sw} failed." >&2
@@ -114,7 +114,22 @@ prefix=`echo "${zosname}" | awk '{ print substr($1, 0, 3) }'`
 lprefix=`echo "${ussname}" | awk '{ print substr($1, 0, 3) }'`
 NTS="${ZBREW_TMP}/smpnts.${zosname}"
 
+bomfile="${mydir}/../../zbrew-${lprefix}/${ussname}/${ussname}bom.json"
+swparent=`readparent ${ussname} <${bomfile}`
+rc=$?
+if [ $rc -gt 0 ]; then
+        echo "${swparent}"
+        exit $rc
+fi
+if [ "${swparent}" != "0" ]; then
+        csiname="${swparent}"
+else
+	csiname="${sw}"
+fi
+
+
 if [ "$prefix" = "ZHW" ]; then
+        rm -rf /$ZBREW_TMP/smpnts.ZHW110 2>/dev/null
 	order='order1'
         mkdir -p "${NTS}/${order}"
         prodpkg="${mydir}/../../zbrew-${lprefix}/${ussname}/${ussname}crtpkg"
@@ -127,15 +142,10 @@ if [ "$prefix" = "ZHW" ]; then
         fi
 fi
 
-
 out=`receivefromnts ${zosname} ${NTS}`; 
 rc=$? 
 if [ $rc -gt 0 ]; then
 	echo "SMP/E RECEIVE FROMNTS failed with return code $rc" >&2
-else
-	if [ "$prefix" = "ZHW" ]; then
-		rm -rf /$ZBREW_TMP/smpnts.ZHW110 2>/dev/null
-	fi
 fi
 
 exit $rc

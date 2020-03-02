@@ -301,6 +301,7 @@ zbrewpropse zbrew config "${props}"
 props=$(callerdir "$0")"/../../zbrew/properties/globalprops.json"
 zbrewpropse zbrew global ${props}
 
+
 parms="$(echo ${*} | tr '[:lower:]' '[:upper:]')"
 out=`runchk ${parms}`
 rc=$?

@@ -44,7 +44,7 @@ fmids() {
         zbrewlog "fmids" $*
         sw=$1
         smplist="${ZBREW_TMP}/smpfmid.$$.smplist"
-        smpout=`smp -i "${ZBREW_HLQ}${sw}G.GLOBAL.CSI" -l "${smplist}" <<zzz
+        smpout=`smp -i "${ZBREW_HLQ}${zosname}G.GLOBAL.CSI" -l "${smplist}" <<zzz
   SET BDY(GLOBAL).
   LIST FUNCTIONS.
 zzz`
@@ -80,7 +80,7 @@ fmidset() {
         done
         echo "  )." >>${tmpCntlHFS}
         echo "  ENDUCL." >>${tmpCntlHFS}
-        smpout=`smp -i "${ZBREW_HLQ}${sw}G.GLOBAL.CSI" <${tmpCntlHFS}`
+        smpout=`smp -i "${ZBREW_HLQ}${zosname}G.GLOBAL.CSI" <${tmpCntlHFS}`
         rc=$?
         zbrewlog "fmidset RC: ${rc}"
         rm ${tmpCntlHFS}
@@ -116,9 +116,9 @@ runapply() {
 	tmpCntlHFS=${ZBREW_TMP}/$$.${check}.cntl.xml
 
 	if [ "${smpfunc}" = "APPLY" ]; then
-		echo "  SET BDY(${sw}T)." >${tmpCntlHFS}
+		echo "  SET BDY(${zosname}T)." >${tmpCntlHFS}
 	else
-		echo "  SET BDY(${sw}D)." >${tmpCntlHFS}
+		echo "  SET BDY(${zosname}D)." >${tmpCntlHFS}
 	fi
 
 	if [ "${subfunc}" != 'UPDATE' ]; then
@@ -149,7 +149,7 @@ runapply() {
 	smprpt="${ZBREW_TMP}/$$.smprpt"
 	smpsysprint="${ZBREW_TMP}/$$.sysprint"
 	
-	smpout=`smp -w ${ZBREW_TMP} -r "${smprpt}" -p "${smpsysprint}" -i ${ZBREW_HLQ}${sw}G.GLOBAL.CSI <${tmpCntlHFS}`
+	smpout=`smp -w ${ZBREW_TMP} -r "${smprpt}" -p "${smpsysprint}" -i ${ZBREW_HLQ}${zosname}G.GLOBAL.CSI <${tmpCntlHFS}`
 	rc=$?
 	zbrewlog "${smpfunc} ${check} ${sw} Return Code: ${rc}"
 	rm "${tmpCntlHFS}"
@@ -218,6 +218,21 @@ props="${mydir}/../properties/zbrewprops.json"
 zbrewpropse zbrew config "${props}"
 
 zosname=$(echo ${1} | tr '[:lower:]' '[:upper:]') 
+ussname=$(echo ${1} | tr '[:upper:]' '[:lower:]');
+prefix=`echo "${ussname}" | awk '{ print substr($1, 0, 3) }'`
+
+bomfile="${mydir}/../../zbrew-${prefix}/${ussname}/${ussname}bom.json"
+swparent=`readparent ${ussname} <${bomfile}`
+rc=$?
+if [ $rc -gt 0 ]; then
+        echo "${swparent}"
+        exit $rc
+fi
+if [ "${swparent}" != "0" ]; then
+        zosname="${swparent}"
+fi
+
+
 fmids="$2"
 
 out=`runapply ${zosname}`; 

@@ -77,15 +77,28 @@ zbrewpropse zbrew global ${props}
 smpelibs="${mydir}/../../zbrew-${prefix}/${ussname}/${ussname}bom.json"
 ussname=$(echo ${ussname} | tr '[:lower:]' '[:upper:]')
 
+swparent=`readparent ${ussname} <${smpelibs}`
+rc=$?
+if [ $rc -gt 0 ]; then
+	echo "$swparent"
+	exit $rc
+fi
+
+if [ "$swparent" != "0" ]; then
+	echo "Warning: Product $zosname is installed into the SMP/E zone for $swparent" >&2 
+	echo "Only $zosname specific cleanup will be performed" >&2 
+	echo "There will be no changes made to the SMP/E environment $swparent" >&2 
+	echo "If you need to re-install $zosname, then you MUST Either take manual action " >&2 
+	echo "to clean up SMP/E or alternatively uninstall and reinstall $swparent" >&2 
+fi
+
 libs=`readbom ${ussname} <${smpelibs}`
 rc=$?
 if [ $rc -gt 0 ]; then
         echo "${libs}"
         exit $rc
 fi
-
 mountpoints=`echo "${libs}" | awk '($2 == "ZFS") {print $7}'`
-
 unm=`echo "${libs}" | awk -v zbr="$ZBREW_ZFSROOT" '($2 == "ZFS") {system("/usr/sbin/unmount -R "zbr""$7" 2>/dev/null")}'`
 
 out=`drm -f "${ZBREW_HLQ}${zosname}*.**"`

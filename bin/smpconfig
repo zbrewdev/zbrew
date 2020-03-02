@@ -299,6 +299,26 @@ ussname=$(echo ${sw} | tr '[:upper:]' '[:lower:]');
 zosname=$(echo ${sw} | tr '[:lower:]' '[:upper:]');
 prefix=`echo "${ussname}" | awk '{ print substr($1, 0, 3) }'`
 
+bomfile="${mydir}/../../zbrew-${prefix}/${ussname}/${ussname}bom.json"
+swparent=`readparent ${ussname} <${bomfile}`
+rc=$?
+if [ $rc -gt 0 ]; then
+        echo "${swparent}"
+        exit $rc
+fi
+if [ "${swparent}" != "0" ]; then
+	csi="${ZBREW_HLQ}${swparent}G.GLOBAL.CSI"
+	chkcsi=`tso "listc ent('${csi}')"` 2>/dev/null
+	rc=$?
+	if [ "${rc}" != "0" ]; then
+		echo "${sw} requires ${swparent} be installed first as it must be installed into the same SMP/E Zone" >&2
+		echo "Please install ${swparent} and then re-do the install for ${sw}" >&2
+		exit ${rc}
+	fi
+	exit 0
+fi
+
+
 PFX=$(echo ${sw} | tr '[:lower:]' '[:upper:]');
 
 if [ ${#PFX} -gt 6 ]; then

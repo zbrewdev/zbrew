@@ -1,5 +1,5 @@
 #!/bin/sh
-
+#set -x
 . zbrewfuncs
 InvalidOption=1
 TooFewParms=2
@@ -50,8 +50,12 @@ chkreq() {
 	fmid="$4"
 	shift 4
 	ptfs="$*"
-	csienv="\$ZBREW_${relid}_CSI"
-	csi=`eval echo ${csienv}`
+	if [ "${swparent}" != "0" ]; then
+		csi="${ZBREW_HLQ}${swparent}G.GLOBAL.CSI"
+	else
+		csienv="\$ZBREW_${relid}_CSI"
+		csi=`eval echo ${csienv}`
+	fi
 	if [ "${csi}" = 'NONE' ]; then
 		csi=''
 	fi
@@ -183,6 +187,7 @@ while getopts ":vdf" opt; do
   esac
 done
 shift $(expr $OPTIND - 1 )
+
 if [ $# -lt 2 ]; then
 	msg smpchkreq ${TooFewParms} E "$#"
 	syntax
@@ -203,7 +208,33 @@ zbrewpropse zbrew config "${props}"
 props=$(callerdir "$0")"/../../zbrew/properties/globalprops.json"
 zbrewpropse zbrew global ${props}
 
+
 sw="$(echo $1 | tr '[:lower:]' '[:upper:]')"
+
+ussname=$(echo ${sw} | tr '[:upper:]' '[:lower:]');
+zosname=$(echo ${sw} | tr '[:lower:]' '[:upper:]');
+prefix=`echo "${ussname}" | awk '{ print substr($1, 0, 3) }'`
+
+bomfile="${mydir}/../../zbrew-${prefix}/${ussname}/${ussname}bom.json"
+
+swparent=`readparent ${ussname} <${bomfile}`
+rc=$?
+if [ $rc -gt 0 ]; then
+        exit $rc
+fi
+
+if [ "${swparent}" != "0" ]; then
+	csi="${ZBREW_HLQ}${swparent}G.GLOBAL.CSI"
+        chkcsi=`tso "listc ent('${csi}')"` 2>/dev/null
+        rc=$?
+        if [ "${rc}" != "0" ]; then
+        	echo "${sw} requires ${swparent} be installed first as it must be installed into the same SMP/E Zone" >&2
+                echo "Please install ${swparent} and then re-do the install for ${sw}" >&2
+                exit 16
+        fi
+fi
+
+
 json="$2"
 out=`runchk "${sw}" "${json}"`
 rc=$?

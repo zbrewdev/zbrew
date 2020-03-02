@@ -39,7 +39,7 @@ msg() {
 
 #for All but ZFS libraries
 targ_dddefs(){
-libs=`readbom ${zosname} <${smpelibs}`
+libs=`readbom ${ussname} <${smpelibs}`
 rc=$?
 if [ $rc -gt 0 ]; then
   exit $rc
@@ -49,7 +49,7 @@ targdddefs=`echo "${libs}" | awk '($2 != "ZFS" && $7 == "T") {print $1}'`
 for targdddef in ${targdddefs}; do
  smpuclin="${smpuclin}
  REP DDDEF(${targdddef})
- DA(${ZBREW_HLQ}${zosname}.${targdddef})
+ DA(${ZBREW_HLQ}${child_zosname}.${targdddef})
  UNIT(SYSALLDA)
  WAITFORDSN
  SHR.
@@ -85,16 +85,11 @@ done
 }
 
 dist_dddefs(){
-libs=`readbom ${zosname} <${smpelibs}`
-rc=$?
-if [ $rc -gt 0 ]; then
-  exit $rc
-fi
 distdddefs=`echo "${libs}" | awk '($7 == "D") {print $1}'`
 for distdddef in ${distdddefs};do
  smpuclin="${smpuclin}
  REP DDDEF(${distdddef})
- DA(${ZBREW_HLQ}${zosname}.${distdddef})
+ DA(${ZBREW_HLQ}${child_zosname}.${distdddef})
  UNIT(SYSALLDA)
  WAITFORDSN
  SHR.
@@ -105,6 +100,8 @@ done
 
 
 run_gimsmp(){
+
+
 mvscmdauth --pgm=GIMSMP --smpcsi=${ZBREW_HLQ}${zosname}G.GLOBAL.CSI --sysprint=DUMMY --smprpt=DUMMY --smplist=DUMMY --smpcntl=stdin <<zzz
 ${smpuclin}
 zzz
@@ -147,6 +144,7 @@ mydir=$(callerdir ${0})
 
 sw=$1
 ussname=$(echo ${sw} | tr '[:upper:]' '[:lower:]');
+child_zosname=$(echo ${sw} | tr '[:lower:]' '[:upper:]');
 zosname=$(echo ${sw} | tr '[:lower:]' '[:upper:]');
 prefix=`echo "${ussname}" | awk '{ print substr($1, 0, 3) }'`
 
@@ -157,7 +155,15 @@ props=$(callerdir "$0")"/../../zbrew/properties/globalprops.json"
 zbrewpropse zbrew global ${props}
 
 smpelibs="${mydir}/../../zbrew-${prefix}/${ussname}/${ussname}bom.json"
-
+swparent=`readparent ${ussname} <${smpelibs}`
+rc=$?
+if [ $rc -gt 0 ]; then
+        echo "${swparent}"
+        exit $rc
+fi
+if [ "${swparent}" != "0" ]; then
+        zosname="${swparent}"
+fi
 
 # Update Target Zone DDDEFS, note Target Zone contains both Targ/Dist libraries
 smpuclin="  SET   BDY(${zosname}T).
@@ -165,6 +171,7 @@ smpuclin="  SET   BDY(${zosname}T).
 "
 targ_dddefs
 dist_dddefs
+
  
 smpuclin="${smpuclin} 
      ENDUCL."
