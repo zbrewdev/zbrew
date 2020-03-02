@@ -78,6 +78,12 @@ smpelibs="${mydir}/../../zbrew-${prefix}/${ussname}/${ussname}bom.json"
 ussname=$(echo ${ussname} | tr '[:lower:]' '[:upper:]')
 
 swparent=`readbom ${ussname} summary <${smpelibs}`
+rc=$?
+if [ $rc -gt 0 ]; then
+	echo "$swparent"
+	exit $rc
+fi
+
 if [ "$swparent" != "0" ]; then
 	echo "Warning: Product $zosname is installed into the SMP/E zone for $swparent" >&2 
 	echo "Only $zosname specific cleanup will be performed" >&2 
@@ -98,7 +104,7 @@ unm=`echo "${libs}" | awk -v zbr="$ZBREW_ZFSROOT" '($2 == "ZFS") {system("/usr/s
 out=`drm -f "${ZBREW_HLQ}${zosname}*.**"`
 rc=$?
 if [ $rc -gt 0 ]; then
-        echo "Dataset cleanup failed. UnInstall aborted"
+        echo "Dataset cleanup failed. UnInstall aborted" >&2
         exit $rc
 fi
 
