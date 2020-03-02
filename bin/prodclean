@@ -77,6 +77,14 @@ zbrewpropse zbrew global ${props}
 smpelibs="${mydir}/../../zbrew-${prefix}/${ussname}/${ussname}bom.json"
 ussname=$(echo ${ussname} | tr '[:lower:]' '[:upper:]')
 
+swparent=`readbom ${ussname} summary <${smpelibs}`
+if [ "$swparent" != "0" ]; then
+	echo "Warning: Product $zosname is installed into the SMP/E zone for $swparent" >&2 
+	echo "Only $zosname specific cleanup will be performed" >&2 
+	echo "There will be no changes made to the SMP/E environment $swparent" >&2 
+	echo "Either take manual action or optionally also uninstall $swparent" >&2 
+fi
+
 libs=`readbom ${ussname} bomfiles <${smpelibs}`
 rc=$?
 if [ $rc -gt 0 ]; then
