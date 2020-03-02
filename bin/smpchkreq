@@ -50,8 +50,12 @@ chkreq() {
 	fmid="$4"
 	shift 4
 	ptfs="$*"
-	csienv="\$ZBREW_${relid}_CSI"
-	csi=`eval echo ${csienv}`
+	if [ "${swparent}" != "0" ]; then
+		csi="${ZBREW_HLQ}${swparent}G.GLOBAL.CSI"
+	else
+		csienv="\$ZBREW_${relid}_CSI"
+		csi=`eval echo ${csienv}`
+	fi
 	if [ "${csi}" = 'NONE' ]; then
 		csi=''
 	fi
@@ -125,12 +129,11 @@ readreqvar() {
 	echo "${reqs}" | while read req; do
 		result=`chkreq ${req}`
 		rc=$?
-		if [ "$rc" -gt "4" ]; then
-			break
-		else
-			updtprereq ${result}
-			echo "$skipprod"
+		if [ $rc -gt 4 ]; then
+			return $rc
 		fi
+		updtprereq ${result}
+		echo "$skipprod"
 	done | tail -1
 	return 0
 }
@@ -139,10 +142,6 @@ runchk() {
 	skipprod=' '
 	passprod=' '
 	reqs=`readreq $1 <$2`
-	rc=$?
-	if [ $rc -gt 0 ]; then
-		return ${rc}
-	fi
 	skipprod=`readreqvar "${reqs}"`
 
 	trimmed=`echo ${skipprod} | tr -d '[:space:]'`
