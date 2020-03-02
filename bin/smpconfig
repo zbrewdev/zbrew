@@ -315,6 +315,7 @@ if [ "${swparent}" != "0" ]; then
 		echo "Please install ${swparent} and then re-do the install for ${sw}" >&2
 		exit ${rc}
 	fi
+	exit 0
 fi
 
 
