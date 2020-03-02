@@ -15,7 +15,7 @@ if ! [ -e "${zbrewzhw_dir}" ]; then
 fi
 
 
-actual=`readbom zhw110 bomfiles <${zbrewzhw_dir}/zhw110/zhw110bom.json`
+actual=`readbom zhw110 <${zbrewzhw_dir}/zhw110/zhw110bom.json`
 zbrewtest "Bill of Materials (BoM) file parsing failed" "0" "$?" 
 
 expected="SZHWHFS ZFS 10 10 T usr/lpp/IBM/zhw/zhw110/ usr/lpp/IBM/zhw/zhw110/ hw,sepzfs

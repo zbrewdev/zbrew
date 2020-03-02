@@ -39,7 +39,7 @@ msg() {
 
 #for All but ZFS libraries
 targ_dddefs(){
-libs=`readbom ${ussname} bomfiles <${smpelibs}`
+libs=`readbom ${ussname} <${smpelibs}`
 rc=$?
 if [ $rc -gt 0 ]; then
   exit $rc
@@ -155,7 +155,7 @@ props=$(callerdir "$0")"/../../zbrew/properties/globalprops.json"
 zbrewpropse zbrew global ${props}
 
 smpelibs="${mydir}/../../zbrew-${prefix}/${ussname}/${ussname}bom.json"
-swparent=`readbom ${ussname} summary <${smpelibs}`
+swparent=`readparent ${ussname} <${smpelibs}`
 rc=$?
 if [ $rc -gt 0 ]; then
         echo "${swparent}"

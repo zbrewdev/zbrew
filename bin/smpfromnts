@@ -115,7 +115,7 @@ lprefix=`echo "${ussname}" | awk '{ print substr($1, 0, 3) }'`
 NTS="${ZBREW_TMP}/smpnts.${zosname}"
 
 bomfile="${mydir}/../../zbrew-${lprefix}/${ussname}/${ussname}bom.json"
-swparent=`readbom ${ussname} summary <${bomfile}`
+swparent=`readparent ${ussname} <${bomfile}`
 rc=$?
 if [ $rc -gt 0 ]; then
         echo "${swparent}"

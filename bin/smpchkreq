@@ -213,7 +213,7 @@ prefix=`echo "${ussname}" | awk '{ print substr($1, 0, 3) }'`
 
 bomfile="${mydir}/../../zbrew-${prefix}/${ussname}/${ussname}bom.json"
 
-swparent=`readbom ${ussname} summary <${bomfile}`
+swparent=`readparent ${ussname} <${bomfile}`
 rc=$?
 if [ $rc -gt 0 ]; then
         exit $rc

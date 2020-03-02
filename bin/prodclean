@@ -77,7 +77,7 @@ zbrewpropse zbrew global ${props}
 smpelibs="${mydir}/../../zbrew-${prefix}/${ussname}/${ussname}bom.json"
 ussname=$(echo ${ussname} | tr '[:lower:]' '[:upper:]')
 
-swparent=`readbom ${ussname} summary <${smpelibs}`
+swparent=`readparent ${ussname} <${smpelibs}`
 rc=$?
 if [ $rc -gt 0 ]; then
 	echo "$swparent"
@@ -92,7 +92,7 @@ if [ "$swparent" != "0" ]; then
 	echo "to clean up SMP/E or alternatively uninstall and reinstall $swparent" >&2 
 fi
 
-libs=`readbom ${ussname} bomfiles <${smpelibs}`
+libs=`readbom ${ussname} <${smpelibs}`
 rc=$?
 if [ $rc -gt 0 ]; then
         echo "${libs}"
