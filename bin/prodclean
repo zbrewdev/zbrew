@@ -99,6 +99,10 @@ if [ $rc -gt 0 ]; then
         exit $rc
 fi
 mountpoints=`echo "${libs}" | awk '($2 == "ZFS") {print $7}'`
+
+if [ "$verbose" = "1" ]; then
+	echo "Attempting to unmount ${ZBREW_ZFSROOT}${mountpoints}" >&2
+fi
 unm=`echo "${libs}" | awk -v zbr="$ZBREW_ZFSROOT" '($2 == "ZFS") {system("/usr/sbin/unmount -R "zbr""$7" 2>/dev/null")}'`
 
 out=`drm -f "${ZBREW_HLQ}${zosname}*.**"`

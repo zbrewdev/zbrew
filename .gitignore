@@ -1,4 +1,5 @@
 properties/zbrew.properties
 bin/readbom
+bin/readparent
 bin/readprops
 bin/readreq
