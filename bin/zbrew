@@ -368,8 +368,10 @@ if [ $? -gt 0 ]; then
 	exit 16
 fi
 year=${zoaversion%%/*}
-if [ $year -lt 2020 ]; then
-	echo "Z Open Automation Utilities Vx.y is required to run zbrew. Your utilities are too old: ${zoaversion}"
+yearmonth=${zoaversion%/*}
+month=${yearmonth##*/}
+if [ $year -lt 2020 ] || [ $month -lt 3 ]; then
+	echo "Z Open Automation Utilities 2020/03/01 or later is required to run zbrew. Your utilities are too old: ${zoaversion}" >&2
 	exit 16
 fi
 
