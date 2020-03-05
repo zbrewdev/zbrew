@@ -31,7 +31,7 @@ msg() {
 #
 syntax() {
 	echo "\
-zbrew [-cvdr] search|order|smpreceiveptf|install|update|receivezos|configure|uninstall <software>
+zbrew [-cvdr] search|order|smpreceiveptf|install|update|receivezos|configure|deconfigure|uninstall <software>
 	and <software> is the software to search for
 	(Note that install invokes several functions which are: ${install_verbs})
 	-c: clean files before processing (e.g. delete SMP/E CSI datasets) 
@@ -70,6 +70,7 @@ zbrew Examples:
 	zbrew update igy630 <-- apply all PTFs currently in receive status 
 	zbrew uninstall igy630 <-- remove all SMP/E datasets and product-specific datasets/filesystems
 	zbrew configure igy630 <-- run product-specific configuration after SMP/E APPLY step
+	zbrew deconfigure igy630 <-- run product-specific configuration removal after SMP/E APPLY step
 	zbrew smpreceiveptf igy630 zos.file.name <-- receive a PTF from a z/OS sequential or PDS file
 " >&2 
 	exit 16
@@ -277,6 +278,23 @@ configure() {
         else                            
 		echo "Unable to find product configuration program: ${prodconfig}. Installation failed."
                 return 16               
+	fi
+}
+
+deconfigure() {
+	zbrewlog "deconfigure" $*
+
+        ussname=$(echo ${sw} | tr '[:upper:]' '[:lower:]');
+	prefix=`echo ${ussname} | awk '{print substr($0,0,3)}'`
+        if [ ${verbose} -gt 0 ]; then
+	        echo "configure ${opts} ${sw}" >&2
+	fi
+	proddeconfig="${mydir}/../../zbrew-${prefix}/${ussname}/${ussname}deconfig"
+        if [ -f "${proddeconfig}" ]; then
+     	        ${proddeconfig} ${opts}
+		rc=$?
+		zbrewlog "deconfigure RC: $?"
+		return $rc
 	fi
 }
 
@@ -503,6 +521,13 @@ case ${verb} in
                 ;;
 	configure ) 
 		out=`configure ${opts} ${sw}`
+		rc=$?
+		if [ $rc -gt 0 ]; then
+			echo "${out}" 
+		fi
+		;;	
+	deconfigure ) 
+		out=`deconfigure ${opts} ${sw}`
 		rc=$?
 		if [ $rc -gt 0 ]; then
 			echo "${out}" 

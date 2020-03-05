@@ -5,6 +5,7 @@
 			"ZBREW_ORDERROOT":"${HOME}/order", 
 			"ZBREW_PKGROOT":"${HOME}/pkg", 
 			"ZBREW_HLQ":"ZBREW.", 
+			"ZBREW_PARMLIB_SFX":"ZB",
 			"ZBREW_TMP":"/tmp"
                  }
 	}]
