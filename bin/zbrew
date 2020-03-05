@@ -306,7 +306,7 @@ verbose=0
 clean=0
 restart="NORESTART"
 opts=""
-while getopts ":cvdr:" opt; do
+while getopts ":cvdqr:" opt; do
   case ${opt} in
     d )
       debug=1
@@ -328,6 +328,10 @@ while getopts ":cvdr:" opt; do
       ;;
     c )
       clean=1
+      ;;
+    q )
+      quiet=1
+      opts="${opts} -q"
       ;;
     v )
       verbose=1
@@ -385,6 +389,7 @@ if [ "${clean}" = "1" ]; then
 	fi
 
 	out=`prodclean ${opts} ${sw}`
+	
 	rc=$?
 	zbrewlog "Cleanup for ${sw} Return Code: ${rc}"
 	if [ "${verbose}" = "1" ]; then

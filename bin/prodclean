@@ -36,7 +36,7 @@ msg() {
 }
 
 
-while getopts ":vd" opt; do
+while getopts ":vdq" opt; do
   case ${opt} in
     d )
       debug=1
@@ -44,6 +44,9 @@ while getopts ":vd" opt; do
     v )
       verbose=1
       opts="-v"
+      ;;
+    q )
+      quiet=1
       ;;
     \?)
       if [ ${OPTARG} != "?" ]; then
@@ -91,36 +94,42 @@ if [ $rc -gt 0 ]; then
         exit $rc
 fi
 
-if [ "$swparent" != "0" ]; then
+if [ "$swparent" != "0" ] && [ "$quiet" != "1" ]; then
 	echo " " >&2
-	echo "*************************************************************************** " >&2
-	echo " " >&2
-	echo "Warning: Product $zosname is installed into the SMP/E zone for $swparent" >&2 
+	echo "Warning: Product $zosname is installed into the same SMP/E zone as $swparent" >&2 
 	echo "Only $zosname specific cleanup will be performed" >&2 
-	echo "If you need to re-install $zosname, then you MUST Either take manual action " >&2 
-	echo "to clean up SMP/E or alternatively uninstall and reinstall $swparent" >&2 
-	echo "*************************************************************************** " >&2
+	echo "If you need to re-install $zosname, then you may need to take manual actions " >&2 
+	echo "to clean up SMP/E. You can uninstall/re-install $swparent to resolve this" >&2
+	echo " " >&2
 fi
 
-if [ "$swchild" != "0" ]; then
+if [ "$swchild" != "0" ] && [ "$swchild" != "" ]; then
 	echo " " >&2
-	echo "************************************************************************************************************* " >&2
-        echo "Warning: Product $zosname is a parent to $swchild. $swchild is installed in the same SMP/E zone as $zosname" >&2
-        echo "By running uninstall or using the -c option for $zosname, means the SMP/E environment for $swchild is affected." >&2
-        echo "Zbrew will automatically uninstall $swchild as a result." >&2
-        echo "If desired you will need to reinstall $swchild after re-installing $zosname." >&2
-	echo "************************************************************************************************************* " >&2
+        echo "Warning: Product $zosname is in a child/parent relationshiop and has other products installed in it's SMP/E zone" >&2
+        echo "By running uninstall or using the -c option for $zosname, means the below listed products are also affected." >&2
+        echo "Zbrew will automatically uninstall all the below listed products as a result." >&2
+        echo "If desired you will need to reinstall these products after re-installing $zosname." >&2
+	echo " " >&2
+	echo "The following Product(s) are affected and will be uninstalled: ">&2
+        for ch in ${swchild}; do
+		echo "*** ${ch} ***" >&2
+	done
+        for ch in ${swchild}; do
+		if [ "${verbose}" = "1" ]; then
+	                echo " " >&2
+	                echo "Proceeding to uninstall $ch" >&2
+        	fi
+		opts="${opts} -q" 
+		uninst=`zbrew ${opts} uninstall ${ch}`
+	        if [ "${rc}" != 0 ]; then
+	                echo "Uninstall of ${ch} failed." >&2
+        	        echo "${uninst}" >&2
+              		exit 16
+       		fi
+
+        done
 	echo " "
-	if [ "${verbose}" = "1" ]; then
-		echo "Proceeding to uninstall $swchild" >&2
-	fi
-	uninst=`zbrew uninstall ${swchild}`
 	rc=$?
-	if [ "${rc}" != 0 ]; then
-		echo "Uninstall of ${swchild} failed." >&2
-		echo "${uninst}" >&2
-		exit 16
-	fi
 fi
 
 libs=`readbom ${ussname} <${smpelibs}`

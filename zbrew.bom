@@ -19,6 +19,7 @@ bin/smpcrdddef
 bin/smpfromfile
 bin/smpfromnts
 bin/smpfromshopz
+bin/swregistrar
 bin/zbrew
 bin/zbrewfuncs
 properties/globalprops.json

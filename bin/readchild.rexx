@@ -20,8 +20,11 @@ Arg swname .
     return rc
   end
   do el = 1 to json.software.0
-    child = json.software.el.child
-    say child
+    children = ""
+    do el2 = 1 to json.software.el.child.0
+      children = children" "json.software.el.child.el2
+    end
+    say children
   end
   return 0
 
