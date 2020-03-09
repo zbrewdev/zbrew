@@ -110,23 +110,27 @@ if [ "$swchild" != "0" ] && [ "$swchild" != "" ]; then
         echo "Zbrew will automatically uninstall all the below listed products as a result." >&2
         echo "If desired you will need to reinstall these products after re-installing $zosname." >&2
 	echo " " >&2
-	echo "The following Product(s) are affected and will be uninstalled: ">&2
+	echo "The following Product(s) are affected and will be uninstalled if required: ">&2
         for ch in ${swchild}; do
 		echo "*** ${ch} ***" >&2
 	done
         for ch in ${swchild}; do
-		if [ "${verbose}" = "1" ]; then
-	                echo " " >&2
-	                echo "Proceeding to uninstall $ch" >&2
-        	fi
-		opts="${opts} -q" 
-		uninst=`zbrew ${opts} uninstall ${ch}`
-	        if [ "${rc}" != 0 ]; then
-	                echo "Uninstall of ${ch} failed." >&2
-        	        echo "${uninst}" >&2
-              		exit 16
-       		fi
-
+		swchild_lower=$(echo ${ch} | tr '[:upper:]' '[:lower:]');
+		chprefix=`echo "${swchild_lower}" | awk '{ print substr($1, 0, 3) }'`
+		swdir="${mydir}/../../zbrew-${chprefix}/${swchild_lower}/"
+		if [ -e "${swdir}" ]; then
+	                if [ "${verbose}" = "1" ]; then
+	                        echo " " >&2
+        	                echo "Proceeding to uninstall $ch" >&2
+                	fi
+			opts="${opts} -q" 
+			ninst=`zbrew ${opts} uninstall ${ch}`
+		        if [ "${rc}" != 0 ]; then
+		                echo "Uninstall of ${ch} failed." >&2
+	        	        echo "${uninst}" >&2
+	              		exit 16
+	       		fi
+		fi
         done
 	echo " "
 	rc=$?
