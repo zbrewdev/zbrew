@@ -118,6 +118,7 @@ receive() {
 		SHOPZ)
 			zbrewlog "Receiving from ShopZ for: "${sw}
 			out=`smpfromshopz ${opts} ${sw}`
+			rc=$?
 			;;
 		PPA)
 			zbrewlog "Receiving from PPA for: "${sw}
@@ -125,17 +126,20 @@ receive() {
 			rc=$?
 			if [ ${rc} -eq 0 ]; then
 				out=`smpfromnts ${opts} ${sw}`
+				rc=$?
 			fi	
 			;;
 		LOCAL)
 			zbrewlog "Receiving from LOCAL NTS for: "${sw}
 			out=`smpfromnts ${opts} ${sw}`
+			rc=$?
 			;;
 		*)
 			echo "SMPE_DELIVERY must be one of SHOPZ, PPA, LOCAL and must be specified in your ORDER file" >&2
+			rc=16
 			;;
 	esac
-	return $?
+	return $rc
 }
 
 #
