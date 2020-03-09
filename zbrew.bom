@@ -3,6 +3,7 @@ README.md
 zbrew.software
 bin/prodclean
 bin/proddsalloc
+bin/readchild
 bin/readparent
 bin/readbom
 bin/readprops
@@ -17,7 +18,9 @@ bin/smpconfig
 bin/smpcrdddef
 bin/smpfromfile
 bin/smpfromnts
+bin/smpfromppa
 bin/smpfromshopz
+bin/swregistrar
 bin/zbrew
 bin/zbrewfuncs
 properties/globalprops.json
