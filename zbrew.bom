@@ -18,6 +18,7 @@ bin/smpconfig
 bin/smpcrdddef
 bin/smpfromfile
 bin/smpfromnts
+bin/smpfromppa
 bin/smpfromshopz
 bin/swregistrar
 bin/zbrew
