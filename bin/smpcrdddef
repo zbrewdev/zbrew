@@ -115,7 +115,7 @@ zzz
 
 }
 
-while getopts ":vd" opt; do
+while getopts ":vdf" opt; do
   case ${opt} in
     d )
       debug=1

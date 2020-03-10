@@ -36,7 +36,7 @@ msg() {
 }
 
 
-while getopts ":vdq" opt; do
+while getopts ":vdfq" opt; do
   case ${opt} in
     d )
       debug=1
