@@ -420,7 +420,7 @@ if [ "${clean}" = "1" ]; then
 		echo "Cleanup completed: ${rc}"
 	fi
 	if [ $rc -gt 0 ]; then
-		"Cleanup failed with Return code: ${rc}"
+		echo "Cleanup failed with Return code: ${rc}"
 		echo "${out}"
 		exit ${rc}
 	fi

@@ -70,7 +70,7 @@ zbrewpropse zbrew config "${props}"
 debug=0
 verbose=0
 opts=""
-while getopts ":vd" opt; do
+while getopts ":vdf" opt; do
   case ${opt} in
     d )
       debug=1

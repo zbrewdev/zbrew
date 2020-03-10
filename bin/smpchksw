@@ -256,16 +256,12 @@ runchk() {
 
 debug=0
 verbose=0
-fmid_check=0
 opts=""
 while getopts ":vdf" opt; do
   case ${opt} in
     d )
       debug=1
       opts="${opts} -d"
-      ;;
-    f )
-      fmid_check=1
       ;;
     v )
       verbose=1
