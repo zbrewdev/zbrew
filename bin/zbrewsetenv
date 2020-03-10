@@ -1,0 +1,17 @@
+#
+# zbrewsetenv: set up environment for configuration scripts
+#
+#set -x
+out=$(whence zbrewfuncs >/dev/null)
+if [ $? -eq 0 ]; then
+	. zbrewfuncs
+else
+    	echo "zbrew tools need to be in your PATH"
+	exit 4
+fi
+mydir=$(callerdir ${0})
+props="${mydir}/../../zbrew/properties/zbrewprops.json"
+zbrewpropse zbrew config "${props}"
+
+props=$(callerdir "$0")"/../../zbrew/properties/globalprops.json"
+zbrewpropse zbrew global ${props}

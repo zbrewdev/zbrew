@@ -118,7 +118,6 @@ if [ "${verb}" = "ENABLE" ]; then
 		syntax
 		exit 8
 	fi    
-	shift 3
 	text="$7"
 elif [ "${verb}" != "DISABLE" ]; then
 	msg registrar ${UnknownAction} E "${verb}"
@@ -196,11 +195,11 @@ hdrnum=`echo "${hdrout}" | wc -l`
 ftrnum=`echo "${ftrout}" | wc -l`
 
 if [ $hdrnum -gt 1 ]; then
-	echo "registrar: Severe Error. Multiple product headers for: ${sw}" >&2
+	echo "registrar: Severe Error. Multiple product headers for: ${sw} in ${parmlibmember}" >&2
 	exit 16
 fi
 if [ $ftrnum -gt 1 ]; then
-	echo "registrar: Severe Error. Multiple product footers for: ${sw}" >&2
+	echo "registrar: Severe Error. Multiple product footers for: ${sw} in ${parmlibmember}" >&2
 	exit 16
 fi
 
@@ -209,7 +208,7 @@ ftrline=`echo "${ftrout}" | awk '{ print substr($2, 1, length($2)-1) }'`
 
 if [ "$hdr" = true ] && [ "$ftr" = true ] ; then
 	if [ "${verb}" = "ENABLE" ]; then
-		echo "registrar: Error. Trying to enable product ${sw}, which is already enabled." >&2
+		echo "registrar: Error. Trying to enable product ${sw} in ${parmlibmember}, which is already enabled." >&2
 		exit 8
 	fi
 
@@ -223,10 +222,10 @@ if [ "$hdr" = true ] && [ "$ftr" = true ] ; then
 ${after}" "${parmlibmember}" 	
 	rc=$?	
 elif [ "$hdr" = true ] ; then
-	echo "registrar: Severe Error. Only header found for: ${sw}" >&2
+	echo "registrar: Severe Error. Only header found for: ${sw} in ${parmlibmember}" >&2
 	exit 16
 elif [ "$ftr" = true ] ; then
-	echo "registrar: Severe Error. Only footer found for: ${sw}" >&2
+	echo "registrar: Severe Error. Only footer found for: ${sw} in ${parmlibmember}" >&2
 	exit 16
 else 
 	if [ "${verb}" = "DISABLE" ]; then
