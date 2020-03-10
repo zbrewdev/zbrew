@@ -31,10 +31,11 @@ msg() {
 #
 syntax() {
 	echo "\
-zbrew [-cvdr] search|order|smpreceiveptf|install|update|receivezos|configure|deconfigure|uninstall <software>
+zbrew [-cvdfr] search|order|smpreceiveptf|install|update|receivezos|configure|deconfigure|uninstall <software>
 	and <software> is the software to search for
 	(Note that install invokes several functions which are: ${install_verbs})
 	-c: clean files before processing (e.g. delete SMP/E CSI datasets) 
+	-f: forces SMP/E processing to continue through apply checks and other processing when RC=4 
 	-r function_name install: restart install at specific function (function_name must be one of: ${install_verbs})
 	   If concatenating options and using -r it must be the last option..  (eg -cvr)
 
@@ -67,6 +68,7 @@ zbrew Examples:
 	zbrew install igy630   <-- check that all pre-reqs required for COBOL are satisfied, then SMP/E RECEIVE/APPLY/ACCEPT the product (with and w/o CHECK)
 	zbrew -c -v install igy630   <-- do uninstall first and then verbose install
 	zbrew -r smpconfig install igy630   <-- restart install at the smpconfig step
+	zbrew -fr smpapplycheck install igy630   <-- restart install at the smpapplycheck step and ALLOW RC=4
 	zbrew update igy630 <-- apply all PTFs currently in receive status 
 	zbrew uninstall igy630 <-- remove all SMP/E datasets and product-specific datasets/filesystems
 	zbrew configure igy630 <-- run product-specific configuration after SMP/E APPLY step
@@ -304,13 +306,18 @@ update_verbs="smpapplycheck smpapply"
 debug=0
 verbose=0
 clean=0
+force=0
 restart="NORESTART"
 opts=""
-while getopts ":cvdqr:" opt; do
+while getopts ":cvdqfr:" opt; do
   case ${opt} in
     d )
       debug=1
       opts="${opts} -d"
+      ;;
+    f )
+      force=1
+      opts="${opts} -f"
       ;;
     r )
       restart=${OPTARG}
@@ -352,7 +359,6 @@ if [ $# -lt 2 ]; then
 	syntax
 	exit 16
 fi
-
 mydir=$(callerdir ${0})
 props="${mydir}/../properties/zbrewprops.json"
 zbrewpropse zbrew config "${props}"

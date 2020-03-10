@@ -153,22 +153,27 @@ runapply() {
 	rc=$?
 	zbrewlog "${smpfunc} ${check} ${sw} Return Code: ${rc}"
 	rm "${tmpCntlHFS}"
-	if [ $rc -gt 0 ] || [ $verbose -gt 0 ]; then
-		echo "${smpout}" >&2 
+	if [ $verbose -gt 0 ]; then
+		echo "${smpout}" >&2
+	fi
+	if [ $rc -gt $forcerc ]; then
+		echo "${smpout}" >&2
 	else
 		rm "${smprpt}" 2>/dev/null
 		rm "${smpsysprint}" 2>/dev/null
+                rc=0
 	fi
-	
         return ${rc}
 } 
 
 
 debug=0
 verbose=0
+verbose=0
+forcerc=0
 subfunc="NULL"
 opts=""
-while getopts ":vdpqrst" opt; do
+while getopts ":vdpqrstf" opt; do
   case ${opt} in
     p )
       smpfunc="APPLY"
@@ -176,6 +181,9 @@ while getopts ":vdpqrst" opt; do
       ;;
     t )
       subfunc="UPDATE"
+      ;;
+    f )
+      forcerc=4
       ;;
     q ) 
       smpfunc="APPLY"

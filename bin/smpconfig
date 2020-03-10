@@ -60,7 +60,7 @@ definecsicluster() {
      echo "
      DEFINE CLUSTER( +
               NAME(${name}) +
-              CYLINDERS(200 200) +
+              CYLINDERS(5 10) +
               FREESPACE(10 5) +
               KEYS(24 0) +
               RECORDSIZE(24 143) +
@@ -340,7 +340,7 @@ if [ $rc -gt 0 ]; then
 	exit $rc
 fi
 
-datasets="${ZBREW_HLQ}${PFX}G.SMPPTS:-s500M,-tpdse
+datasets="${ZBREW_HLQ}${PFX}G.SMPPTS:-s200M,-e200M,-tpdse
           ${ZBREW_HLQ}${PFX}T.TARGET.SMPMTS:-tpds
           ${ZBREW_HLQ}${PFX}T.TARGET.SMPSTS:-tpds
           ${ZBREW_HLQ}${PFX}T.TARGET.SMPLTS:-tpds
