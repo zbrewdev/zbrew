@@ -31,25 +31,25 @@ msg() {
 #
 syntax() {
 	echo "\
-swregistrar [-vd] <swname> enable|disable <product> [<enablement text>]
+apfregistrar [-vd] <swname> enable|disable [dataset]+
 
 Examples:
-	Enable BGZ106 as part of product 5737-I22 with product entry
-		swregistrar bgz106 enable 5737-I22 \"PRODUCT OWNER('IBM CORP') ... STATE(ENABLED)\"
-	Disable BGZ106 as part of product 5737-I22 with product entry
-        	swregistrar bgz106 disable 5737-I22
+	Enable APF authorization for dataset ZBREW.EQAE20.SEQAAUTH
+		apfregistrar eqae20 enable zbrew.eqae20.seqaauth
+	Disable APF authorization for EQAE20 datasets
+        	apfregistrar eqae20 disable 5737-I22
 Note:
 	The PDS \${ZBREW_ROOT}PARMLIB is created if it does not already exist
-	The PDS member IFAPRD\${ZBREW_PARMLIB_SFX} is created if it does not already exist
-	The PDS member will have the new product enablement text appended if 'enable' is specified.
-	The PDS member will have the product enablement text removed if 'disable' is specified.
+	The PDS member PROG\${ZBREW_PARMLIB_SFX} is created if it does not already exist
+	The PDS member will have the new APF authorized datasets added if 'enable' is specified
+	The PDS member will have the APF authorized datasets removed if 'disable' is specified.
 	Enabling a product that already has an entry is an error.
 	Disabling a product that does not have an entry is silent.
 	Disabling a product removes the entry from the file - it does NOT mark as DISABLED
 " >&2
      	exit 8
 }
-	
+
 opts=""         	
 while getopts ":vdf" opt; do
   case ${opt} in
@@ -63,7 +63,7 @@ while getopts ":vdf" opt; do
       ;;
     \?)         
       if [ ${OPTARG} != "?" ]; then
-        msg swregistrar ${InvalidOption} E "${OPTARG}"
+        msg apfregistrar ${InvalidOption} E "${OPTARG}"
       fi                
       syntax
       exit 4
@@ -72,17 +72,10 @@ while getopts ":vdf" opt; do
 done    	
 shift $(expr $OPTIND - 1 )
 if [ $# -lt 3 ]; then
-        msg swregistrar ${TooFewParms} E "$#"
+        msg apfregistrar ${TooFewParms} E "$#"
  	syntax
         exit 8
 fi  
-sw=$(echo $1 | tr '[:lower:]' '[:upper:]');
-verb=$(echo $2 | tr '[:lower:]' '[:upper:]');
-id=$(echo $3 | tr '[:lower:]' '[:upper:]');
-text="$4"
-
-header="/* --- ${sw}:${id} start --- */"
-footer="/* --- ${sw}:${id} end   --- */"
 
 out=$(whence zbrewfuncs >/dev/null)
 if [ $? -eq 0 ]; then
@@ -99,12 +92,61 @@ zbrewpropse zbrew global "${props}"
 props="${mydir}/../../zbrew/properties/zbrewprops.json"
 zbrewpropse zbrew config "${props}"
 
-parmlibds="${ZBREW_HLQ}PARMLIB"
-member="IFAPRD${ZBREW_PARMLIB_SFX}"
+sw=$(echo $1 | tr '[:lower:]' '[:upper:]');
+verb=$(echo $2 | tr '[:lower:]' '[:upper:]');
+shift 2
+datasets=$*
 
-if [ $# -gt 3 ]; then
-	registrar "${sw}" "${verb}" "${parmlibds}" "${member}" "${header}" "${footer}" "${text}"
-else
-	registrar "${sw}" "${verb}" "${parmlibds}" "${member}" "${header}" "${footer}"
+header="/* --- ${sw}:${id} start --- */"
+footer="/* --- ${sw}:${id} end   --- */"
+
+parmlibds="${ZBREW_HLQ}PARMLIB"
+member="PROG${ZBREW_PARMLIB_SFX}"
+
+progmem="${ZBREW_HLQ}PARMLIB(${member})"
+dls "${ZBREW_HLQ}PARMLIB" >/dev/null
+if [ $? -gt 0 ]; then
+	dtouch -tpds "${ZBREW_HLQ}PARMLIB"
 fi
+mls "${progmem}" >/dev/null
+
+if [ "${verb}" = "DISABLE" ]; then
+	registrar "${sw}" "${verb}" "${parmlibds}" "${member}" "${header}" "${footer}"
+	exit $?
+fi
+
+if [ $? -eq 0 ]; then
+	flag="-a"
+else
+	flag=
+fi
+text=""
+
+for dataset in ${datasets}; do
+	dataset=$(echo $dataset | tr '[:lower:]' '[:upper:]');
+	info=`dls -l ${dataset}`
+	if [ $? -gt 0 ]; then
+		echo "apfregistrar: Dataset: ${dataset} not found." >&2
+		exit 16
+	fi
+	volume=`echo "${info}" | awk '{ print $5; }'`
+	opercmd "d sms,volume(${volume})" 2>/dev/null | grep "NOT AN SMS MANAGED DASD VOLUME"
+	if [ $? -gt 0 ]; then
+		volume="SMS"
+		setstr="SMS"
+	else
+		setstr="VOLUME=${volume}"
+	fi
+
+	entry="APF ADD DSNAME(${dataset}) ${volume}"
+	if [ "${text}" = "" ]; then
+		text="${entry}"
+	else
+		text="APF ADD DSNAME(${dataset}) ${volume}
+${text}"
+	fi
+	opercmd "SETPROG APF,ADD,DSNAME=${dataset},${setstr}"
+done
+
+registrar "${sw}" "${verb}" "${parmlibds}" "${member}" "${header}" "${footer}" "${text}"
 exit $?

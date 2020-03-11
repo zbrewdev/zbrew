@@ -4,7 +4,9 @@
 		"config":{
 			"ZBREW_ORDERROOT":"${HOME}/order", 
 			"ZBREW_PKGROOT":"${HOME}/pkg", 
+			"ZBREW_CONFIGROOT":"${HOME}/config", 
 			"ZBREW_HLQ":"ZBREW.", 
+			"ZBREW_TGT_HLQ":"ZBREWT.", 
 			"ZBREW_PARMLIB_SFX":"ZB",
 			"ZBREW_TMP":"/tmp"
                  }

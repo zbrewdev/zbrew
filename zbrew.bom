@@ -20,8 +20,11 @@ bin/smpfromfile
 bin/smpfromnts
 bin/smpfromppa
 bin/smpfromshopz
+bin/registrar
 bin/swregistrar
+bin/apfregistrar
 bin/zbrew
 bin/zbrewfuncs
+bin/zbrewsetenv
 properties/globalprops.json
 properties/zbrewprops.json
