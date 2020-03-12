@@ -93,13 +93,10 @@ else
 fi      	
 		
 mydir=$(callerdir ${0})
-props="${mydir}/../../zbrew/properties/globalprops.json"
-zbrewpropse zbrew global "${props}"
-	
-props="${mydir}/../../zbrew/properties/zbrewprops.json"
+props="${mydir}/../../zbrew/zbrewglobalprops.json"
 zbrewpropse zbrew config "${props}"
 
-parmlibds="${ZBREW_HLQ}PARMLIB"
+parmlibds="${ZBREW_SRC_HLQ}PARMLIB"
 member="IFAPRD${ZBREW_PARMLIB_SFX}"
 
 if [ $# -gt 3 ]; then

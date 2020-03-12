@@ -73,10 +73,7 @@ else
 fi
 
 mydir=$(callerdir ${0})
-props="${mydir}/../../zbrew/properties/globalprops.json"
-zbrewpropse zbrew global "${props}"
-
-props="${mydir}/../../zbrew/properties/zbrewprops.json"
+props="${mydir}/../../zbrew/zbrewglobalprops.json"
 zbrewpropse zbrew config "${props}"
 
 opts=""         	

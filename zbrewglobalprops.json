@@ -1,13 +1,21 @@
 {
  	"software": [{
 		"name":"ZBREW",
-		"global":{
+		"config":{
 			"ZBREW_TMP_MINSPACE":"250000",
-			"ZBREW_ZFSROOT":"/zbrew/",
+			"ZBREW_TMP":"/tmp",
+
+			"ZBREW_WORKROOT":"${HOME}", 
+			"ZBREW_SRC_HLQ":"ZBREWS.", 
+			"ZBREW_TGT_HLQ":"ZBREWT.", 
+			"ZBREW_SRC_ZFSROOT":"/zbrews/",
+			"ZBREW_TGT_ZFSROOT":"/zbrewt/",
+
 			"ZBREW_CEEHLQ":"CEE",
 			"ZBREW_CSSHLQ":"SYS1",
 			"ZBREW_EZAHLQ":"TCPIP",
 			"ZBREW_ISPHLQ":"ISP",
+
 			"ZBREW_ZOS220_CSI":"NONE",
 			"ZBREW_ZOS230_CSI":"NONE",
 			"ZBREW_ZOS240_CSI":"NONE",
@@ -15,12 +23,16 @@
 			"ZBREW_JVB800_CSI":"NONE",
 			"ZBREW_ASM160_CSI":"NONE",
 			"ZBREW_DFH520_CSI":"NONE",
+			"ZBREW_IGY630_CSI":"NONE",
 			"ZBREW_IGY620_CSI":"NONE",
 			"ZBREW_IGY610_CSI":"NONE",
 			"ZBREW_IGY520_CSI":"NONE",
 			"ZBREW_IGY510_CSI":"NONE",
+
 			"ZBREW_JOBPARMS":"''MSGCLASS=S,NOTIFY=&SYSUID''",
-			"ZBREW_JOBOPTS":""
+			"ZBREW_JOBOPTS":"",
+
+			"ZBREW_PARMLIB_SFX":"ZB"
                  }
 	}]
 }

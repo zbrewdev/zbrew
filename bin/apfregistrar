@@ -86,10 +86,7 @@ else
 fi      	
 		
 mydir=$(callerdir ${0})
-props="${mydir}/../../zbrew/properties/globalprops.json"
-zbrewpropse zbrew global "${props}"
-	
-props="${mydir}/../../zbrew/properties/zbrewprops.json"
+props="${mydir}/../../zbrew/zbrewglobalprops.json"
 zbrewpropse zbrew config "${props}"
 
 sw=$(echo $1 | tr '[:lower:]' '[:upper:]');
@@ -100,13 +97,13 @@ datasets=$*
 header="/* --- ${sw}:${id} start --- */"
 footer="/* --- ${sw}:${id} end   --- */"
 
-parmlibds="${ZBREW_HLQ}PARMLIB"
+parmlibds="${ZBREW_SRC_HLQ}PARMLIB"
 member="PROG${ZBREW_PARMLIB_SFX}"
 
-progmem="${ZBREW_HLQ}PARMLIB(${member})"
-dls "${ZBREW_HLQ}PARMLIB" >/dev/null
+progmem="${ZBREW_SRC_HLQ}PARMLIB(${member})"
+dls "${ZBREW_SRC_HLQ}PARMLIB" >/dev/null
 if [ $? -gt 0 ]; then
-	dtouch -tpds "${ZBREW_HLQ}PARMLIB"
+	dtouch -tpds "${ZBREW_SRC_HLQ}PARMLIB"
 fi
 mls "${progmem}" >/dev/null
 

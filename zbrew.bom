@@ -26,5 +26,4 @@ bin/apfregistrar
 bin/zbrew
 bin/zbrewfuncs
 bin/zbrewsetenv
-properties/globalprops.json
-properties/zbrewprops.json
+zbrewglobalprops.json

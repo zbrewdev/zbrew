@@ -291,11 +291,8 @@ else
 	exit 4
 fi
 mydir=$(callerdir ${0})
-props="${mydir}/../properties/zbrewprops.json"
+props="${mydir}/../zbrewglobalprops.json"
 zbrewpropse zbrew config "${props}"
-
-props=$(callerdir "$0")"/../../zbrew/properties/globalprops.json"
-zbrewpropse zbrew global ${props}
 
 
 parms="$(echo ${*} | tr '[:lower:]' '[:upper:]')"

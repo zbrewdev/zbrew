@@ -49,7 +49,7 @@ targdddefs=`echo "${libs}" | awk '($2 != "ZFS" && $7 == "T") {print $1}'`
 for targdddef in ${targdddefs}; do
  smpuclin="${smpuclin}
  REP DDDEF(${targdddef})
- DA(${ZBREW_HLQ}${child_zosname}.${targdddef})
+ DA(${ZBREW_SRC_HLQ}${child_zosname}.${targdddef})
  UNIT(SYSALLDA)
  WAITFORDSN
  SHR.
@@ -63,7 +63,7 @@ for targddzfs in ${targdddefs}; do
  dddefpath=`echo "${targddzfs}" | awk -F, '{print $2}'`
  smpuclin="${smpuclin}
  REP DDDEF(${targdddef})
- PATH('${ZBREW_ZFSROOT}${dddefpath}').
+ PATH('${ZBREW_SRC_ZFSROOT}${dddefpath}').
 "
 done
 
@@ -89,7 +89,7 @@ distdddefs=`echo "${libs}" | awk '($7 == "D") {print $1}'`
 for distdddef in ${distdddefs};do
  smpuclin="${smpuclin}
  REP DDDEF(${distdddef})
- DA(${ZBREW_HLQ}${child_zosname}.${distdddef})
+ DA(${ZBREW_SRC_HLQ}${child_zosname}.${distdddef})
  UNIT(SYSALLDA)
  WAITFORDSN
  SHR.
@@ -102,7 +102,7 @@ done
 run_gimsmp(){
 
 
-mvscmdauth --pgm=GIMSMP --smpcsi=${ZBREW_HLQ}${zosname}G.GLOBAL.CSI --sysprint=DUMMY --smprpt=DUMMY --smplist=DUMMY --smpcntl=stdin <<zzz
+mvscmdauth --pgm=GIMSMP --smpcsi=${ZBREW_SRC_HLQ}${zosname}G.GLOBAL.CSI --sysprint=DUMMY --smprpt=DUMMY --smplist=DUMMY --smpcntl=stdin <<zzz
 ${smpuclin}
 zzz
         rc=$?
@@ -148,11 +148,8 @@ child_zosname=$(echo ${sw} | tr '[:lower:]' '[:upper:]');
 zosname=$(echo ${sw} | tr '[:lower:]' '[:upper:]');
 prefix=`echo "${ussname}" | awk '{ print substr($1, 0, 3) }'`
 
-props="${mydir}/../../zbrew/properties/zbrewprops.json"
+props="${mydir}/../../zbrew/zbrewglobalprops.json"
 zbrewpropse zbrew config "${props}"
-
-props=$(callerdir "$0")"/../../zbrew/properties/globalprops.json"
-zbrewpropse zbrew global ${props}
 
 smpelibs="${mydir}/../../zbrew-${prefix}/${ussname}/${ussname}bom.json"
 swparent=`readparent ${ussname} <${smpelibs}`

@@ -81,7 +81,7 @@ zzz
 
 	mkdir -p ${NTS}
 
-	smpout=`smp -i ${ZBREW_HLQ}${sw}G.GLOBAL.CSI -w ${ZBREW_TMP} -n ${NTS} -c ${tmpClientHFS} -s ${tmpServerHFS} <${tmpCntlHFS}`
+	smpout=`smp -i ${ZBREW_SRC_HLQ}${sw}G.GLOBAL.CSI -w ${ZBREW_TMP} -n ${NTS} -c ${tmpClientHFS} -s ${tmpServerHFS} <${tmpCntlHFS}`
 	rc=$?
 	if [ ${rc} -gt 0 ]; then
 		echo "SMP/E RECEIVE of ${sw} failed." >&2
@@ -96,7 +96,7 @@ zzz
 }
 
 mydir=$(callerdir ${0})
-props="${mydir}/../properties/zbrewprops.json"
+props="${mydir}/../zbrewglobalprops.json"
 zbrewpropse zbrew config "${props}"
 
 debug=0
@@ -132,7 +132,7 @@ fi
 mydir=$(callerdir ${0})
 ussname=$(echo ${1} | tr '[:upper:]' '[:lower:]'); 
 zosname=$(echo ${1} | tr '[:lower:]' '[:upper:]'); 
-props="${ZBREW_ORDERROOT}/${ussname}order.json"
+props="${ZBREW_WORKROOT}/order/${ussname}order.json"
 zbrewpropse "${ussname}" order "${props}"
 
 out=`receivefromnetwork ${zosname}`; 

@@ -16,8 +16,6 @@ else
     	echo "zbrew tools need to be in your PATH"
 	return 4
 fi
-props="${zbrewroot}/properties/zbrewprops.json"
+props="${zbrewroot}/zbrewglobalprops.json"
 zbrewpropse zbrew config "${props}"
 
-props="${zbrewroot}/properties/globalprops.json"
-zbrewpropse zbrew global ${props}

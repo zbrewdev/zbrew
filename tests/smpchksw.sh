@@ -4,6 +4,8 @@
 #
 . zbrewfuncs
 mydir=$(callerdir ${0})
+props="${mydir}/../zbrewglobalprops.json"
+zbrewpropse zbrew config "${props}"
 #set -x
 
 #
