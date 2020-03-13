@@ -217,22 +217,24 @@ update() {
 install() {
 	export ALLPTFS=0
 	zbrewlog "install" $*
+	baseopts="$opts"
 	for zbrewfunc in ${install_verbs}; do
+		opts="${baseopts}"
 		runfunc="${zbrewfunc}"
 		if [ "${runfunc}" = "smpapplycheck" ]; then
-			opts="$opts -p"
+			opts="$baseopts -p"
 			runfunc="smpappacc"
 		fi
 		if [ "${runfunc}" = "smpapply" ]; then
-			opts="$opts -q"
+			opts="$baseopts -q"
                         runfunc="smpappacc"
 		fi
                 if [ "${runfunc}" = "smpacceptcheck" ]; then
-			opts="$opts -r"
+			opts="$baseopts -r"
                         runfunc="smpappacc"
                 fi
                 if [ "${runfunc}" = "smpaccept" ]; then
-			opts="$opts -s"
+			opts="$baseopts -s"
                         runfunc="smpappacc"
                 fi
 
@@ -265,15 +267,30 @@ configure() {
 	        echo "configure ${opts} ${sw}" >&2
 	fi
 	prodconfig="${ZBREW_WORKROOT}/zbrew-${prefix}/${ussname}/${ussname}config"
-        if [ -f "${prodconfig}" ]; then
-     	        ${prodconfig} ${opts}
-		rc=$?
-		zbrewlog "configure RC: $?"
-		return $rc
-        else                            
-		echo "Unable to find product configuration program: ${prodconfig}. Installation failed."
+        if ! [ -f "${prodconfig}" ]; then
+		echo "Unable to find product configuration program: ${prodconfig}. Installation failed." >&2
+		zbrewlog "configure RC: 16"
                 return 16               
 	fi
+	
+	archive="${ZBREW_TMP}/${ussname}.dzp"	
+	if ! [ -f "${archive}" ]; then
+		echo "Unable to find product installation archive: ${archive}" >&2
+		zbrewlog "configure RC: 16"
+                return 16               
+	fi
+	zbrewrestore "${ussname}" 
+	rc=$?
+	if  [ $rc -gt 0 ]; then
+		echo "Unable to restore product installation archive: ${archive}" >&2
+		zbrewlog "configure RC: $rc"
+                return $rc               
+	fi
+	
+	${prodconfig} ${opts}
+	rc=$?
+	zbrewlog "configure RC: $rc"
+	return $rc
 }
 
 deconfigure() {
@@ -288,12 +305,19 @@ deconfigure() {
         if [ -f "${proddeconfig}" ]; then
      	        ${proddeconfig} ${opts}
 		rc=$?
-		zbrewlog "deconfigure RC: $?"
-		return $rc
+		if [ $rc -gt 0 ]; then
+			zbrewlog "deconfigure RC: $?"
+			return $rc
+	 	fi
 	fi
+	if [ "${ZBREW_TGT_HLQ}" != "${ZBREW_TGT_HLQ%.*}" ]; then
+		drm -f "${ZBREW_TGT_HLQ}*"
+	fi
+	zbrewlog "deconfigure RC: $?"
+	return $?
 }
 
-install_verbs="prodreq smpconfig receive smpcrdddef proddsalloc smpapplycheck smpapply smpacceptcheck smpaccept"
+install_verbs="prodreq smpconfig receive smpcrdddef proddsalloc smpapplycheck smpapply smpacceptcheck smpaccept zbrewarchive"
 update_verbs="smpapplycheck smpapply"
 
 debug=0
@@ -512,6 +536,14 @@ case ${verb} in
         smpaccept )
 		opts="${opts} -s"
                 out=`smpappacc ${opts} ${sw}`;
+                rc=$?
+                if [ $rc -gt 0 ] || [ $verbose -gt 0 ]; then
+                        echo "${out}"
+                        exit $rc
+                fi
+                ;;
+        archive )
+                out=`zbrewarchive ${sw}`;
                 rc=$?
                 if [ $rc -gt 0 ] || [ $verbose -gt 0 ]; then
                         echo "${out}"

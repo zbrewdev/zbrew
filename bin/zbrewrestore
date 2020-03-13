@@ -1,0 +1,40 @@
+#!/bin/sh
+
+#
+# Temporary hack - replace with a manpage
+#
+syntax() {
+	echo "\
+Syntax:
+	zbrewrestore <sw> 
+Notes:
+	\$ZBREW_TMP/<sw>.dzp is where the archive will be written to
+
+" >&2
+     	exit 8
+}
+
+out=$(whence zbrewfuncs >/dev/null)
+if [ $? -eq 0 ]; then
+	. zbrewfuncs
+else
+    	echo "zbrew tools need to be in your PATH" >&2
+	exit 4
+fi
+
+mydir=$(callerdir ${0})
+props="${mydir}/../../zbrew/zbrewglobalprops.json"
+zbrewpropse zbrew config "${props}"
+
+if ! [ $# -eq 1 ]; then
+	echo "Expected 1 parameter but $# parameters specified ($*)" >&2
+        echo "zbrewrestore <sw>" >&2
+ 	syntax
+        exit 8
+fi  
+
+ussname=$(echo $1 | tr '[:upper:]' '[:lower:]');
+zosname=$(echo $1 | tr '[:lower:]' '[:upper:]');
+
+dunzip -s250M "${ZBREW_TMP}/${ussname}.dzp" "${ZBREW_TGT_HLQ%.*}"
+exit $rc

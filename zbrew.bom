@@ -23,7 +23,9 @@ bin/smpfromshopz
 bin/registrar
 bin/swregistrar
 bin/apfregistrar
+bin/zbrewarchive
 bin/zbrew
 bin/zbrewfuncs
+bin/zbrewrestore
 bin/zbrewsetenv
 zbrewglobalprops.json
