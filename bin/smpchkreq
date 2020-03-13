@@ -51,7 +51,7 @@ chkreq() {
 	shift 4
 	ptfs="$*"
 	if [ "${swparent}" != "0" ]; then
-		csi="${ZBREW_HLQ}${swparent}G.GLOBAL.CSI"
+		csi="${ZBREW_SRC_HLQ}${swparent}G.GLOBAL.CSI"
 	else
 		csienv="\$ZBREW_${relid}_CSI"
 		csi=`eval echo ${csienv}`
@@ -198,11 +198,8 @@ else
 	exit 4
 fi
 mydir=$(callerdir ${0})
-props="${mydir}/../properties/zbrewprops.json"
+props="${mydir}/../zbrewglobalprops.json"
 zbrewpropse zbrew config "${props}"
-
-props=$(callerdir "$0")"/../../zbrew/properties/globalprops.json"
-zbrewpropse zbrew global ${props}
 
 
 sw="$(echo $1 | tr '[:lower:]' '[:upper:]')"
@@ -220,7 +217,7 @@ if [ $rc -gt 0 ]; then
 fi
 
 if [ "${swparent}" != "0" ]; then
-	csi="${ZBREW_HLQ}${swparent}G.GLOBAL.CSI"
+	csi="${ZBREW_SRC_HLQ}${swparent}G.GLOBAL.CSI"
         chkcsi=`tso "listc ent('${csi}')"` 2>/dev/null
         rc=$?
         if [ "${rc}" != "0" ]; then

@@ -52,7 +52,7 @@ receivefromzos() {
   ${rcvcmd} .
 zzz
 
-	smpout=`smp -i ${ZBREW_HLQ}${sw}G.GLOBAL.CSI -f ${SMPPTFIN} -w ${ZBREW_TMP} -r ${ZBREW_TMP}/rpt -p ${ZBREW_TMP}/sysprint <${tmpCntlHFS}`
+	smpout=`smp -i ${ZBREW_SRC_HLQ}${sw}G.GLOBAL.CSI -f ${SMPPTFIN} -w ${ZBREW_TMP} -r ${ZBREW_TMP}/rpt -p ${ZBREW_TMP}/sysprint <${tmpCntlHFS}`
 	rc=$?
 	if [ ${rc} -gt 0 ]; then
 		echo "SMP/E RECEIVE for ${SMPPTFIN} failed." >&2
@@ -70,7 +70,7 @@ zzz
 }
 
 mydir=$(callerdir ${0})
-props="${mydir}/../properties/zbrewprops.json"
+props="${mydir}/../zbrewglobalprops.json"
 zbrewpropse zbrew config "${props}"
 
 debug=0
@@ -107,7 +107,7 @@ zosname=$(echo ${sw} | tr '[:lower:]' '[:upper:]');
 ussname=$(echo ${sw} | tr '[:upper:]' '[:lower:]');
 testin=`echo "$2" | awk -F. '{print $2}'`
 if [ "${testin}" = "" ]; then
-        zosfile="${ZBREW_HLQ}PTF.${zosname}.$2"
+        zosfile="${ZBREW_SRC_HLQ}PTF.${zosname}.$2"
 else
         zosfile=$2
 fi

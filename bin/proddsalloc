@@ -44,7 +44,7 @@ crtds() {
 }
 
 crtzfs() {
-	root="${ZBREW_ZFSROOT}"
+	root="${ZBREW_SRC_ZFSROOT}"
 	arg=0
 	for zfsarg in ${1}; do
 		arg=`expr ${arg} + 1`
@@ -129,11 +129,8 @@ ussname=$(echo ${sw} | tr '[:upper:]' '[:lower:]');
 zosname=$(echo ${sw} | tr '[:lower:]' '[:upper:]');
 prefix=`echo "${ussname}" | awk '{ print substr($1, 0, 3) }'`
 
-props="${mydir}/../../zbrew/properties/zbrewprops.json"
+props="${mydir}/../../zbrew/zbrewglobalprops.json"
 zbrewpropse zbrew config "${props}"
-
-props=$(callerdir "$0")"/../../zbrew/properties/globalprops.json"
-zbrewpropse zbrew global ${props}
 
 smpelibs="${mydir}/../../zbrew-${prefix}/${ussname}/${ussname}bom.json"
 ussname=$(echo ${ussname} | tr '[:lower:]' '[:upper:]')
@@ -145,9 +142,9 @@ if [ $rc -gt 0 ]; then
 	exit $rc
 fi
 # Obtain list of all Target and Distribution Datasets to allocate, exclude ZFS
-dspds=`echo "${libs}" | awk -v pfx="${ZBREW_HLQ}${ussname}." '($2 == "PDS") {print pfx$1" -t"$2" -r"$3" -l"$4" -b"$8" -s"$5*56"K"}'`
-dszfs=`echo "${libs}" | awk -v pfx="${ZBREW_HLQ}${ussname}." '($2 == "ZFS") {print pfx""$1" "$3" "$4" "$7" "$8":"}' | tr -d "\n"`
-dsoth=`echo "${libs}" | awk -v pfx="${ZBREW_HLQ}${ussname}." '($2 != "C" && $2 != "ZFS" && $2 != "PDS") {print pfx$1" -t"$2" -r"$3" -l"$4" -s"$5*56"K"}'`
+dspds=`echo "${libs}" | awk -v pfx="${ZBREW_SRC_HLQ}${ussname}." '($2 == "PDS") {print pfx$1" -t"$2" -r"$3" -l"$4" -b"$8" -s"$5*56"K"}'`
+dszfs=`echo "${libs}" | awk -v pfx="${ZBREW_SRC_HLQ}${ussname}." '($2 == "ZFS") {print pfx""$1" "$3" "$4" "$7" "$8":"}' | tr -d "\n"`
+dsoth=`echo "${libs}" | awk -v pfx="${ZBREW_SRC_HLQ}${ussname}." '($2 != "C" && $2 != "ZFS" && $2 != "PDS") {print pfx$1" -t"$2" -r"$3" -l"$4" -s"$5*56"K"}'`
 
 out=`crtds "${dspds}"`
 rc=$?

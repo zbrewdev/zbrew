@@ -49,18 +49,19 @@ You can also get zbrew from artifactory: https://bintray.com/zbrew/zbrew
 To install from artifactory:
 - download the latest pax file, and unpax it into a directory _ZBREWROOT_
 
-You will want to get zbrew latest package. It is a pax file - unpax it into the _ZBREWROOT_ directory. You will then want to pick up pax files for each product you want to install. Start with _zbrew-zhw_, which is just a hello world to ensure it all works. Install all pax files in the _ZBREWROOT_ directory. 
+You will then want to pick up pax files for each software package you want to install. 
+Start with _zbrew-zhw_, which is just a hello world package, to ensure it all works. Install all pax files in the _ZBREW\_WORKROOT_ directory. 
 
-If you want to look at any of the source for zbrew, you can see it at:
+If you want to look at any of the source for zbrew, go to:
 - https://github.com/zbrewdev/zbrew
-There are corresponding git repos for the product which have a -<product> after them, e.g.
+There are corresponding git repos for the software packages which have a -<sw> after them, e.g.
 - https://github.com/mikefultonbluemix/zbrew-eqa
 
 ***How to run zbrew:***
 
 The zbrew program resides in _ZBREWROOT/bin_ directory. You can either run the program with the fully qualified name or you can put the _ZBREWROOT/bin_ directory into your PATH. The instructions that follow assume it is in your PATH. 
 
-If you don’t know the name of the product, issue:
+If you do not know the name of the product, issue:
 - zbrew search _string_
 e.g.
 - zbrew search debug
@@ -69,18 +70,18 @@ which will then tell you that debug is _eqae20_ (EQA 14.2.0)
 To install a product, you will need the ORDER JSON file for that product. 
 Currently, we support products:
 - ordered from ShopZ
-- products in the local zFS file system
-We are working on support for Passport Advantage products.
-All ORDER files go into a directory you create called _ZBREWROOT/order_ 
+- ordered from Passport Advantage
+- in the local zFS file system
+All ORDER files go into a directory you create called _ZBREW\_WORKROOT/order_ 
 The name of the ORDER file is: 
-- _product_ order.json
+- _sw_ order.json
 e.g.
 - _zhw110order.json_
 
 *For ShopZ:*
-- Go into ShopZ and order your CBPDO product as you normally would. You will be send information on how to install, along with a file called _rfnjobs.txt_
+- Go into ShopZ and order your CBPDO software as you normally would. You will be send information on how to install, along with a file called _rfnjobs.txt_
 - Copy this file to z/OS under _/tmp/rfnjobs.txt_, then issue:
-- _ZBREWROOT/utils/shopzgenorder product </tmp/rfnjobs.txt >ZBREWROOT/*product*order.json_, where _product_ is the product you are installing, e.g. eqae20
+- _ZBREWROOT/utils/shopzgenorder sw </tmp/rfnjobs.txt >ZBREWROOT/*sw*order.json_, where _sw is the software you are installing, e.g. eqae20
 
 *For Local zFS file system*
 - Only zhw110 has been created as a local zFS product. The ORDER file for _zhw110order.json_ is:
@@ -97,9 +98,9 @@ e.g.
 ```
 
 
-To run zbrew to install and configure a particular product, issue:
-- zbrew install _product_
-- zbrew configure _product_
+To run zbrew to install and configure a particular software package, issue:
+- zbrew install _sw
+- zbrew configure _sw
 e.g.
 - zbrew install zhw110
 - zbrew configure zhw110

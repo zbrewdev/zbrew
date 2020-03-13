@@ -12,7 +12,7 @@ else
 fi      
 
 mydir=$(callerdir ${0})
-props="${mydir}/../properties/zbrewprops.json"
+props="${mydir}/../zbrewglobalprops.json"
 zbrewpropse zbrew config "${props}"
 
 csi="$(echo ${1} | tr '[:lower:]' '[:upper:]')"

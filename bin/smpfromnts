@@ -62,7 +62,7 @@ receivefromnts() {
   ${rcvcmd} FROMNTS('${order}').
 zzz
 
-	smpout=`smp -i ${ZBREW_HLQ}${csiname}G.GLOBAL.CSI -w ${ZBREW_TMP} -n ${NTS} -r ${ZBREW_TMP}/rpt -p ${ZBREW_TMP}/sysprint <${tmpCntlHFS}`
+	smpout=`smp -i ${ZBREW_SRC_HLQ}${csiname}G.GLOBAL.CSI -w ${ZBREW_TMP} -n ${NTS} -r ${ZBREW_TMP}/rpt -p ${ZBREW_TMP}/sysprint <${tmpCntlHFS}`
 	rc=$?
 	if [ ${rc} -gt 0 ]; then
 		echo "SMP/E RECEIVE FROMNTS of ${sw} failed." >&2
@@ -76,7 +76,7 @@ zzz
 }
 
 mydir=$(callerdir ${0})
-props="${mydir}/../properties/zbrewprops.json"
+props="${mydir}/../zbrewglobalprops.json"
 zbrewpropse zbrew config "${props}"
 
 debug=0

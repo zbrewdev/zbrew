@@ -40,12 +40,13 @@ zbrew [-cvdfr] search|order|smpreceiveptf|install|update|receivezos|configure|de
 	   If concatenating options and using -r it must be the last option..  (eg -cvr)
 
 Note:
-	zbrew has a properties file called zbrew.properties. The following properties need to be specified:
-		ZBREW_ORDERROOT: 	The writable directory root where ORDER information will be placed by SMP/E (currently this needs to be done manually)
-					Each product you ORDER will have a corresponding order file called <software>order.json
+	zbrew has a properties file called zbrewglobalprops.json. The following properties need to be specified:
+		ZBREW_WORKROOT: 	The writable directory root where ORDER information is provided.
+					Software packages you ORDER will have a corresponding order file called <software>order.json
+					See the README for more details
 
 	
-Here is a sample order file for COBOL 6.3.0 you would create at ${ZBREW_ORDERROOT}/igy630order.json
+Here is a sample order file for COBOL 6.3.0 you would create at ${ZBREW_WORKROOT}/order/igy630order.json
 {
    "software": [{
    "name":"IGY630",
@@ -108,7 +109,7 @@ order() {
 }
 
 receive() {
-	props="${ZBREW_ORDERROOT}/${ussname}order.json"
+	props="${ZBREW_WORKROOT}/order/${ussname}order.json"
 	zbrewpropse "${ussname}" order "${props}"
 		
 	if [ ${verbose} -gt 0 ]; then
@@ -363,11 +364,8 @@ if [ $# -lt 2 ]; then
 	exit 16
 fi
 mydir=$(callerdir ${0})
-props="${mydir}/../properties/zbrewprops.json"
+props="${mydir}/../zbrewglobalprops.json"
 zbrewpropse zbrew config "${props}"
-
-props="${mydir}/../properties/globalprops.json"
-zbrewpropse zbrew global ${props}
 
 sw=$2
 ussname=$(echo ${sw} | tr '[:upper:]' '[:lower:]');
