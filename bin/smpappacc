@@ -229,7 +229,7 @@ zosname=$(echo ${1} | tr '[:lower:]' '[:upper:]')
 ussname=$(echo ${1} | tr '[:upper:]' '[:lower:]');
 prefix=`echo "${ussname}" | awk '{ print substr($1, 0, 3) }'`
 
-bomfile="${mydir}/../../zbrew-${prefix}/${ussname}/${ussname}bom.json"
+bomfile="${ZBREW_WORKROOT}/zbrew-${prefix}/${ussname}/${ussname}bom.json"
 swparent=`readparent ${ussname} <${bomfile}`
 rc=$?
 if [ $rc -gt 0 ]; then

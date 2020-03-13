@@ -4,11 +4,13 @@
 #
 . zbrewfuncs
 mydir=$(callerdir ${0})
+props="${mydir}/../zbrewglobalprops.json"
+zbrewpropse zbrew config "${props}"
 #set -x
 
 # First, make sure the zhw repo has been installed
 
-zbrewzhw_dir="${mydir}/../../zbrew-zhw"
+zbrewzhw_dir="${ZBREW_WORKROOT}/zbrew-zhw"
 if ! [ -e "${zbrewzhw_dir}" ]; then
 	echo "Need to install zhw repo to run this test" >&2
 	exit 1

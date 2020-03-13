@@ -201,14 +201,13 @@ mydir=$(callerdir ${0})
 props="${mydir}/../zbrewglobalprops.json"
 zbrewpropse zbrew config "${props}"
 
-
 sw="$(echo $1 | tr '[:lower:]' '[:upper:]')"
 
 ussname=$(echo ${sw} | tr '[:upper:]' '[:lower:]');
 zosname=$(echo ${sw} | tr '[:lower:]' '[:upper:]');
 prefix=`echo "${ussname}" | awk '{ print substr($1, 0, 3) }'`
 
-bomfile="${mydir}/../../zbrew-${prefix}/${ussname}/${ussname}bom.json"
+bomfile="${ZBREW_WORKROOT}/zbrew-${prefix}/${ussname}/${ussname}bom.json"
 
 swparent=`readparent ${ussname} <${bomfile}`
 rc=$?

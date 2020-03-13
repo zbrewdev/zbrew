@@ -143,11 +143,6 @@ receive() {
 	return $rc
 }
 
-
-#
-# Temporary hack - need a better way to locate where pre-req script is
-#
-
 prodreq() {
 	zbrewlog "prodreq" $*
 		
@@ -179,7 +174,7 @@ prodreq() {
 	if [ ${verbose} -gt 0 ]; then
 		echo "Checking requisites ${opts} ${sw}" >&2
 	fi
-	SWDIR="${mydir}/../../zbrew-${prefix}/${ussname}/"
+	SWDIR="${ZBREW_WORKROOT}/zbrew-${prefix}/${ussname}/"
 	json="${SWDIR}${ussname}req.json"
 	if [ -f "${json}" ]; then
 		smpchkreq ${opts} ${ussname} ${json}
@@ -189,9 +184,6 @@ prodreq() {
 		return 16
 	fi
 }
-
-
-
 
 update() {
 	export ALLPTFS=1
@@ -264,9 +256,6 @@ install() {
 	return $rc
 }
 
-#
-# Temporary hack - need a better way to locate where installation script is
-#
 configure() {
 	zbrewlog "configure" $*
 
@@ -275,7 +264,7 @@ configure() {
         if [ ${verbose} -gt 0 ]; then
 	        echo "configure ${opts} ${sw}" >&2
 	fi
-	prodconfig="${mydir}/../../zbrew-${prefix}/${ussname}/${ussname}config"
+	prodconfig="${ZBREW_WORKROOT}/zbrew-${prefix}/${ussname}/${ussname}config"
         if [ -f "${prodconfig}" ]; then
      	        ${prodconfig} ${opts}
 		rc=$?
@@ -295,7 +284,7 @@ deconfigure() {
         if [ ${verbose} -gt 0 ]; then
 	        echo "configure ${opts} ${sw}" >&2
 	fi
-	proddeconfig="${mydir}/../../zbrew-${prefix}/${ussname}/${ussname}deconfig"
+	proddeconfig="${ZBREW_WORKROOT}/zbrew-${prefix}/${ussname}/${ussname}deconfig"
         if [ -f "${proddeconfig}" ]; then
      	        ${proddeconfig} ${opts}
 		rc=$?
@@ -389,7 +378,7 @@ fi
 
 if [ "${clean}" = "1" ]; then
 	prefix=`echo "${ussname}" | awk '{ print substr($1, 0, 3) }'`
-	bomfile="${mydir}/../../zbrew-${prefix}/${ussname}/${ussname}bom.json"
+	bomfile="${ZBREW_WORKROOT}/zbrew-${prefix}/${ussname}/${ussname}bom.json"
 	swparent=`readparent ${ussname} <${bomfile}`
 	rc=$?
 	if [ $rc -gt 0 ]; then

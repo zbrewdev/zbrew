@@ -151,7 +151,7 @@ prefix=`echo "${ussname}" | awk '{ print substr($1, 0, 3) }'`
 props="${mydir}/../../zbrew/zbrewglobalprops.json"
 zbrewpropse zbrew config "${props}"
 
-smpelibs="${mydir}/../../zbrew-${prefix}/${ussname}/${ussname}bom.json"
+smpelibs="${ZBREW_WORKROOT}/zbrew-${prefix}/${ussname}/${ussname}bom.json"
 swparent=`readparent ${ussname} <${smpelibs}`
 rc=$?
 if [ $rc -gt 0 ]; then
