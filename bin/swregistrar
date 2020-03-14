@@ -96,7 +96,7 @@ mydir=$(callerdir ${0})
 props="${mydir}/../../zbrew/zbrewglobalprops.json"
 zbrewpropse zbrew config "${props}"
 
-parmlibds="${ZBREW_SRC_HLQ}PARMLIB"
+parmlibds="${ZBREW_TGT_HLQ}PARMLIB"
 member="IFAPRD${ZBREW_PARMLIB_SFX}"
 
 if [ $# -gt 3 ]; then

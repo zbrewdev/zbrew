@@ -94,30 +94,16 @@ verb=$(echo $2 | tr '[:lower:]' '[:upper:]');
 shift 2
 datasets=$*
 
-header="/* --- ${sw}:${id} start --- */"
-footer="/* --- ${sw}:${id} end   --- */"
+header="/* --- ${sw} start --- */"
+footer="/* --- ${sw} end   --- */"
 
-parmlibds="${ZBREW_SRC_HLQ}PARMLIB"
+parmlibds="${ZBREW_TGT_HLQ}PARMLIB"
 member="PROG${ZBREW_PARMLIB_SFX}"
 
-progmem="${ZBREW_SRC_HLQ}PARMLIB(${member})"
-dls "${ZBREW_SRC_HLQ}PARMLIB" >/dev/null
-if [ $? -gt 0 ]; then
-	dtouch -tpds "${ZBREW_SRC_HLQ}PARMLIB"
-fi
-mls "${progmem}" >/dev/null
-
 if [ "${verb}" = "DISABLE" ]; then
-	registrar "${sw}" "${verb}" "${parmlibds}" "${member}" "${header}" "${footer}"
-	exit $?
+	registrar "${sw}" "DISABLE" "${parmlibds}" "${member}" "${header}" "${footer}"
+	return $?
 fi
-
-if [ $? -eq 0 ]; then
-	flag="-a"
-else
-	flag=
-fi
-text=""
 
 for dataset in ${datasets}; do
 	dataset=$(echo $dataset | tr '[:lower:]' '[:upper:]');
