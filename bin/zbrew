@@ -265,10 +265,17 @@ configure() {
 	zbrewlog "configure" $*
 
         ussname=$(echo ${sw} | tr '[:upper:]' '[:lower:]');
+        zosname=$(echo ${sw} | tr '[:lower:]' '[:upper:]');
 	prefix=`echo ${ussname} | awk '{print substr($0,0,3)}'`
         if [ ${verbose} -gt 0 ]; then
 	        echo "configure ${opts} ${sw}" >&2
 	fi
+
+	dls "${ZBREW_TGT_HLQ}${zosname}.*" >/dev/null 2>&1
+	if [ $? -eq 0 ]; then
+		echo "Datasets of pattern: ${ZBREW_TGT_HLQ}${zosname}.* already exist. Configuration aborted." >&2
+		return 16
+	fi 
 	prodconfig="${ZBREW_WORKROOT}/zbrew-${prefix}/${ussname}/${ussname}config"
         if ! [ -f "${prodconfig}" ]; then
 		echo "Unable to find product configuration program: ${prodconfig}. Installation failed." >&2
@@ -300,6 +307,7 @@ deconfigure() {
 	zbrewlog "deconfigure" $*
 
         ussname=$(echo ${sw} | tr '[:upper:]' '[:lower:]');
+        zosname=$(echo ${sw} | tr '[:lower:]' '[:upper:]');
 	prefix=`echo ${ussname} | awk '{print substr($0,0,3)}'`
         if [ ${verbose} -gt 0 ]; then
 	        echo "configure ${opts} ${sw}" >&2
@@ -333,7 +341,7 @@ deconfigure() {
 				return $rc
 			fi
 		done
-		drm -f "${ZBREW_TGT_HLQ}*"
+		drm -f "${ZBREW_TGT_HLQ}${zosname}.*"
 	fi
 	zbrewlog "deconfigure RC: $?"
 	return $?
