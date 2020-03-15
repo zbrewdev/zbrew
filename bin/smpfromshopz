@@ -1,5 +1,4 @@
 #!/bin/sh
-. zbrewfuncs
 InvalidOption=1
 TooFewParms=2
 UnknownAction=3
@@ -39,6 +38,9 @@ Examples:
 
 receivefromnetwork() {
 	sw="$1"
+
+	setjavaenv
+
 	tmpServerHFS=${ZBREW_TMP}/$$.server.xml
 	tmpClientHFS=${ZBREW_TMP}/$$.client.xml
 	tmpCntlHFS=${ZBREW_TMP}/$$.cntl.xml
@@ -95,9 +97,7 @@ zzz
 	return ${rc} 
 }
 
-mydir=$(callerdir ${0})
-props="${mydir}/../zbrewglobalprops.json"
-zbrewpropse zbrew config "${props}"
+. zbrewsetenv
 
 debug=0
 verbose=0

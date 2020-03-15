@@ -1,7 +1,5 @@
 #!/bin/sh
 #set -x
-. zbrewfuncs
-setjavaenv
 InvalidOption=1
 TooFewParms=2
 UnknownAction=3
@@ -406,9 +404,7 @@ if [ $# -lt 2 ]; then
 	syntax
 	exit 16
 fi
-mydir=$(callerdir ${0})
-props="${mydir}/../zbrewglobalprops.json"
-zbrewpropse zbrew config "${props}"
+. zbrewsetenv
 
 sw=$2
 ussname=$(echo ${sw} | tr '[:upper:]' '[:lower:]');

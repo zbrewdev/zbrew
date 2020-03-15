@@ -2,18 +2,13 @@
 #
 # Basic test to ensure Parent bomread working ok
 #
-. zbrewfuncs
-mydir=$(callerdir ${0})
-#set -x
-
-# First, make sure the zhw repo has been installed
+. zbrewsetenv
 
 zbrew_dir="${mydir}/../../zbrew"
 if ! [ -e "${zbrew_dir}" ]; then
 	echo "Need to install zbrew to run this test" >&2
 	exit 1
 fi
-
 
 actual=`readchild bomtest <${zbrew_dir}/tests/bomtest.json`
 zbrewtest "Bill of Materials (BoM) file parsing failed" "0" "$?"

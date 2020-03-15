@@ -1,6 +1,5 @@
 #!/bin/sh
 #set -x
-. zbrewfuncs
 InvalidOption=1
 TooFewParms=2
 UnknownAction=3
@@ -221,9 +220,7 @@ if [ $# -lt 1 ]; then
 	exit 16
 fi
 
-mydir=$(callerdir ${0})
-props="${mydir}/../zbrewglobalprops.json"
-zbrewpropse zbrew config "${props}"
+. zbrewsetenv
 
 zosname=$(echo ${1} | tr '[:lower:]' '[:upper:]') 
 ussname=$(echo ${1} | tr '[:upper:]' '[:lower:]');

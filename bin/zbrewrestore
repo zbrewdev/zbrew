@@ -34,19 +34,7 @@ zfsmount() {
 	return 0
 }
 
-		
-out=$(whence zbrewfuncs >/dev/null)
-if [ $? -eq 0 ]; then
-	. zbrewfuncs
-else
-    	echo "zbrew tools need to be in your PATH" >&2
-	exit 4
-fi
-
-
-mydir=$(callerdir ${0})
-props="${mydir}/../../zbrew/zbrewglobalprops.json"
-zbrewpropse zbrew config "${props}"
+. zbrewsetenv
 
 if ! [ $# -eq 1 ]; then
 	echo "Expected 1 parameter but $# parameters specified ($*)" >&2

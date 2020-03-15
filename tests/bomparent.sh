@@ -2,9 +2,7 @@
 #
 # Basic test to ensure Parent bomread working ok
 #
-. zbrewfuncs
-mydir=$(callerdir ${0})
-#set -x
+. zbrewsetenv
 
 # First, make sure the zhw repo has been installed
 

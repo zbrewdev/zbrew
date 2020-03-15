@@ -1,5 +1,4 @@
 #!/bin/sh
-. zbrewfuncs
 InvalidOption=1
 TooFewParms=2
 UnknownAction=3
@@ -63,9 +62,7 @@ unpaxfromlocal() {
 	return ${rc} 
 }
 
-mydir=$(callerdir ${0})
-props="${mydir}/../zbrewglobalprops.json"
-zbrewpropse zbrew config "${props}"
+. zbrewsetenv
 
 debug=0
 verbose=0

@@ -1,9 +1,5 @@
 #!/bin/sh
-
-. zbrewfuncs
-mydir=$(callerdir ${0})
-props="${mydir}/../zbrewglobalprops.json"
-zbrewpropse zbrew config "${props}"
+. zbrewsetenv
 
 ZHW110DIR="${ZBREW_WORKROOT}/zbrew-zhw/zhw110/"
 if ! [ -e "${ZHW110DIR}" ]; then

@@ -1,5 +1,4 @@
 #!/bin/sh
-. zbrewfuncs
 InvalidOption=1
 TooFewParms=3
 UnknownAction=3
@@ -69,9 +68,7 @@ zzz
 	return ${rc} 
 }
 
-mydir=$(callerdir ${0})
-props="${mydir}/../zbrewglobalprops.json"
-zbrewpropse zbrew config "${props}"
+. zbrewsetenv 
 
 debug=0
 verbose=0

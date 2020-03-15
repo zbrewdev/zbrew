@@ -84,17 +84,7 @@ text="$4"
 header="/* --- ${sw}:${id} start --- */"
 footer="/* --- ${sw}:${id} end   --- */"
 
-out=$(whence zbrewfuncs >/dev/null)
-if [ $? -eq 0 ]; then
-	. zbrewfuncs
-else
-    	echo "zbrew tools need to be in your PATH" >&2
-	exit 4
-fi      	
-		
-mydir=$(callerdir ${0})
-props="${mydir}/../../zbrew/zbrewglobalprops.json"
-zbrewpropse zbrew config "${props}"
+. zbrewsetenv
 
 parmlibds="${ZBREW_TGT_HLQ}PARMLIB"
 member="IFAPRD${ZBREW_PARMLIB_SFX}"

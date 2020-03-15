@@ -2,10 +2,7 @@
 #
 # Basic test to ensure requisite checking works
 #
-. zbrewfuncs
-mydir=$(callerdir ${0})
-props="${mydir}/../zbrewglobalprops.json"
-zbrewpropse zbrew config "${props}"
+. zbrewsetenv
 
 # First, make sure the zhw repo has been installed
 
