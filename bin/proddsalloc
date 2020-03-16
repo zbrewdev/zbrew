@@ -34,7 +34,6 @@ crtds() {
 }
 
 crtzfs() {
-set -x
 	zfsname="$1"
 	primary="$2"
 	secondary="$3"
