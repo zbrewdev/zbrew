@@ -30,61 +30,64 @@ msg() {
 
 crtds() {
 	echo "$1" | awk '{ ds=$1; $1=""; attrs=$0; if (ds != "") { rc=system("dtouch " attrs " " ds); if (rc > 0) { exit(rc); } } }'
-	exit $?
+	return $?
 }
 
 crtzfs() {
-	root="${ZBREW_SRC_ZFSROOT}"
-	arg=0
-	for zfsarg in ${1}; do
-		arg=`expr ${arg} + 1`
-		eval "zfsarg${arg}"="${zfsarg}"
-	done
-	zfsname="${zfsarg1}"
-	primary="${zfsarg2}"
-	secondary="${zfsarg3}"
-	mountpnt=`echo "${zfsarg4}"`
-        leaves=`echo "${zfsarg5}" | tr -d "\n" | tr -s "," " "`
+	zfsname="$1"
+	primary="$2"
+	secondary="$3"
+	mountpnt="$4"
+	leaves="$5"
 	mkdir -p -m 755 ${root}${mountpnt}
 	rc=$?
 	if [ $rc -gt 0 ]; then
-		echo "Error creating ${root}${mountpnt} ZFS directory RC: $rc"
-		exit $rc
+		echo "Error creating ${root}${mountpnt} ZFS directory RC: $rc" >&2
+		return $rc
 	fi
-	
 
-	mvscmdauth --pgm=IDCAMS --sysprint='*' --sysin=stdin <<zzz
-   DEFINE CLUSTER(NAME(${zfsname}) -
-   LINEAR TRACKS(${primary} ${secondary}) SHAREOPTIONS(3))
+	cmdout="${ZBREW_TMP}/cmd.out"
+	touch "${cmdout}"
+
+	mvscmdauth --pgm=IDCAMS --sysprint="${cmdout}" --sysin=stdin <<zzz
+  DEFINE CLUSTER(NAME(${zfsname}) -
+  LINEAR TRACKS(${primary} ${secondary}) SHAREOPTIONS(3))
 zzz
 	rc=$?
 	if [ $rc -gt 0 ]; then
-		echo "Error creating ZFS Linear Cluster:  $rc"
-		exit $rc
+		echo "Error creating ZFS Linear Cluster:  $rc" >&2
+		cat "${cmdout}" >&2
+		return $rc
 	fi
-	mvscmdauth --pgm=IOEAGFMT --args="-aggregate ${zfsname} -compat" --sysprint='*'
+	mvscmdauth --pgm=IOEAGFMT --args="-aggregate ${zfsname} -compat" --sysprint="${cmdout}"
 	rc=$?
 	if [ $rc -gt 0 ]; then
-		echo "Error formatting ZFS: $rc"
-		exit $rc
+		echo "Error formatting ZFS: $rc" >&2
+		cat "${cmdout}" >&2
+		return $rc
 	fi
+	rm -f "${cmdout}"
+
 	/usr/sbin/mount -t zfs -f ${zfsname} ${root}${mountpnt}
 	rc=$?
 	if [ $rc -gt 0 ]; then
-		echo "Error mounting ZFS:  $rc"
-		exit $rc
+		echo "Error mounting ZFS:  $rc" >&2
+		return $rc
 	fi
 
-        for mkleaf in $leaves; do
-                mkdir -p -m 755 ${root}${mountpnt}${mkleaf}
-	        rc=$?
-	        if [ $rc -gt 0 ]; then
-                echo "Error creating ${root}${mountpnt}${mkleaf} ZFS directory leaves RC: $rc"
-		exit $rc
-        	fi
-        done
-
-	exit 0
+	OLDIFS=$IFS
+	IFS=','
+	rc=0
+	for mkleaf in $leaves; do
+		mkdir -p -m 755 ${root}${mountpnt}${mkleaf}
+		rc=$?
+		if [ $rc -gt 0 ]; then
+			echo "Error creating ${root}${mountpnt}${mkleaf} ZFS directory leaves RC: $rc" >&2
+			break
+		fi
+	done
+	IFS=$OLDIFS
+	return $rc
 }
 
 while getopts ":vdf" opt; do
@@ -124,45 +127,37 @@ ussname=$(echo ${ussname} | tr '[:lower:]' '[:upper:]')
 libs=`readbom ${ussname} <${smpelibs}`
 rc=$?     
 if [ $rc -gt 0 ]; then
-	echo "${libs}"
+	echo "proddsalloc: Unable to read bom: ${smpelibs}" >&2
 	exit $rc
 fi
-# Obtain list of all Target and Distribution Datasets to allocate, exclude ZFS
-dspds=`echo "${libs}" | awk -v pfx="${ZBREW_SRC_HLQ}${ussname}." '($2 == "PDS") {print pfx$1" -t"$2" -r"$3" -l"$4" -b"$8" -s"$5*56"K"}'`
-dszfs=`echo "${libs}" | awk -v pfx="${ZBREW_SRC_HLQ}${ussname}." '($2 == "ZFS") {print pfx""$1" "$3" "$4" "$7" "$8":"}' | tr -d "\n"`
-dsoth=`echo "${libs}" | awk -v pfx="${ZBREW_SRC_HLQ}${ussname}." '($2 != "C" && $2 != "ZFS" && $2 != "PDS") {print pfx$1" -t"$2" -r"$3" -l"$4" -s"$5*56"K"}'`
 
-out=`crtds "${dspds}"`
+# Obtain list of all Target and Distribution Datasets to allocate, exclude ZFS
+pdslist=`echo "${libs}" | awk -v pfx="${ZBREW_SRC_HLQ}${ussname}." '($2 == "PDS") {print pfx$1" -t"$2" -r"$3" -l"$4" -b"$8" -s"$5*56"K"}'`
+zfslist=`echo "${libs}" | awk -v pfx="${ZBREW_SRC_HLQ}${ussname}." '($2 == "ZFS") {print pfx$1" "$3" "$4" "$7" "$8}'`
+othlist=`echo "${libs}" | awk -v pfx="${ZBREW_SRC_HLQ}${ussname}." '($2 != "C" && $2 != "ZFS" && $2 != "PDS") {print pfx$1" -t"$2" -r"$3" -l"$4" -s"$5*56"K"}'`
+
+crtds "${pdslist}"
 rc=$?
 if [ $rc -gt 0 ]; then
 	echo "PDS Dataset creation failed. Installation aborted">&2
 	exit $rc
 fi
 
-out=`crtds "${dsoth}"`
+crtds "${othlist}"
 rc=$?
 if [ $rc -gt 0 ]; then
         echo "Dataset creation failed. Installation aborted">&2
         exit $rc
 fi
 
-
-# Obtain list of ZFS and allocate/mount
-zfscnt=`echo "${dszfs}" | awk -F: '{}END {print NF}'`
-
-cntr=1
-while [ $cntr -le $zfscnt ];  
-do
-        zfsds=`echo "${dszfs}" | awk -F: -v zfsv=$cntr '{print $zfsv}'`
-        if [ "$zfsds" != "" ]; then
-		crtzfs "${zfsds}"
+root="${ZBREW_SRC_ZFSROOT}"
+echo "${zfslist}" | while read -r zfs; do
+	crtzfs ${zfs}
+	rc=$?
+	if [ $rc -gt 0 ]; then
+		echo "ZFS creation/mount failed. Installation aborted" >&2
+		exit $rc
 	fi
-	cntr=`expr $cntr + 1`
 done
-
-if [ $rc -gt 0 ]; then
-        echo "ZFS creation/mount failed. Installation aborted"
-        exit $rc
-fi
 
 exit 0
