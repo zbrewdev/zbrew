@@ -64,17 +64,7 @@ ${footer}" "${dataset}"
 	return $rc
 }
 	
-out=$(whence zbrewfuncs >/dev/null)
-if [ $? -eq 0 ]; then
-	. zbrewfuncs
-else
-    	echo "zbrew tools need to be in your PATH" >&2
-	exit 4
-fi
-
-mydir=$(callerdir ${0})
-props="${mydir}/../../zbrew/zbrewglobalprops.json"
-zbrewpropse zbrew config "${props}"
+. zbrewsetenv
 
 opts=""         	
 while getopts ":vdf" opt; do

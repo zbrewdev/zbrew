@@ -2,11 +2,7 @@
 #
 # Basic test to ensure smpchksw is working ok
 #
-. zbrewfuncs
-mydir=$(callerdir ${0})
-props="${mydir}/../zbrewglobalprops.json"
-zbrewpropse zbrew config "${props}"
-#set -x
+. zbrewsetenv
 
 #
 # The following are valid for a z/OS 2.3 ADCD distro

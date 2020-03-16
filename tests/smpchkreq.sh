@@ -2,12 +2,11 @@
 #
 # Basic test to ensure requisite checking works
 #
-. zbrewfuncs
-mydir=$(callerdir ${0})
+. zbrewsetenv
 
 # First, make sure the zhw repo has been installed
 
-ZHW110DIR="${mydir}/../../zbrew-zhw/zhw110/"
+ZHW110DIR="${ZBREW_WORKROOT}/zbrew-zhw/zhw110/"
 if ! [ -e "${ZHW110DIR}" ]; then
 	echo "Need to install zhw repo to run this test" >&2
 	exit 1

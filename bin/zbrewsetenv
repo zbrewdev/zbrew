@@ -1,21 +1,48 @@
 #
 # zbrewsetenv: set up environment for configuration scripts
+# IMPORTANT NOTE: zbrewsetenv needs to be SOURCED rather than just run, e.g. 
+# Run the script as:
+#   . zbrewsetenv
+# as opposed to:
+#   zbrewsetenv
 #
 #set -x
-
-if [ $# != 1 ]; then
-	echo "Syntax: . zbrewsetenv <zbrew root directory>" >&2
-	return 4
-fi
-zbrewroot="$1"
-
-out=$(whence zbrewfuncs >/dev/null)
+`whence sh >/dev/null 2>&1`
 if [ $? -eq 0 ]; then
-	. zbrewfuncs
+	abspath() {
+		pgm="$1"
+		relpgm=`whence ${pgm}`
+		rc=$?
+		if [ $rc -eq 0 ]; then
+			abspath="$( cd "$( dirname "${relpgm}" )" >/dev/null 2>&1 && pwd )"
+			echo "${abspath}"
+		fi
+		return $rc
+	}
 else
-    	echo "zbrew tools need to be in your PATH"
+	abspath() {
+		pgm="$1"
+                typeinfo=`type -a "${pgm}" 2>/dev/null`
+		rc=$?
+		if [ $rc -eq 0 ]; then
+                        relpgm=`echo "${typeinfo}" | awk '{ print $3; exit }'`
+			abspath="$( cd "$( dirname "${relpgm}" )" >/dev/null 2>&1 && pwd )"
+                        rc=$?
+			echo "${abspath}"
+		fi
+                return $rc
+	}
+fi
+
+zbrewdir=`abspath zbrew`
+if [ $? -gt 0 ]; then
+	echo "zbrewsetenv: zbrew needs to be in your PATH if you do not specify <zbrew root directory>" >&2
 	return 4
 fi
+zbrewroot="${zbrewdir%/*}"
+
+. zbrewfuncs
+export mydir=$(callerdir ${0})
+
 props="${zbrewroot}/zbrewglobalprops.json"
 zbrewpropse zbrew config "${props}"
-

@@ -1,4 +1,5 @@
 #!/bin/sh
+#set -x
 #*******************************************************************************
 # Licensed Materials - Property of IBM
 # (c) Copyright IBM Corporation 2019. All Rights Reserved.
@@ -11,20 +12,20 @@
 # Run through each of the tests in the test bucket that aren't 
 # explicitly excluded, and return the highest error code
 #
+#
+# Override the ZBREW_SRC_HLQ to ensure test datasets go to ZBREWV (for verification) instead of ZBREW
+#
+export ZBREW_SRC_HLQ=ZBREWVS.
+export ZBREW_SRC_ZFSROOT="${ZBREW_TMP}/zbrewvs/"
+export ZBREW_TGT_HLQ=ZBREWVT.
+export ZBREW_TGT_ZFSROOT="${ZBREW_TMP}/zbrewvt/"
 
-. zbrewfuncs
-mydir=$(callerdir ${0})
-
+. zbrewsetenv
 cd ${mydir}/tests
 
 rm -f *.actual
 #set -x
 
-#
-# Override the ZBREW_SRC_HLQ to ensure test datasets go to ZBREWV (for verification) instead of ZBREW
-#
-export ZBREW_SRC_HLQ=ZBREWV.
-export ZBREW_SRC_ZFSROOT="/zbrewv/"
 
 if [ -z $1 ] ; then
 	tests=*.sh

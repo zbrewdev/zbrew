@@ -1,7 +1,5 @@
 #!/bin/sh
 #set -x
-. zbrewfuncs
-setjavaenv
 InvalidOption=1
 TooFewParms=2
 UnknownAction=3
@@ -143,11 +141,6 @@ receive() {
 	return $rc
 }
 
-
-#
-# Temporary hack - need a better way to locate where pre-req script is
-#
-
 prodreq() {
 	zbrewlog "prodreq" $*
 		
@@ -179,7 +172,7 @@ prodreq() {
 	if [ ${verbose} -gt 0 ]; then
 		echo "Checking requisites ${opts} ${sw}" >&2
 	fi
-	SWDIR="${mydir}/../../zbrew-${prefix}/${ussname}/"
+	SWDIR="${ZBREW_WORKROOT}/zbrew-${prefix}/${ussname}/"
 	json="${SWDIR}${ussname}req.json"
 	if [ -f "${json}" ]; then
 		smpchkreq ${opts} ${ussname} ${json}
@@ -189,9 +182,6 @@ prodreq() {
 		return 16
 	fi
 }
-
-
-
 
 update() {
 	export ALLPTFS=1
@@ -225,23 +215,28 @@ update() {
 install() {
 	export ALLPTFS=0
 	zbrewlog "install" $*
+	baseopts="$opts"
 	for zbrewfunc in ${install_verbs}; do
+		opts="${baseopts}"
 		runfunc="${zbrewfunc}"
 		if [ "${runfunc}" = "smpapplycheck" ]; then
-			opts="$opts -p"
+			opts="$baseopts -p"
 			runfunc="smpappacc"
 		fi
 		if [ "${runfunc}" = "smpapply" ]; then
-			opts="$opts -q"
+			opts="$baseopts -q"
                         runfunc="smpappacc"
 		fi
                 if [ "${runfunc}" = "smpacceptcheck" ]; then
-			opts="$opts -r"
+			opts="$baseopts -r"
                         runfunc="smpappacc"
                 fi
                 if [ "${runfunc}" = "smpaccept" ]; then
-			opts="$opts -s"
+			opts="$baseopts -s"
                         runfunc="smpappacc"
+                fi
+                if [ "${runfunc}" = "zbrewarchive" ]; then
+			opts=""
                 fi
 
 		if [ "${restart}" != "NORESTART" ]; then
@@ -264,47 +259,93 @@ install() {
 	return $rc
 }
 
-#
-# Temporary hack - need a better way to locate where installation script is
-#
 configure() {
 	zbrewlog "configure" $*
 
         ussname=$(echo ${sw} | tr '[:upper:]' '[:lower:]');
+        zosname=$(echo ${sw} | tr '[:lower:]' '[:upper:]');
 	prefix=`echo ${ussname} | awk '{print substr($0,0,3)}'`
         if [ ${verbose} -gt 0 ]; then
 	        echo "configure ${opts} ${sw}" >&2
 	fi
-	prodconfig="${mydir}/../../zbrew-${prefix}/${ussname}/${ussname}config"
-        if [ -f "${prodconfig}" ]; then
-     	        ${prodconfig} ${opts}
-		rc=$?
-		zbrewlog "configure RC: $?"
-		return $rc
-        else                            
-		echo "Unable to find product configuration program: ${prodconfig}. Installation failed."
+
+	dls "${ZBREW_TGT_HLQ}${zosname}.*" >/dev/null 2>&1
+	if [ $? -eq 0 ]; then
+		echo "Datasets of pattern: ${ZBREW_TGT_HLQ}${zosname}.* already exist. Configuration aborted." >&2
+		return 16
+	fi 
+	prodconfig="${ZBREW_WORKROOT}/zbrew-${prefix}/${ussname}/${ussname}config"
+        if ! [ -f "${prodconfig}" ]; then
+		echo "Unable to find product configuration program: ${prodconfig}. Installation failed." >&2
+		zbrewlog "configure RC: 16"
                 return 16               
 	fi
+	
+	archive="${ZBREW_TMP}/${ussname}.dzp"	
+	if ! [ -f "${archive}" ]; then
+		echo "Unable to find product installation archive: ${archive}" >&2
+		zbrewlog "configure RC: 16"
+                return 16               
+	fi
+	zbrewrestore "${ussname}" 
+	rc=$?
+	if  [ $rc -gt 0 ]; then
+		echo "Unable to restore product installation archive: ${archive}" >&2
+		zbrewlog "configure RC: $rc"
+                return $rc               
+	fi
+	
+	${prodconfig} ${opts}
+	rc=$?
+	zbrewlog "configure RC: $rc"
+	return $rc
 }
 
 deconfigure() {
 	zbrewlog "deconfigure" $*
 
         ussname=$(echo ${sw} | tr '[:upper:]' '[:lower:]');
+        zosname=$(echo ${sw} | tr '[:lower:]' '[:upper:]');
 	prefix=`echo ${ussname} | awk '{print substr($0,0,3)}'`
         if [ ${verbose} -gt 0 ]; then
 	        echo "configure ${opts} ${sw}" >&2
 	fi
-	proddeconfig="${mydir}/../../zbrew-${prefix}/${ussname}/${ussname}deconfig"
+	proddeconfig="${ZBREW_WORKROOT}/zbrew-${prefix}/${ussname}/${ussname}deconfig"
         if [ -f "${proddeconfig}" ]; then
      	        ${proddeconfig} ${opts}
 		rc=$?
-		zbrewlog "deconfigure RC: $?"
-		return $rc
+		if [ $rc -gt 0 ]; then
+			zbrewlog "deconfigure RC: $?"
+			return $rc
+	 	fi
 	fi
+	if [ "${ZBREW_TGT_HLQ}" != "${ZBREW_TGT_HLQ%.*}" ]; then
+		bom="${ZBREW_WORKROOT}/zbrew-${prefix}/${ussname}/${ussname}bom.json"
+		if ! [ -f "${bom}" ]; then
+			echo "deconfigure: Unable to find BOM file: ${bom}" >&2
+			return $rc
+		fi
+		mountpoints=`readbom "${ussname}" <"${bom}" | awk ' { if ($2 == "ZFS") { print $6; }}'`
+		rc=$?
+		if [ $rc -gt 0 ]; then
+			echo "deconfigure: Unable to read BOM file: ${bom}" >&2
+			return $rc
+		fi
+		for mount in $mountpoints; do
+			absmount="${ZBREW_TGT_ZFSROOT}${mount}"
+			/usr/sbin/unmount "${absmount}"
+			if [ $rc -gt 0 ]; then
+				echo "deconfigure: Unable to unmount ${absmount}" >&2
+				return $rc
+			fi
+		done
+		drm -f "${ZBREW_TGT_HLQ}${zosname}.*"
+	fi
+	zbrewlog "deconfigure RC: $?"
+	return $?
 }
 
-install_verbs="prodreq smpconfig receive smpcrdddef proddsalloc smpapplycheck smpapply smpacceptcheck smpaccept"
+install_verbs="prodreq smpconfig receive smpcrdddef proddsalloc smpapplycheck smpapply smpacceptcheck smpaccept zbrewarchive"
 update_verbs="smpapplycheck smpapply"
 
 debug=0
@@ -363,9 +404,7 @@ if [ $# -lt 2 ]; then
 	syntax
 	exit 16
 fi
-mydir=$(callerdir ${0})
-props="${mydir}/../zbrewglobalprops.json"
-zbrewpropse zbrew config "${props}"
+. zbrewsetenv
 
 sw=$2
 ussname=$(echo ${sw} | tr '[:upper:]' '[:lower:]');
@@ -389,7 +428,7 @@ fi
 
 if [ "${clean}" = "1" ]; then
 	prefix=`echo "${ussname}" | awk '{ print substr($1, 0, 3) }'`
-	bomfile="${mydir}/../../zbrew-${prefix}/${ussname}/${ussname}bom.json"
+	bomfile="${ZBREW_WORKROOT}/zbrew-${prefix}/${ussname}/${ussname}bom.json"
 	swparent=`readparent ${ussname} <${bomfile}`
 	rc=$?
 	if [ $rc -gt 0 ]; then
@@ -523,6 +562,14 @@ case ${verb} in
         smpaccept )
 		opts="${opts} -s"
                 out=`smpappacc ${opts} ${sw}`;
+                rc=$?
+                if [ $rc -gt 0 ] || [ $verbose -gt 0 ]; then
+                        echo "${out}"
+                        exit $rc
+                fi
+                ;;
+        archive )
+                out=`zbrewarchive ${sw}`;
                 rc=$?
                 if [ $rc -gt 0 ] || [ $verbose -gt 0 ]; then
                         echo "${out}"

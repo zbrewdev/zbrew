@@ -1,16 +1,6 @@
 #!/bin/sh
 #set -x
 
-
-
-out=$(whence zbrewfuncs >/dev/null)
-if [ $? -eq 0 ]; then
-	. zbrewfuncs
-else
-	echo "zbrew tools need to be in your PATH"
-	exit 4
-fi
-
 InvalidOption=1
 TooFewParms=2
 UnknownAction=3
@@ -122,17 +112,13 @@ if [ $# -lt 1 ]; then
         exit 16
 fi
 
-mydir=$(callerdir ${0})
-
+. zbrewsetenv
 sw=$1
 ussname=$(echo ${sw} | tr '[:upper:]' '[:lower:]');
 zosname=$(echo ${sw} | tr '[:lower:]' '[:upper:]');
 prefix=`echo "${ussname}" | awk '{ print substr($1, 0, 3) }'`
 
-props="${mydir}/../../zbrew/zbrewglobalprops.json"
-zbrewpropse zbrew config "${props}"
-
-smpelibs="${mydir}/../../zbrew-${prefix}/${ussname}/${ussname}bom.json"
+smpelibs="${ZBREW_WORKROOT}/zbrew-${prefix}/${ussname}/${ussname}bom.json"
 ussname=$(echo ${ussname} | tr '[:lower:]' '[:upper:]')
 
 libs=`readbom ${ussname} <${smpelibs}`
@@ -169,7 +155,7 @@ while [ $cntr -le $zfscnt ];
 do
         zfsds=`echo "${dszfs}" | awk -F: -v zfsv=$cntr '{print $zfsv}'`
         if [ "$zfsds" != "" ]; then
-		zfsout=`crtzfs "${zfsds}"`
+		crtzfs "${zfsds}"
 	fi
 	cntr=`expr $cntr + 1`
 done

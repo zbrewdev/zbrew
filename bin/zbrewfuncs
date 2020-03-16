@@ -35,16 +35,12 @@ setjavaenv() {
 			exit 16
 		fi
 	fi
-	if [ -d ${SMPE_JAVAHOME} ]; then
-		;
-	else
+	if ! [ -d ${SMPE_JAVAHOME} ]; then
 	    	echo "SMPE_JAVAHOME environment variable is defined to ${SMPE_JAVAHOME} but the directory does not exist. Please create directory or change environment variable."
 		exit 16
 	fi
 	
-	if [ -d ${SMPE_CLASSPATH} ]; then
-		;
-	else
+	if ! [ -d ${SMPE_CLASSPATH} ]; then
 	    	echo "SMPE_CLASSPATH environment variable is defined to ${SMPE_JAVAHOME} but the directory does not exist. Please create directory or change environment variable."
 		exit 16
 	fi

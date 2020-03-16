@@ -1,6 +1,5 @@
 #!/bin/sh
 #set -x
-. zbrewfuncs
 InvalidOption=1
 TooFewParms=2
 UnknownAction=3
@@ -190,17 +189,7 @@ if [ $# -lt 2 ]; then
 	exit 16
 fi
 
-out=$(whence zbrewfuncs >/dev/null)
-if [ $? -eq 0 ]; then
-	. zbrewfuncs
-else
-    	echo "zbrew tools need to be in your PATH"
-	exit 4
-fi
-mydir=$(callerdir ${0})
-props="${mydir}/../zbrewglobalprops.json"
-zbrewpropse zbrew config "${props}"
-
+. zbrewsetenv
 
 sw="$(echo $1 | tr '[:lower:]' '[:upper:]')"
 
@@ -208,7 +197,7 @@ ussname=$(echo ${sw} | tr '[:upper:]' '[:lower:]');
 zosname=$(echo ${sw} | tr '[:lower:]' '[:upper:]');
 prefix=`echo "${ussname}" | awk '{ print substr($1, 0, 3) }'`
 
-bomfile="${mydir}/../../zbrew-${prefix}/${ussname}/${ussname}bom.json"
+bomfile="${ZBREW_WORKROOT}/zbrew-${prefix}/${ussname}/${ussname}bom.json"
 
 swparent=`readparent ${ussname} <${bomfile}`
 rc=$?

@@ -1,0 +1,30 @@
+#!/bin/sh
+
+#
+# Temporary hack - replace with a manpage
+#
+syntax() {
+	echo "\
+Syntax:
+	zbrewarchive <sw> 
+Notes:
+	\$ZBREW_TMP/<sw>.dzp is where the archive will be written to
+
+" >&2
+     	exit 8
+}
+
+. zbrewsetenv
+
+if ! [ $# -eq 1 ]; then
+	echo "Expected 1 parameter but $# parameters specified ($*)" >&2
+        echo "zbrewarchive <sw>" >&2
+ 	syntax
+        exit 8
+fi  
+
+ussname=$(echo $1 | tr '[:upper:]' '[:lower:]');
+zosname=$(echo $1 | tr '[:lower:]' '[:upper:]');
+
+dzip -s250M "${ZBREW_TMP}/${ussname}.dzp" "${ZBREW_SRC_HLQ}${zosname}.*"
+exit $rc

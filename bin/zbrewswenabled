@@ -1,0 +1,29 @@
+#!/bin/sh
+
+#
+# Temporary hack - replace with a manpage
+#
+syntax() {
+	echo "\
+Syntax:
+	zbrewswenabled <sw> 
+Notes:
+	Returns 0 if ZBREW_<sw>_CSI is defined and not NONE or empty, non-zero otherwise
+
+" >&2
+     	exit 8
+}
+
+if ! [ $# -eq 1 ]; then
+	echo "Expected 1 parameter but $# parameters specified ($*)" >&2
+        echo "zbrewswenabled <sw>" >&2
+ 	syntax
+        exit 8
+fi  
+
+. zbrewsetenv 
+
+ussname=$(echo $1 | tr '[:upper:]' '[:lower:]');
+zosname=$(echo $1 | tr '[:lower:]' '[:upper:]');
+
+exit 0
