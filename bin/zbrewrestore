@@ -28,7 +28,7 @@ zfsmount() {
 	/usr/sbin/mount -t zfs -f "${ZBREW_TGT_HLQ}${relds}" "${mountpoint}"
 	rc=$?
 	if [ $rc -gt 0 ]; then
-		echo "zbrewrestore: Error making directory: ${mountpoint}" >&2 
+		echo "zbrewrestore: Error mounting directory: ${mountpoint} at ${ZBREW_TGT_HLQ}${relds}" >&2 
 		return $rc
 	fi
 	return 0

@@ -185,14 +185,16 @@ prodreq() {
 
 update() {
 	export ALLPTFS=1
+	baseopts="${opts}"
 	for zbrewfunc in ${update_verbs}; do
+		opts="${baseopts}"
 		runfunc="${zbrewfunc}"
                 if [ "${runfunc}" = "smpapplycheck" ]; then
-                        opts="$opts -p"
+                        opts="$opts -p -t"
                         runfunc="smpappacc"
                 fi
                 if [ "${runfunc}" = "smpapply" ]; then
-                        opts="$opts -q"
+                        opts="$opts -q -t"
                         runfunc="smpappacc"
                 fi
                 out=`${runfunc} ${opts} ${sw}`
@@ -346,7 +348,7 @@ deconfigure() {
 }
 
 install_verbs="prodreq smpconfig receive smpcrdddef proddsalloc smpapplycheck smpapply smpacceptcheck smpaccept zbrewarchive"
-update_verbs="smpapplycheck smpapply"
+update_verbs="smpapplycheck smpapply zbrewarchive"
 
 debug=0
 verbose=0
@@ -585,7 +587,6 @@ case ${verb} in
 		fi
 		;;
         update  )
-		opts="${opts} -t"
                 out=`update ${opts} ${sw}`
                 rc=$?
                 if [ $rc -gt 0 ] || [ $verbose -gt 0 ]; then
