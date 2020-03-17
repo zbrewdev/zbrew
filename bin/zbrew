@@ -44,7 +44,7 @@ Note:
 					See the README for more details
 
 	
-Here is a sample order file for COBOL 6.3.0 you would create at ${ZBREW_WORKROOT}/order/igy630order.json
+Here is a sample order file for COBOL 6.3.0 you would create at \${ZBREW_WORKROOT}/order/igy630order.json
 {
    "software": [{
    "name":"IGY630",
