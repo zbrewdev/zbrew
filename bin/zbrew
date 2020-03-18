@@ -338,12 +338,7 @@ deconfigure() {
 		for mount in $mountpoints; do
 			absmount="${ZBREW_TGT_ZFSROOT}${mount}"
 			if [ -d "${absmount}" ]; then
-				/usr/sbin/unmount -R "${absmount}"
-				if [ $rc -gt 0 ]; then
-					echo "deconfigure: Unable to unmount ${absmount}" >&2
-					zbrewlog "deconfigure RC: $?"
-					return $rc
-				fi
+				/usr/sbin/unmount -R "${absmount}" 2>/dev/null
 			fi
 		done
 		drm -f "${ZBREW_TGT_HLQ}${zosname}*.*"
