@@ -42,6 +42,7 @@ fi
 zbrewroot="${zbrewdir%/*}"
 
 . zbrewfuncs
+
 export mydir=$(callerdir ${0})
 
 props="${zbrewroot}/zbrewglobalprops.json"
