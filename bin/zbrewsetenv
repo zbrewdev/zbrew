@@ -34,6 +34,15 @@ else
 	}
 fi
 
+if [ $# -gt 1 ] || [ "$1" = "-?" ]; then
+	echo "Syntax: . zbrewsetenv [sw]" >&2
+	echo "  Establish the zbrew environment for the sourcing script" >&2
+	echo "  If <sw> is specified, then additionally search for \$ZBREW_WORKROOT/zbrew-<prefix>/<sw>/<sw>props.json" >&2
+	echo "Example: Establish the zbrew environment, including Debug 14.2.0 specific environment variables:" >&2
+	echo "  . zbrewsetenv eqae20" >&2
+	return 4
+fi
+	
 zbrewdir=`abspath zbrew`
 if [ $? -gt 0 ]; then
 	echo "zbrewsetenv: zbrew needs to be in your PATH if you do not specify <zbrew root directory>" >&2
@@ -47,3 +56,11 @@ export mydir=$(callerdir ${0})
 
 props="${zbrewroot}/zbrewglobalprops.json"
 zbrewpropse zbrew config "${props}"
+
+if [ $# -eq 1 ]; then
+	sw=$(echo $1 | tr '[:upper:]' '[:lower:]');
+	ucsw=$(echo $1 | tr '[:lower:]' '[:upper:]');
+	prefix=`echo ${sw} | awk '{print substr($0,0,3)}'`
+	props="${ZBREW_WORKROOT}/zbrew-${prefix}/${sw}/${sw}props.json"
+	zbrewpropse "${ucsw}" "config" "${props}"
+fi
