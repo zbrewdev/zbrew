@@ -1,0 +1,20 @@
+#
+# zbrewsetswenv: set up environment for configuration scripts including software repo properties
+# IMPORTANT NOTE: zbrewsetswenv needs to be SOURCED rather than just run, e.g. 
+# Run the script as:
+#   . zbrewsetswenv eqae20
+# as opposed to:
+#   zbrewsetswenv eqae20
+#
+#set -x
+
+. zbrewsetenv 
+
+props="${zbrewroot}/zbrewglobalprops.json"
+zbrewpropse zbrew config "${props}"
+
+sw=$(echo $1 | tr '[:upper:]' '[:lower:]');
+ucsw=$(echo $1 | tr '[:lower:]' '[:upper:]');
+prefix=`echo ${sw} | awk '{print substr($0,0,3)}'`
+props="${ZBREW_WORKROOT}/zbrew-${prefix}/${sw}/${sw}props.json"
+zbrewpropse "${ucsw}" "config" "${props}"

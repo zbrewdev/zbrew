@@ -106,7 +106,7 @@ zbrewprops() {
 
 						# Set the key only if it has not already been set
 						cmd="${key}=\${${key}-${val}}" 
-						eval "${cmd}"
+						eval "export ${cmd}"
 					fi
 				fi
 			done
