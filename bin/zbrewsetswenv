@@ -10,11 +10,9 @@
 
 . zbrewsetenv 
 
-props="${zbrewroot}/zbrewglobalprops.json"
-zbrewpropse zbrew config "${props}"
-
 sw=$(echo $1 | tr '[:upper:]' '[:lower:]');
 ucsw=$(echo $1 | tr '[:lower:]' '[:upper:]');
 prefix=`echo ${sw} | awk '{print substr($0,0,3)}'`
+
 props="${ZBREW_WORKROOT}/zbrew-${prefix}/${sw}/${sw}props.json"
 zbrewpropse "${ucsw}" "config" "${props}"

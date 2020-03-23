@@ -122,7 +122,7 @@ exists=$?
 #
 if [ ${exists} -gt 0 ]; then
 	if [ "${verb}" = "ENABLE" ]; then
-		dtouch -tpds "${parmlibds}"
+		dtouch -tpds -b20 "${parmlibds}"
 		rc=$?
 		if [ $rc -gt 0 ]; then 
 			echo "registrar: Error. Unable to create PDS ${parmlibds}" >&2
@@ -216,6 +216,7 @@ elif [ "$ftr" = true ] ; then
 	exit 16
 else 
 	if [ "${verb}" = "DISABLE" ]; then
+		echo "registrar: Error. Trying to disable ${sw} but it is not present" >&2
 		exit 0
 	fi
 
