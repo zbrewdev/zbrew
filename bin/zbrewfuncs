@@ -7,8 +7,9 @@ callerdir() {
 		fi
 	fi
 	if [ "${calledasdir}" = '' ]; then
-		resolvedas=$(whence "${calledas}")
-		calledasdir="$(dirname ${resolvedas})"
+#		resolvedas=$(whence "${calledas}")
+#		calledasdir="$(dirname ${resolvedas})"
+		calledasdir=$(abspath "${calledas}")
 	fi
 	echo "${calledasdir}"
 }
@@ -105,7 +106,7 @@ zbrewprops() {
 
 						# Set the key only if it has not already been set
 						cmd="${key}=\${${key}-${val}}" 
-						eval "${cmd}"
+						eval "export ${cmd}"
 					fi
 				fi
 			done
@@ -129,4 +130,19 @@ zbrewpropse() {
 		exit 4
 	fi
 	return 0
+}
+
+zbrewswinstalled() {
+	sw=$(echo $1 | tr '[:lower:]' '[:upper:]');
+
+	if [ "${sw}" = "" ]; then
+		echo "zbrewswinstalled: Error - need to specify the software to check" >&2
+		return 0
+	fi
+	csi="ZBREW_${sw}HLQ"
+	eval "value=\${$csi}"
+	if [ "${value}" = "" ] || [ "${value}" = "NONE" ]; then
+		return 0
+	fi
+	return 1
 }

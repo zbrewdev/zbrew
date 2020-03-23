@@ -98,7 +98,7 @@ opts=$*
 #
 order() {
 	zbrewlog "order" $*
-	# currently no-op. ORDER directory for COBOL IGY630 pre-populated
+	# currently no-op.
 	if [ ${verbose} -gt 0 ]; then
 		echo "order $1" >&2
 	fi
@@ -296,6 +296,9 @@ configure() {
 		zbrewlog "configure RC: $rc"
                 return $rc               
 	fi
+
+	props="${ZBREW_WORKROOT}/order/${ussname}order.json"
+	zbrewpropse "${ussname}" order "${props}"
 	
 	${prodconfig} ${opts}
 	rc=$?
@@ -310,8 +313,12 @@ deconfigure() {
         zosname=$(echo ${sw} | tr '[:lower:]' '[:upper:]');
 	prefix=`echo ${ussname} | awk '{print substr($0,0,3)}'`
         if [ ${verbose} -gt 0 ]; then
-	        echo "configure ${opts} ${sw}" >&2
+	        echo "deconfigure ${opts} ${sw}" >&2
 	fi
+
+	props="${ZBREW_WORKROOT}/order/${ussname}order.json"
+	zbrewpropse "${ussname}" order "${props}"
+	
 	proddeconfig="${ZBREW_WORKROOT}/zbrew-${prefix}/${ussname}/${ussname}deconfig"
         if [ -f "${proddeconfig}" ]; then
      	        ${proddeconfig} ${opts}
@@ -406,6 +413,7 @@ if [ $# -lt 2 ]; then
 	syntax
 	exit 16
 fi
+
 . zbrewsetenv
 
 sw=$2
@@ -595,18 +603,12 @@ case ${verb} in
                 fi
                 ;;
 	configure ) 
-		out=`configure ${opts} ${sw}`
+		configure ${opts} ${sw}
 		rc=$?
-		if [ $rc -gt 0 ]; then
-			echo "${out}" 
-		fi
 		;;	
 	deconfigure ) 
-		out=`deconfigure ${opts} ${sw}`
+		deconfigure ${opts} ${sw}
 		rc=$?
-		if [ $rc -gt 0 ]; then
-			echo "${out}" 
-		fi
 		;;	
 	uninstall ) 
 		out=`prodclean ${opts} ${sw}`
