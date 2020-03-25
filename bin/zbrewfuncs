@@ -146,3 +146,26 @@ zbrewswinstalled() {
 	fi
 	return 1
 }
+
+issueTSO() {
+	cmd=$1
+	tmpout="${ZBREW_TMP}/$$tso.out"
+	tsocmd "${cmd}" >$tmpout 2>/dev/null
+	rc=$?
+	if [ $rc -gt 0 ]; then
+		cat "${tmpout}" >&2
+	fi
+	rm -f "${tmpout}"
+	return $rc
+}
+
+chk() {
+	rc=$1
+	msg="$2"
+
+	if  [ $rc -eq 0 ]; then
+		return 0
+	fi
+	echo "${msg}" >&2
+	exit $rc
+}
