@@ -50,6 +50,22 @@ Note:
      	exit 8
 }
 
+nextllname() {
+	cur="$1"
+	num=${cur#ZBREW*}
+	if [ "${num}" = "${cur}" ]; then
+		echo "ZBREW1"
+	else
+		if `isinteger ${num}`; then
+			next=`expr $num + 1`
+			echo "ZBREW${next}"
+		else 
+			echo "ZBREW1"
+		fi
+	fi
+}
+		
+
 opts=""         	
 while getopts ":vdf" opt; do
   case ${opt} in
@@ -89,8 +105,15 @@ footer="/* --- ${sw} end   --- */"
 
 parmlibds="${ZBREW_TGT_HLQ}PARMLIB"
 member="PROG${ZBREW_PARMLIB_SFX}"
+llaresults=`opercmd 'd lla' 2>/dev/null`
+lladatasets=`echo "$llaresults" | awk 'BEGIN { header=0; } { if (header) { print substr($0,60,44) } } / ENTRY/ {header=1}'`
+curllname=`echo "$llaresults" | grep 'LNKLST SET' | awk ' { print $3; }'`
+nextllname=`nextllname "${curllname}"`
+opercmd "SETPROG LNKLST DEFINE NAME(${nextllname}) COPYFROM(CURRENT)"
 
-llname=`opercmd 'd lla' 2>/dev/null | grep 'LNKLST SET' | awk ' { print $3; }'`
+# msf - need to determine the IPL name programmatically
+iplllname="LNKLST00"
+
 datasets=$(echo $datasets | tr '[:lower:]' '[:upper:]');
 for dataset in ${datasets}; do
         info=`dls -l ${dataset}`
@@ -103,26 +126,42 @@ done
 if [ "${verb}" = "DISABLE" ]; then
 	registrar "${sw}" "DISABLE" "${parmlibds}" "${member}" "${header}" "${footer}"
 	for dataset in ${datasets}; do
-		opercmd "SETPROG LNKLST,DELETE,NAME=${llname},DSNAME=${dataset}"
+		opercmd "SETPROG LNKLST,DELETE,NAME=${nextllname},DSNAME=${dataset}"
 	done
-	opercmd "MODIFY LLA,REFRESH"
+	opercmd "SETPROG LNKLST ACTIVATE NAME(${nextllname})"
 	exit $?
 fi
 
 # ENABLE follows
 
+llqs=''
+#
+# add new datasets
+#
 for dataset in ${datasets}; do
-	entry="LNKLST ADD NAME(${llname}) DSNAME(${dataset})"
+	llqs="${llqs} ${dataset##*.}"
+	entry="LNKLST ADD NAME(${iplllname}) DSNAME(${dataset}) ATTOP"
 	if [ "${text}" = "" ]; then
 		text="${entry}"
 	else
 		text="${entry}
 ${text}"
 	fi
-	# msf - this is not sufficient - the entry is not getting added
-	opercmd "SETPROG LNKLST,ADD,NAME=${llname},DSNAME=${dataset}"
+	opercmd "SETPROG LNKLST,ADD,NAME=${nextllname},DSNAME=${dataset},ATTOP"
 done
-opercmd "MODIFY LLA,REFRESH"
+
+#
+# remove old datasets with the same llq as one of the new datasets
+#
+for lladataset in ${lladatasets}; do
+	llq="${lladataset##*.}"
+	for newllq in ${llqs}; do
+		if [ "${newllq}" = "${llq}" ]; then
+			opercmd "SETPROG LNKLST,DELETE,NAME=${nextllname},DSNAME=${lladataset}"
+		fi
+	done
+done
+opercmd "SETPROG LNKLST ACTIVATE NAME(${nextllname})"
 
 registrar "${sw}" "${verb}" "${parmlibds}" "${member}" "${header}" "${footer}" "${text}"
 exit $?
