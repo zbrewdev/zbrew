@@ -179,3 +179,12 @@ isinteger() {
 		echo false
 	fi
 }
+
+undefinedProperty() {
+	val=$1
+	if [ "${val}" = "" ] || [ "${val}" = "NONE" ]; then
+		echo true
+	else
+		echo false
+	fi
+}

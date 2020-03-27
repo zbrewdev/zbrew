@@ -84,24 +84,24 @@ verb=$(echo $2 | tr '[:lower:]' '[:upper:]');
 shift 2
 datasets=$*
 
-header="/* --- ${sw} start --- */"
-footer="/* --- ${sw} end   --- */"
+header="/* --- ${sw} APF start --- */"
+footer="/* --- ${sw} APF end   --- */"
 
 parmlibds="${ZBREW_TGT_HLQ}PARMLIB"
 member="PROG${ZBREW_PARMLIB_SFX}"
 
-if [ "${verb}" = "DISABLE" ]; then
-	registrar "${sw}" "DISABLE" "${parmlibds}" "${member}" "${header}" "${footer}"
-	exit $?
-fi
-
+datasets=$(echo $datasets | tr '[:lower:]' '[:upper:]');
 for dataset in ${datasets}; do
 	dataset=$(echo $dataset | tr '[:lower:]' '[:upper:]');
-	info=`dls -l ${dataset}`
+	dls -l ${dataset} >/dev/null 2>/dev/null
 	if [ $? -gt 0 ]; then
 		echo "apfregistrar: Dataset: ${dataset} not found." >&2
 		exit 16
 	fi
+done
+
+for dataset in ${datasets}; do
+	info=`dls -l ${dataset}`
 	volume=`echo "${info}" | awk '{ print $5; }'`
 	opercmd "d sms,volume(${volume})" 2>/dev/null | grep "NOT AN SMS MANAGED DASD VOLUME"
 	if [ $? -gt 0 ]; then
@@ -111,14 +111,19 @@ for dataset in ${datasets}; do
 		setstr="VOLUME=${volume}"
 	fi
 
-	entry="APF ADD DSNAME(${dataset}) ${volume}"
+	if [ "${verb}" = ENABLE ]; then
+		op="ADD"
+	else
+		op="DELETE"
+	fi
+	entry="APF ${op} DSNAME(${dataset}) ${volume}"
 	if [ "${text}" = "" ]; then
 		text="${entry}"
 	else
 		text="${entry}
 ${text}"
 	fi
-	opercmd "SETPROG APF,ADD,DSNAME=${dataset},${setstr}"
+	opercmd "SETPROG APF,${op},DSNAME=${dataset},${setstr}"
 done
 
 registrar "${sw}" "${verb}" "${parmlibds}" "${member}" "${header}" "${footer}" "${text}"

@@ -100,8 +100,15 @@ verb=$(echo $2 | tr '[:lower:]' '[:upper:]');
 shift 2
 datasets=$*
 
-header="/* --- ${sw} start --- */"
-footer="/* --- ${sw} end   --- */"
+# There is no reliable way to determine the IPL link list
+iplllname="${ZBREW_IPLLLNAME}"
+if `undefinedProperty "${iplllname}"`; then
+	echo "llregistrar: ZBREW_IPLLLNAME must be defined to use llregistrar" >&2
+	exit 16
+fi
+
+header="/* --- ${sw} LNKLST start --- */"
+footer="/* --- ${sw} LNKLST end   --- */"
 
 parmlibds="${ZBREW_TGT_HLQ}PARMLIB"
 member="PROG${ZBREW_PARMLIB_SFX}"
@@ -110,9 +117,6 @@ lladatasets=`echo "$llaresults" | awk 'BEGIN { header=0; } { if (header) { print
 curllname=`echo "$llaresults" | grep 'LNKLST SET' | awk ' { print $3; }'`
 nextllname=`nextllname "${curllname}"`
 opercmd "SETPROG LNKLST DEFINE NAME(${nextllname}) COPYFROM(CURRENT)"
-
-# msf - need to determine the IPL name programmatically
-iplllname="LNKLST00"
 
 datasets=$(echo $datasets | tr '[:lower:]' '[:upper:]');
 for dataset in ${datasets}; do
@@ -140,26 +144,36 @@ llqs=''
 #
 for dataset in ${datasets}; do
 	llqs="${llqs} ${dataset##*.}"
-	entry="LNKLST ADD NAME(${iplllname}) DSNAME(${dataset}) ATTOP"
+	entry="LNKLST ADD NAME(${iplllname}) DSNAME(${dataset})"
 	if [ "${text}" = "" ]; then
 		text="${entry}"
 	else
 		text="${entry}
 ${text}"
 	fi
-	opercmd "SETPROG LNKLST,ADD,NAME=${nextllname},DSNAME=${dataset},ATTOP"
+	opercmd "SETPROG LNKLST,ADD,NAME=${nextllname},DSNAME=${dataset}"
 done
 
 #
-# remove old datasets with the same llq as one of the new datasets
+# remove old datasets with the same llq as one of the new datasets and then 
+# re-add them to push them to the bottom (so they are still in the list, but lower search order than new datasets)
 #
 for lladataset in ${lladatasets}; do
 	llq="${lladataset##*.}"
-	for newllq in ${llqs}; do
-		if [ "${newllq}" = "${llq}" ]; then
-			opercmd "SETPROG LNKLST,DELETE,NAME=${nextllname},DSNAME=${lladataset}"
+	isolddataset=true
+	for newds in ${datasets}; do
+		if [ "${newds}" = "${lladataset}" ]; then
+			isolddataset=false
 		fi
 	done
+	if ${isolddataset} ; then
+		for newllq in ${llqs}; do
+			if [ "${newllq}" = "${llq}" ]; then
+				opercmd "SETPROG LNKLST,DELETE,NAME=${nextllname},DSNAME=${lladataset}"
+				opercmd "SETPROG LNKLST,ADD,NAME=${nextllname},DSNAME=${lladataset}"
+			fi
+		done
+	fi
 done
 opercmd "SETPROG LNKLST ACTIVATE NAME(${nextllname})"
 
