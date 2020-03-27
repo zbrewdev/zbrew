@@ -31,7 +31,7 @@ msg() {
 #
 syntax() {
 	echo "\
-procregistrar [-vd] <swname> enable|disable <product> <member> [<enablement text>]
+procregistrar [-vd] <swname> enable|disable <member> [<enablement text>]
 
 Examples:
 	Enable EQAE20 proc DBGMGR with enablement text \"//DBGMGR PROC PRM=,...//*\"
@@ -42,9 +42,9 @@ Note:
 	The PDS \${ZBREW_ROOT}PROCLIB is created if it does not already exist
 	The PDS member will have the new PROC written with a header/trailer comment
 	The PDS member will have the PROC removed if it is disabled
-	Enabling a product that already has an entry is an error.
-	Disabling a product that does not have an entry is silent.
-	Disabling a product removes the JCL but does not delete the member
+	Enabling a member that already has an entry is an error.
+	Disabling a member that does not have an entry is silent.
+	Disabling a member removes the JCL but does not delete the member
 " >&2
      	exit 8
 }
@@ -82,8 +82,8 @@ text="$4"
 
 pfx="//*"
 sfx="*"
-header="${pfx} --- ${sw}:${id} start --- ${sfx}"
-footer="${pfx} --- ${sw}:${id} end   --- ${sfx}"
+header="${pfx} --- ${sw} start --- ${sfx}"
+footer="${pfx} --- ${sw} end   --- ${sfx}"
 
 . zbrewsetenv
 
