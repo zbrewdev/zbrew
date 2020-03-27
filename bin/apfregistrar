@@ -84,8 +84,10 @@ verb=$(echo $2 | tr '[:lower:]' '[:upper:]');
 shift 2
 datasets=$*
 
-header="/* --- ${sw} APF start --- */"
-footer="/* --- ${sw} APF end   --- */"
+pfx="/*"
+sfx="*/"
+header="${pfx} --- ${sw} APF start --- ${sfx}"
+footer="${pfx} --- ${sw} APF end   --- ${sfx}"
 
 parmlibds="${ZBREW_TGT_HLQ}PARMLIB"
 member="PROG${ZBREW_PARMLIB_SFX}"
@@ -126,5 +128,5 @@ ${text}"
 	opercmd "SETPROG APF,${op},DSNAME=${dataset},${setstr}"
 done
 
-registrar "${sw}" "${verb}" "${parmlibds}" "${member}" "${header}" "${footer}" "${text}"
+registrar "${sw}" "${verb}" "${parmlibds}" "${member}" "${header}" "${footer}" "${pfx}" "${sfx}" "${text}"
 exit $?

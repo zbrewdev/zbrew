@@ -31,21 +31,20 @@ msg() {
 #
 syntax() {
 	echo "\
-swregistrar [-vd] <swname> enable|disable <product> [<enablement text>]
+procregistrar [-vd] <swname> enable|disable <product> <member> [<enablement text>]
 
 Examples:
-	Enable BGZ106 as part of product 5737-I22 with product entry
-		swregistrar bgz106 enable 5737-I22 \"PRODUCT OWNER('IBM CORP') ... STATE(ENABLED)\"
-	Disable BGZ106 as part of product 5737-I22 with product entry
-        	swregistrar bgz106 disable 5737-I22
+	Enable EQAE20 proc DBGMGR with enablement text \"//DBGMGR PROC PRM=,...//*\"
+		procregistrar eqae20 enable dbgmgr \"//DBGMGR PROC PRM=,...//*\"
+	Disable EQAE20 proc DBGMGR
+        	procregistrar eqae20 disable dbgmgr
 Note:
-	The PDS \${ZBREW_ROOT}PARMLIB is created if it does not already exist
-	The PDS member IFAPRD\${ZBREW_PARMLIB_SFX} is created if it does not already exist
-	The PDS member will have the new product enablement text appended if 'enable' is specified.
-	The PDS member will have the product enablement text removed if 'disable' is specified.
+	The PDS \${ZBREW_ROOT}PROCLIB is created if it does not already exist
+	The PDS member will have the new PROC written with a header/trailer comment
+	The PDS member will have the PROC removed if it is disabled
 	Enabling a product that already has an entry is an error.
 	Disabling a product that does not have an entry is silent.
-	Disabling a product removes the entry from the file - it does NOT mark as DISABLED
+	Disabling a product removes the JCL but does not delete the member
 " >&2
      	exit 8
 }
@@ -63,7 +62,7 @@ while getopts ":vdf" opt; do
       ;;
     \?)         
       if [ ${OPTARG} != "?" ]; then
-        msg swregistrar ${InvalidOption} E "${OPTARG}"
+        msg procregistrar ${InvalidOption} E "${OPTARG}"
       fi                
       syntax
       exit 4
@@ -72,24 +71,23 @@ while getopts ":vdf" opt; do
 done    	
 shift $(expr $OPTIND - 1 )
 if [ $# -lt 3 ]; then
-        msg swregistrar ${TooFewParms} E "$#"
+        msg procregistrar ${TooFewParms} E "$#"
  	syntax
         exit 8
 fi  
 sw=$(echo $1 | tr '[:lower:]' '[:upper:]');
 verb=$(echo $2 | tr '[:lower:]' '[:upper:]');
-id=$(echo $3 | tr '[:lower:]' '[:upper:]');
+member=$(echo $3 | tr '[:lower:]' '[:upper:]');
 text="$4"
 
-pfx="/*"
-sfx="*/"
+pfx="//*"
+sfx="*"
 header="${pfx} --- ${sw}:${id} start --- ${sfx}"
 footer="${pfx} --- ${sw}:${id} end   --- ${sfx}"
 
 . zbrewsetenv
 
-parmlibds="${ZBREW_TGT_HLQ}PARMLIB"
-member="IFAPRD${ZBREW_PARMLIB_SFX}"
+procds="${ZBREW_TGT_HLQ}PROCLIB"
 
-registrar "${sw}" "${verb}" "${parmlibds}" "${member}" "${header}" "${footer}" "${pfx}" "${sfx}" "${text}"
+registrar "${sw}" "${verb}" "${procds}" "${member}" "${header}" "${footer}" "${pfx}" "${sfx}" "${text}"
 exit $?

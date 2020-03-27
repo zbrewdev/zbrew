@@ -107,8 +107,10 @@ if `undefinedProperty "${iplllname}"`; then
 	exit 16
 fi
 
-header="/* --- ${sw} LNKLST start --- */"
-footer="/* --- ${sw} LNKLST end   --- */"
+pfx="/*"
+sfx="*/"
+header="${pfx} --- ${sw} LNKLST start --- ${sfx}"
+footer="${pfx} --- ${sw} LNKLST end   --- ${sfx}"
 
 parmlibds="${ZBREW_TGT_HLQ}PARMLIB"
 member="PROG${ZBREW_PARMLIB_SFX}"
@@ -177,5 +179,5 @@ for lladataset in ${lladatasets}; do
 done
 opercmd "SETPROG LNKLST ACTIVATE NAME(${nextllname})"
 
-registrar "${sw}" "${verb}" "${parmlibds}" "${member}" "${header}" "${footer}" "${text}"
+registrar "${sw}" "${verb}" "${parmlibds}" "${member}" "${header}" "${pfx}" "${sfx}" "${footer}" "${text}"
 exit $?
