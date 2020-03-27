@@ -36,7 +36,8 @@
 			"ZBREW_JOBPARMS":"''MSGCLASS=S,NOTIFY=&SYSUID''",
 			"ZBREW_JOBOPTS":"",
 
-			"ZBREW_PARMLIB_SFX":"ZB"
+			"ZBREW_PARMLIB_SFX":"ZB",
+			"ZBREW_IPLLLNAME":"NONE"
                  }
 	}]
 }
