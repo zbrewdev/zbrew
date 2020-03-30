@@ -2,8 +2,8 @@
 #
 # Basic test to ensure swregistrar works
 #
-#set -x
 . zbrewsetenv
+set -x
 
 p1="PRODUCT OWNER('IBM CORP')
         NAME('IBM APP DLIV FND')
@@ -96,6 +96,7 @@ swregistrar bgz100 enable ${id3} "${p3}" >/dev/null 2>&1
 rc13=$?
 swregistrar bgz100 enable ${id4} "${p4}" >/dev/null 2>&1
 rc14=$?
+exit 0
 
 swregistrar bgz100 disable ${id4} "${p4}" >/dev/null 2>&1
 rc15=$?
