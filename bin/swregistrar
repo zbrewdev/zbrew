@@ -71,15 +71,22 @@ while getopts ":vdf" opt; do
   esac  	
 done    	
 shift $(expr $OPTIND - 1 )
-if [ $# -lt 3 ]; then
-        msg swregistrar ${TooFewParms} E "$#"
- 	syntax
-        exit 8
-fi  
 sw=$(echo $1 | tr '[:lower:]' '[:upper:]');
 verb=$(echo $2 | tr '[:lower:]' '[:upper:]');
 id=$(echo $3 | tr '[:lower:]' '[:upper:]');
 text="$4"
+
+if [ "${verb}" = "ENABLE" ]; then
+	min=4
+else
+	min=3
+fi
+
+if [ $# -lt ${min} ]; then
+	msg swregistrar ${TooFewParms} E "$#"
+	syntax
+	exit 8
+fi  
 
 pfx="/*"
 sfx="*/"

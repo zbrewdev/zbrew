@@ -3,7 +3,7 @@
 # Basic test to ensure swregistrar works
 #
 . zbrewsetenv
-set -x
+#set -x
 
 p1="PRODUCT OWNER('IBM CORP')
         NAME('IBM APP DLIV FND')

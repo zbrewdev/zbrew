@@ -58,15 +58,14 @@ for test in ${tests}; do
 			mdiff -Z ${name}.expected ${name}.actual
 			rc=$?
 		else 
-
-			${test} ${parms} > /dev/null 2>/dev/null
+			${test} ${parms} 
 			rc=$?
 		fi 
 		if [ ${rc} -gt ${maxrc} ]; then
 			${test} -dv ${parms}
 			echo "Failed test ${name}"
 			exit $rc
-            maxrc=${rc}
+           		 maxrc=${rc}
 		fi
 	fi
 done
