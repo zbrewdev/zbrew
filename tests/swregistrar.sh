@@ -96,12 +96,12 @@ swregistrar bgz100 enable ${id3} "${p3}" >/dev/null 2>&1
 rc13=$?
 swregistrar bgz100 enable ${id4} "${p4}" >/dev/null 2>&1
 rc14=$?
-exit 0
 
 swregistrar bgz100 disable ${id4} "${p4}" >/dev/null 2>&1
 rc15=$?
 swregistrar bgz100 disable ${id2} "${p2}" >/dev/null 2>&1
 rc16=$?
+
 swregistrar bgz100 disable ${id1} "${p1}" >/dev/null 2>&1
 rc17=$?
 swregistrar bgz100 disable ${id3} "${p3}" >/dev/null 2>&1

@@ -206,7 +206,12 @@ if [ "$hdr" = true ] && [ "$ftr" = true ] ; then
 	before=`echo "${current}" | head -${headlines}`
 	taillines=`expr $ftrline + 1`
 	after=`echo "${current}" | tail +${taillines}`
-	decho "${before}${after}" "${parmlibmember}" 	
+	if [ "${after}" = "" ]; then
+		decho "${before}" "${parmlibmember}"
+	else
+		decho "${before}
+${after}" "${parmlibmember}" 	
+	fi
 	rc=$?	
 elif [ "$hdr" = true ] ; then
 	echo "registrar: Severe Error. Only header found for: ${sw} in ${parmlibmember}" >&2
