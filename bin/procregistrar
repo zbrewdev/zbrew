@@ -88,11 +88,12 @@ footer="${pfx} --- ${sw} end   --- ${sfx}"
 . zbrewsetenv
 
 procds="${ZBREW_TGT_HLQ}PROCLIB"
-activeproclib=`opercmd '$D proclib,debug' 2>/dev/null | grep STATIC | awk -F'[\(\)]' '{print $2}'`
+activeprocnum=`opercmd '$djobclass(stc),proclib' | grep HASP837 | awk -F'=' '{ print $2  }'`
 if [ $? -gt 0 ]; then
-	echo "Unable to determine static proclib" >&2
+	echo "Unable to determine started task class's proclib" >&2
 	exit 16
 fi
+activeproclib="PROC${activeprocnum}"
 opercmd '$del proclib(zbrewpr)' >/dev/null 2>&1
 result=`opercmd "\\$D proclib(${activeproclib})" 2>/dev/null`
 if [ $? -gt 0 ]; then
@@ -100,6 +101,15 @@ if [ $? -gt 0 ]; then
 	exit 16
 fi
 datasets=`echo "${result}" | grep HASP319 | awk -F'[\(\)=,]' '{ if (NF==7) { print $6 } else if (NF==9) { print $8; } }'`
+
+# Remove any earlier instances of procds in the concatenation
+orig="${datasets}"
+datasets=""
+for dataset in ${orig}; do
+	if [ "${dataset}" != "${procds}" ]; then
+		datasets="${datasets} ${dataset}"
+	fi
+done
 if [ "${verb}" = "ENABLE" ]; then
 	datasets="${procds} ${datasets}"
 fi	
@@ -109,9 +119,7 @@ for dataset in ${datasets}; do
 		result=`opercmd "\\$ADD proclib(zbrewpr),dd(01)=dsn=${dataset}" 2>/dev/null`
 		first=false
 	else
-		if [ "${dataset}" != "${procds}" ]; then
-			result=`opercmd "\\$T proclib(zbrewpr),dd(99)=dsn=${dataset}" 2>/dev/null`
-		fi
+		result=`opercmd "\\$T proclib(zbrewpr),dd(99)=dsn=${dataset}" 2>/dev/null`
 	fi
 done
 
