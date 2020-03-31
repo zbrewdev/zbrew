@@ -88,6 +88,34 @@ footer="${pfx} --- ${sw} end   --- ${sfx}"
 . zbrewsetenv
 
 procds="${ZBREW_TGT_HLQ}PROCLIB"
+activeproclib=`opercmd '$D proclib,debug' 2>/dev/null | grep STATIC | awk -F'[\(\)]' '{print $2}'`
+if [ $? -gt 0 ]; then
+	echo "Unable to determine static proclib" >&2
+	exit 16
+fi
+opercmd '$del proclib(zbrewpr)' >/dev/null 2>&1
+result=`opercmd "\\$D proclib(${activeproclib})" 2>/dev/null`
+if [ $? -gt 0 ]; then
+	echo "Unable to get dataset list for PROCLIB(${activeproclib})" >&2
+	exit 16
+fi
+datasets=`echo "${result}" | grep HASP319 | awk -F'[\(\)=,]' '{ if (NF==7) { print $6 } else if (NF==9) { print $8; } }'`
+if [ "${verb}" = "ENABLE" ]; then
+	datasets="${procds} ${datasets}"
+fi	
+first=true
+for dataset in ${datasets}; do
+	if "${first}" ; then 
+		result=`opercmd "\\$ADD proclib(zbrewpr),dd(01)=dsn=${dataset}" 2>/dev/null`
+		first=false
+	else
+		if [ "${dataset}" != "${procds}" ]; then
+			result=`opercmd "\\$T proclib(zbrewpr),dd(99)=dsn=${dataset}" 2>/dev/null`
+		fi
+	fi
+done
 
+result=`opercmd "\\$T proclib(zbrewpr),name=${activeproclib}" 2>/dev/null`
+opercmd '$del proclib(zbrewpr)' >/dev/null 2>&1
 registrar "${sw}" "${verb}" "${procds}" "${member}" "${header}" "${footer}" "${pfx}" "${sfx}" "${text}"
 exit $?
