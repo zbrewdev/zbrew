@@ -14,7 +14,6 @@ export ZBREW_TGT_ZFSROOT="${ZBREW_TMP}/zbrewvt/"
 . zbrewsetenv
 
 . zbrewtestfuncs
-echo "$mydir"
 runtests "${mydir}/tests" "$1"
 exit $?
 
