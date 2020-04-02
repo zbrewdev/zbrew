@@ -88,7 +88,7 @@ footer="${pfx} --- ${sw} end   --- ${sfx}"
 . zbrewsetenv
 
 procds="${ZBREW_TGT_HLQ}PROCLIB"
-activeprocnum=`opercmd '$djobclass(stc),proclib' | grep HASP837 | awk -F'=' '{ print $2  }'`
+activeprocnum=`opercmd '$djobclass(stc),proclib' 2>/dev/null | grep HASP837 | awk -F'=' '{ print $2  }'`
 if [ $? -gt 0 ]; then
 	echo "Unable to determine started task class's proclib" >&2
 	exit 16

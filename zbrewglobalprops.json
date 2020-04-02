@@ -4,6 +4,7 @@
 		"config":{
 			"ZBREW_TMP_MINSPACE":"250000",
 			"ZBREW_TMP":"/tmp",
+			"ZBREW_SYSLOGD_TMP":"/tmp",
 
 			"ZBREW_WORKROOT":"${HOME}", 
 			"ZBREW_SRC_HLQ":"ZBREWS.", 
