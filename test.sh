@@ -12,6 +12,7 @@ export ZBREW_TGT_HLQ=ZBREWVT.
 export ZBREW_TGT_ZFSROOT="${ZBREW_TMP}/zbrewvt/"
 
 . zbrewsetenv
+export PATH=$ZBREW_ROOT/testtools:$PATH
 
 . zbrewtestfuncs
 runtests "${mydir}/tests" "$1"

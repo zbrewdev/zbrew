@@ -18,8 +18,8 @@ msg() {
 
 	case ${msgnum} in
 		${InvalidOption}) msgtext="Invalid option specified: -";;
-		${TooFewParms}) msgtext="Too few parameters specified. Expected at least 3 but received: ";;
-		${TooFewEnableParms}) msgtext="Too few parameters specified. Expected 4 but received: ";;
+		${TooFewParms}) msgtext="Too few parameters specified. Expected at least 8 but received: ";;
+		${TooFewEnableParms}) msgtext="Too few parameters specified. Expected 9 but received: ";;
 		${UnknownAction}) msgtext="Unknown action specified: ";;
 		*) msgtext="Internal Error. Unknow msgnum: ${msgnum}";;
 	esac
