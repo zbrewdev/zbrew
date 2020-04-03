@@ -36,7 +36,7 @@ fi
 
 zbrewdir=`abspath zbrew`
 if [ $? -gt 0 ]; then
-	echo "zbrewsetenv: zbrew needs to be in your PATH if you do not specify <zbrew root directory>" >&2
+	echo "zbrewsetenv: zbrew needs to be in your PATH before setting up your environment" >&2
 	return 4
 fi
 zbrewroot="${zbrewdir%/*}"
@@ -48,3 +48,4 @@ export mydir=$(callerdir ${0})
 props="${zbrewroot}/zbrewglobalprops.json"
 zbrewpropse zbrew config "${props}"
 
+export ZBREW_ROOT=${zbrewroot}

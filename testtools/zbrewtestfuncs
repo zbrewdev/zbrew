@@ -1,0 +1,54 @@
+#
+# General test functions for use by zbrew and sw packages using zbrew
+#
+runtests() {
+#set -x
+	testdir="$1"
+	specifictest="$2"
+	cd "${testdir}"
+
+	rm -f *.actual
+
+	if [ -z ${specifictest} ] ; then
+		tests=*.sh
+	else
+		tests=${specifictest}.sh
+	fi
+
+	if [ -z "${TEST_SKIP_LIST}" ]; then
+		export TEST_SKIP_LIST=""
+	fi
+
+	maxrc=0
+	for test in ${tests}; do
+		name="${test%.*}"
+		if [ "${name}" = "test" ]; then
+			continue;
+		fi
+		if test "${TEST_SKIP_LIST#*$name}" != "$TEST_SKIP_LIST"; then
+			echo "Skip test ${name}"
+		else
+			echo "Run test ${name}"
+			if [ -e ${name}.parm ]; then
+				parms=`cat ${name}.parm`
+			else
+				parms=''
+			fi
+			if [ -e ${name}.expected ]; then
+				${test} ${parms} >${name}.actual 2>&1
+				mdiff -Z ${name}.expected ${name}.actual
+				rc=$?
+			else
+				${test} ${parms}
+				rc=$?
+			fi
+			if [ ${rc} -gt ${maxrc} ]; then
+				${test} -dv ${parms}
+				echo "Failed test ${name}"
+				exit $rc
+				 maxrc=${rc}
+			fi
+		fi
+	done
+	return ${maxrc}
+}

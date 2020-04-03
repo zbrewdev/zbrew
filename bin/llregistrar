@@ -1,0 +1,183 @@
+#!/bin/sh
+#set -x
+InvalidOption=1
+TooFewParms=2
+TooFewEnableParms=3
+UnknownAction=4
+
+#
+# Temporary hack - replace with a proper message file
+#
+msg() {
+       	pgm=$1
+	msgnum=$2
+	msgtype=$3
+
+	shift 3
+	args=$*
+
+	case ${msgnum} in
+		${InvalidOption}) msgtext="Invalid option specified: -";;
+		${TooFewParms}) msgtext="Too few parameters specified. Expected at least 3 but received: ";;
+		${TooFewEnableParms}) msgtext="Too few parameters specified. Expected 4 but received: ";;
+		${UnknownAction}) msgtext="Unknown action specified: ";;
+		*) msgtext="Internal Error. Unknow msgnum: ${msgnum}";;
+	esac
+	echo "ZCL000"${msgnum}${msgtype} "${msgtext}${args}" >&2
+}
+
+#
+# Temporary hack - replace with a manpage
+#
+syntax() {
+	echo "\
+llregistrar [-vd] <swname> enable|disable [dataset]+
+
+Examples:
+	Enable linklist entry for dataset ZBREW.EQAE20.SEQABMOD
+		llregistrar eqae20 enable zbrew.eqae20.seqabmod
+	Disable linklist entry for EQAE20 datasets
+        	llregistrar eqae20 disable
+Note:
+	The PDS \${ZBREW_ROOT}PARMLIB is created if it does not already exist
+	The PDS member PROG\${ZBREW_PARMLIB_SFX} is created if it does not already exist
+	The PDS member will have the new link list datasets added if 'enable' is specified
+	The PDS member will have the link list datasets removed if 'disable' is specified.
+	Enabling a product that already has an entry is an error.
+	Disabling a product that does not have an entry is silent.
+	Disabling a product removes the entry from the file - it does NOT mark as DISABLED
+" >&2
+     	exit 8
+}
+
+nextllname() {
+	cur="$1"
+	num=${cur#ZBREW*}
+	if [ "${num}" = "${cur}" ]; then
+		echo "ZBREW1"
+	else
+		if `isinteger ${num}`; then
+			next=`expr $num + 1`
+			echo "ZBREW${next}"
+		else 
+			echo "ZBREW1"
+		fi
+	fi
+}
+		
+
+opts=""         	
+while getopts ":vdf" opt; do
+  case ${opt} in
+    d )   	
+      debug=1
+      opts="${opts} -d" 
+      ;;                        
+    v )
+      verbose=1
+      opts="${opts} -v"
+      ;;
+    \?)         
+      if [ ${OPTARG} != "?" ]; then
+        msg llregistrar ${InvalidOption} E "${OPTARG}"
+      fi                
+      syntax
+      exit 4
+      ;;        
+  esac  	
+done    	
+shift $(expr $OPTIND - 1 )
+if [ $# -lt 3 ]; then
+        msg llregistrar ${TooFewParms} E "$#"
+ 	syntax
+        exit 8
+fi  
+
+. zbrewsetenv 
+
+sw=$(echo $1 | tr '[:lower:]' '[:upper:]');
+verb=$(echo $2 | tr '[:lower:]' '[:upper:]');
+shift 2
+datasets=$*
+
+# There is no reliable way to determine the IPL link list
+iplllname="${ZBREW_IPLLLNAME}"
+if `undefinedProperty "${iplllname}"`; then
+	echo "llregistrar: ZBREW_IPLLLNAME must be defined to use llregistrar" >&2
+	exit 16
+fi
+
+pfx="/*"
+sfx="*/"
+header="${pfx} --- ${sw} LNKLST start --- ${sfx}"
+footer="${pfx} --- ${sw} LNKLST end   --- ${sfx}"
+
+parmlibds="${ZBREW_TGT_HLQ}PARMLIB"
+member="PROG${ZBREW_PARMLIB_SFX}"
+llaresults=`opercmd 'd lla' 2>/dev/null`
+lladatasets=`echo "$llaresults" | awk 'BEGIN { header=0; } { if (header) { print substr($0,60,44) } } / ENTRY/ {header=1}'`
+curllname=`echo "$llaresults" | grep 'LNKLST SET' | awk ' { print $3; }'`
+nextllname=`nextllname "${curllname}"`
+opercmd "SETPROG LNKLST DEFINE NAME(${nextllname}) COPYFROM(CURRENT)"
+
+datasets=$(echo $datasets | tr '[:lower:]' '[:upper:]');
+for dataset in ${datasets}; do
+        info=`dls -l ${dataset}`
+        if [ $? -gt 0 ]; then
+        	echo "llregistrar: Dataset: ${dataset} not found." >&2
+       		exit 16
+        fi
+done 
+
+if [ "${verb}" = "DISABLE" ]; then
+	registrar "${sw}" "DISABLE" "${parmlibds}" "${member}" "${header}" "${footer}"
+	for dataset in ${datasets}; do
+		opercmd "SETPROG LNKLST,DELETE,NAME=${nextllname},DSNAME=${dataset}"
+	done
+	opercmd "SETPROG LNKLST ACTIVATE NAME(${nextllname})"
+	exit $?
+fi
+
+# ENABLE follows
+
+llqs=''
+#
+# add new datasets
+#
+for dataset in ${datasets}; do
+	llqs="${llqs} ${dataset##*.}"
+	entry="LNKLST ADD NAME(${iplllname}) DSNAME(${dataset})"
+	if [ "${text}" = "" ]; then
+		text="${entry}"
+	else
+		text="${entry}
+${text}"
+	fi
+	opercmd "SETPROG LNKLST,ADD,NAME=${nextllname},DSNAME=${dataset}"
+done
+
+#
+# remove old datasets with the same llq as one of the new datasets and then 
+# re-add them to push them to the bottom (so they are still in the list, but lower search order than new datasets)
+#
+for lladataset in ${lladatasets}; do
+	llq="${lladataset##*.}"
+	isolddataset=true
+	for newds in ${datasets}; do
+		if [ "${newds}" = "${lladataset}" ]; then
+			isolddataset=false
+		fi
+	done
+	if ${isolddataset} ; then
+		for newllq in ${llqs}; do
+			if [ "${newllq}" = "${llq}" ]; then
+				opercmd "SETPROG LNKLST,DELETE,NAME=${nextllname},DSNAME=${lladataset}"
+				opercmd "SETPROG LNKLST,ADD,NAME=${nextllname},DSNAME=${lladataset}"
+			fi
+		done
+	fi
+done
+opercmd "SETPROG LNKLST ACTIVATE NAME(${nextllname})"
+
+registrar "${sw}" "${verb}" "${parmlibds}" "${member}" "${header}" "${pfx}" "${sfx}" "${footer}" "${text}"
+exit $?

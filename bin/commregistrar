@@ -31,18 +31,18 @@ msg() {
 #
 syntax() {
 	echo "\
-swregistrar [-vd] <swname> enable|disable <product> [<enablement text>]
+commregistrar [-vd] <swname> enable|disable [<command>]
 
 Examples:
-	Enable BGZ106 as part of product 5737-I22 with product entry
-		swregistrar bgz106 enable 5737-I22 \"PRODUCT OWNER('IBM CORP') ... STATE(ENABLED)\"
-	Disable BGZ106 as part of product 5737-I22 with product entry
-        	swregistrar bgz106 disable 5737-I22
+	Enable START DBGMGR command as part of EQAE20 
+		commregistrar eqae20 enable \"COM='S DBGMGR'\"
+	Disable EQAE20 commands 
+        	commregistrar eqae20 disable
 Note:
 	The PDS \${ZBREW_ROOT}PARMLIB is created if it does not already exist
-	The PDS member IFAPRD\${ZBREW_PARMLIB_SFX} is created if it does not already exist
-	The PDS member will have the new product enablement text appended if 'enable' is specified.
-	The PDS member will have the product enablement text removed if 'disable' is specified.
+	The PDS member COMMND\${ZBREW_PARMLIB_SFX} is created if it does not already exist
+	The PDS member will have the new command text appended if 'enable' is specified.
+	The PDS member will have the command text removed if 'disable' is specified.
 	Enabling a product that already has an entry is an error.
 	Disabling a product that does not have an entry is silent.
 	Disabling a product removes the entry from the file - it does NOT mark as DISABLED
@@ -63,7 +63,7 @@ while getopts ":vdf" opt; do
       ;;
     \?)         
       if [ ${OPTARG} != "?" ]; then
-        msg swregistrar ${InvalidOption} E "${OPTARG}"
+        msg commregistrar ${InvalidOption} E "${OPTARG}"
       fi                
       syntax
       exit 4
@@ -73,30 +73,29 @@ done
 shift $(expr $OPTIND - 1 )
 sw=$(echo $1 | tr '[:lower:]' '[:upper:]');
 verb=$(echo $2 | tr '[:lower:]' '[:upper:]');
-id=$(echo $3 | tr '[:lower:]' '[:upper:]');
-text="$4"
+text="$3"
 
 if [ "${verb}" = "ENABLE" ]; then
-	min=4
-else
 	min=3
+else
+	min=2
 fi
 
 if [ $# -lt ${min} ]; then
-	msg swregistrar ${TooFewParms} E "$#"
+	msg commregistrar ${TooFewParms} E "$#"
 	syntax
 	exit 8
 fi  
 
-pfx="/*"
-sfx="*/"
-header="${pfx} --- ${sw}:${id} start --- ${sfx}"
-footer="${pfx} --- ${sw}:${id} end   --- ${sfx}"
+pfx="*"
+sfx="*"
+header="${pfx} --- ${sw} start --- ${sfx}"
+footer="${pfx} --- ${sw} end   --- ${sfx}"
 
 . zbrewsetenv
 
 parmlibds="${ZBREW_TGT_HLQ}PARMLIB"
-member="IFAPRD${ZBREW_PARMLIB_SFX}"
+member="COMMND${ZBREW_PARMLIB_SFX}"
 
 registrar "${sw}" "${verb}" "${parmlibds}" "${member}" "${header}" "${footer}" "${pfx}" "${sfx}" "${text}"
 exit $?

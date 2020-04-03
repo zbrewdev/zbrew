@@ -1,0 +1,130 @@
+#!/bin/sh
+#
+# mdiff - master diff:
+# Format: mdiff path1 path2
+#
+# compare a master file to an actual output file
+# return 0 if files match and returns non-zero if files do not match.
+# The master file is composed of standard text lines and lines with 
+# wildcards. A line with wildcards must start with the ^ character and 
+# end with the $ character, e.g.
+# ^This line has a date stamp: .* in it $
+# would be a line with wildcards whereas:
+# ^This line has a date stamp: .* in it
+# would NOT be a line with wildcards (and would be treated as a standard
+# line) because it starts with the ^ character but does not end with the $
+# character.
+#
+# A wildcard line will be treated as a regular expression line. 
+# As an example, consider the file Example.master:
+# This is Line One
+# ^This has a date stamp: .*$
+# This is Line Three
+# 
+# and the actual file Example.actual:
+#This is Line One
+#This has a date stamp: Wednesday, January 3rd, 2018 15:23
+#This is Line Three
+#
+# The line:
+# ^This has a date stamp: .*$
+#
+# in Example.master would be treated as a regular expression and would match
+# the corresponding line:  
+#This has a date stamp: Wednesday, January 3rd, 2018 15:23
+#
+# in Example.actual
+#set -x
+export ME=$0
+function syntax {
+  echo "${ME} Version 1.0.1" >&2
+  echo "${ME} [<options>] <master file> <actual file>" >&2
+  echo " where <options> can be one or more of:" >&2
+  echo " -v [version information]" >&2
+  echo " -Z [ignore trailing whitespace in comparison]" >&2
+}
+
+version=0
+trimtrailing=0
+
+while getopts ":vZ" opt; do
+  case ${opt} in
+    v ) 
+      version=1
+      ;;
+    Z ) 
+      trimtrailing=1
+      ;;
+    \?) 
+      echo "Invalid option: -$OPTARG" >&2
+      syntax
+      exit 4
+      ;;
+  esac
+done
+shift $(expr $OPTIND - 1 )
+
+if test $# -ne 2; then
+  syntax
+  exit 16
+fi
+if [ ${version} -ne 0 ]; then
+  syntax
+  exit 4
+fi
+
+nl1=`wc -l <$1`
+nl2=`wc -l <$2`
+if [[ $nl1 -ne $nl2 ]]; then 
+  diff $1 $2
+  exit $?
+fi
+results=`diff $1 $2`
+rc=$?
+if [ $rc -eq 0 ]; then 
+  exit $rc
+fi
+awk -vactual=$2 -vtrimtrailing=${trimtrailing} '
+	function rtrim(s) { sub(/[ \t\r\n]+$/, "", s); return s }
+	function printdiff(expected,actual) {
+		print NR"c"NR
+		print "< " expected
+		print "---"
+		print "> " actual
+	}
+	BEGIN {
+		rc=0
+		i=1
+		while(( getline line<actual) > 0 ) {
+			fact[i]=line
+			i=i+1
+		}
+	}
+	{
+		expected=$0;
+		actual=fact[NR];
+		if (trimtrailing) {
+			expected=rtrim(expected); 
+			actual=rtrim(actual); 
+		}
+	}
+	/\^.*\$.*/ { 
+		if (actual ~ expected) { 
+			; 
+		} else { 
+			printdiff(expected,actual)
+			rc=1
+		} 
+		next
+	}
+	// {           
+		if (actual != expected) {
+			printdiff(expected,actual)
+			rc=1
+		}
+		next	
+	}
+	END {
+		exit rc
+	}
+' $1
