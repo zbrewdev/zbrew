@@ -1,5 +1,4 @@
 #!/bin/sh
-#set -x
 InvalidOption=1
 TooFewParms=2
 TooFewEnableParms=3
@@ -92,6 +91,8 @@ if [ $# -lt 8 ]; then
  	syntax
         exit 8
 fi  
+
+#set -x
 
 sw=$(echo $1 | tr '[:lower:]' '[:upper:]');
 verb=$(echo $2 | tr '[:lower:]' '[:upper:]');
