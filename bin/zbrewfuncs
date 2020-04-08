@@ -7,8 +7,6 @@ callerdir() {
 		fi
 	fi
 	if [ "${calledasdir}" = '' ]; then
-#		resolvedas=$(whence "${calledas}")
-#		calledasdir="$(dirname ${resolvedas})"
 		calledasdir=$(abspath "${calledas}")
 	fi
 	echo "${calledasdir}"
@@ -189,11 +187,6 @@ undefinedProperty() {
 	fi
 }
 
-securityProduct() {
-	# MSF TBD: Look up the security product (RACF, TSS, ACF2) and return it
-	echo "RACF"
-}
-
 racfGroupExists() {
 	tsocmd "LISTGRP $1" >/dev/null 2>/dev/null
 	if [ $? -eq 0 ]; then
@@ -210,4 +203,61 @@ racfProfileExists() {
 	else
 		echo false
 	fi
+}
+
+racfUserExists() {
+	user="$1"
+	tsocmd "listuser ${user}" >/dev/null 2>&1
+	if [ $? -gt 0 ]; then
+		echo false
+	else
+		echo true
+	fi
+}
+
+racfPermitUsers() {
+	class="$1"
+	profile="$2"
+	access="$3"
+	shift 3
+	users="$*"
+
+	for user in $users; do
+		if `racfUserExists "${user}"` ; then
+			tsocmd "PERMIT ${profile} CLASS(${class}) DELETE ID(${user})" >/dev/null 2>/dev/null
+			issueTSO "PERMIT ${profile} CLASS(${class}) ACCESS(${access}) ID(${user})"
+			chk "$?" "Unable to permit ${profile} class(${class}) access(${access}) id(${user})"
+		fi
+	done
+	return 0
+}
+
+racfActivateAndShareClasses() {
+	classes="$*"
+
+	for class in $classes; do
+		issueTSO "SETROPTS CLASSACT(${class}) RACLIST(${class})"
+		chk "$?" "Unable to activate and share ${class}"
+	done
+	return 0
+}
+
+racfSetGenericClasses() {
+	classes="$*"
+
+	for class in $classes; do
+		issueTSO "SETROPTS GENERIC(${class})"
+		chk "$?" "Unable to set class ${class} as generic"
+	done
+	return 0
+}
+
+racfRefreshClasses() {
+	classes="$*"
+
+	for class in $classes; do
+		issueTSO "SETROPTS RACLIST(${class}) REFRESH"
+		chk "$?" "Unable to refresh class ${class}"
+	done
+	return 0
 }

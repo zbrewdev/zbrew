@@ -1,12 +1,36 @@
 /* REXX */
-/* This routine will print out the 4 character storage manager name  */
-/* Expected Values                                                   */
-/* RCVT: IBM RACF                                                    */
-/* ACF2: Broadcom (CA) ACF2                                          */
-/* RTSS: Broadcom (CA) Top Secret                                    */
+/*
+ * Print a string indicating the active security product.
+ *                           
+ * Responses: 
+ *   RCVT 
+ *   ACF2
+ *   RTSS
+ *   UNK
+ * 
+ * Mapping:
+ *   RCVT indicates RACF is active
+ *   ACF2 indicates ACF2 is active
+ *   RTSS indicates TopSecret is active
+ *   UNK  indicates the security manager is unknown 
+ */
 
-CVT      = C2d(Storage(10,4))                /* point to CVT         */         
-TRACOFF  = X2d('3E0')
-CVTTRAC  = C2d(Storage(D2x(CVT+TRACOFF),4))  /* CVTTRAC              */         
-ESM      = Storage(D2x(CVTTRAC),4)           /* Security Manager name*/
-Say ESM
+Trace 'o'
+
+FLCCVT=Ptr(,16,4)                             /* PSA, MVS Data Areas */
+CVTRAC=Ptr(FLCCVT,992,4)                      /* CVT, MVS Data Areas */
+RCVTID=Ptr(CVTRAC,0,4)                      /* RCVT, RACF Data Areas */
+select
+  when RCVTID='RCVT' then Say RCVTID
+  when RCVTID='ACF2' then Say RCVTID
+  when RCVTID='RTSS' then Say RCVTID
+  otherwise               Say 'UNK'
+end    
+return 0
+
+Ptr: 
+/*
+ *  get arg(3) bytes from addr string arg(1) + decimal offset arg(2) 
+ */
+return storage(d2x(c2d(arg(1))+arg(2)),arg(3))    /* Ptr */
+
