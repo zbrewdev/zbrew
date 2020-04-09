@@ -118,7 +118,11 @@ llaresults=`opercmd 'd lla' 2>/dev/null`
 lladatasets=`echo "$llaresults" | awk 'BEGIN { header=0; } { if (header) { print substr($0,60,44) } } / ENTRY/ {header=1}'`
 curllname=`echo "$llaresults" | grep 'LNKLST SET' | awk ' { print $3; }'`
 nextllname=`nextllname "${curllname}"`
-opercmd "SETPROG LNKLST DEFINE NAME(${nextllname}) COPYFROM(CURRENT)"
+opercmd "SETPROG LNKLST DEFINE NAME(${nextllname}) COPYFROM(CURRENT)" >/dev/null 2>&1
+if [ $? -gt 0 ]; then
+	echo "llregistrar: Unable to define dynamic LNKLST ${nextllname} copying from current" >&2
+	exit 16
+fi
 
 datasets=$(echo $datasets | tr '[:lower:]' '[:upper:]');
 for dataset in ${datasets}; do
@@ -130,11 +134,19 @@ for dataset in ${datasets}; do
 done 
 
 if [ "${verb}" = "DISABLE" ]; then
-	registrar "${sw}" "DISABLE" "${parmlibds}" "${member}" "${header}" "${footer}"
+	registrar "${sw}" "DISABLE" "${parmlibds}" "${member}" "${header}" "${footer}" "${pfx}" "${sfx}"
 	for dataset in ${datasets}; do
-		opercmd "SETPROG LNKLST,DELETE,NAME=${nextllname},DSNAME=${dataset}"
+		opercmd "SETPROG LNKLST,DELETE,NAME=${nextllname},DSNAME=${dataset}" >/dev/null 2>&1
+		if [ $? -gt 0 ]; then
+			echo "llregistrar: Unable to delete ${dataset} from linklist" >&2
+			exit 16
+		fi
 	done
-	opercmd "SETPROG LNKLST ACTIVATE NAME(${nextllname})"
+	opercmd "SETPROG LNKLST ACTIVATE NAME(${nextllname})" >/dev/null 2>&1
+	if [ $? -gt 0 ]; then
+		echo "llregistrar: Unable to activate ${nextllname}" >&2
+		exit 16
+	fi
 	exit $?
 fi
 
@@ -153,7 +165,11 @@ for dataset in ${datasets}; do
 		text="${entry}
 ${text}"
 	fi
-	opercmd "SETPROG LNKLST,ADD,NAME=${nextllname},DSNAME=${dataset}"
+	opercmd "SETPROG LNKLST,ADD,NAME=${nextllname},DSNAME=${dataset}" >/dev/null 2>&1
+	if [ $? -gt 0 ]; then
+		echo "llregistrar: Unable to add ${dataset} to linklist" >&2
+		exit 16
+	fi
 done
 
 #
@@ -172,12 +188,24 @@ for lladataset in ${lladatasets}; do
 		for newllq in ${llqs}; do
 			if [ "${newllq}" = "${llq}" ]; then
 				opercmd "SETPROG LNKLST,DELETE,NAME=${nextllname},DSNAME=${lladataset}"
+				if [ $? -gt 0 ]; then
+					echo "llregistrar: Unable to (temporarily) delete ${lldataset} from linklist" >&2
+					exit 16
+				fi
 				opercmd "SETPROG LNKLST,ADD,NAME=${nextllname},DSNAME=${lladataset}"
+				if [ $? -gt 0 ]; then
+					echo "llregistrar: Unable to add ${lldataset} from linklist" >&2
+					exit 16
+				fi
 			fi
 		done
 	fi
 done
 opercmd "SETPROG LNKLST ACTIVATE NAME(${nextllname})"
+if [ $? -gt 0 ]; then
+	echo "llregistrar: Unable to activate ${nextllname} linklist" >&2
+	exit 16
+fi
 
-registrar "${sw}" "${verb}" "${parmlibds}" "${member}" "${header}" "${pfx}" "${sfx}" "${footer}" "${text}"
+registrar "${sw}" "${verb}" "${parmlibds}" "${member}" "${header}" "${footer}" "${pfx}" "${sfx}" "${text}"
 exit $?

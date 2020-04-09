@@ -186,6 +186,14 @@ undefinedProperty() {
 		echo false
 	fi
 }
+definedProperty() {
+	negate=`undefinedProperty "$1"`
+	if ${negate}; then
+		echo false;
+	else
+		echo true
+	fi
+}
 
 racfGroupExists() {
 	tsocmd "LISTGRP $1" >/dev/null 2>/dev/null
@@ -259,5 +267,38 @@ racfRefreshClasses() {
 		issueTSO "SETROPTS RACLIST(${class}) REFRESH"
 		chk "$?" "Unable to refresh class ${class}"
 	done
+	return 0
+}
+
+racfSubjectsDN() {
+	commonName="$1"
+	tv="${ZBREW_X509DN_T}"	
+	ouv="${ZBREW_X509DN_OU}"	
+	ov="${ZBREW_X509DN_O}"	
+	lv="${ZBREW_X509DN_L}"	
+	spv="${ZBREW_X509DN_SP}"	
+	cv="${ZBREW_X509DN_C}"	
+
+	subjectsDN="SUBJECTSDN(CN('${commonName}')"
+	if `definedProperty "${tv}"`; then
+		subjectsDN="${subjectsDN} T('${tv}')"
+	fi
+	if `definedProperty "${ouv}"`; then
+		subjectsDN="${subjectsDN} OU('${ouv}')"
+	fi
+	if `definedProperty "${ov}"`; then
+		subjectsDN="${subjectsDN} O('${ov}')"
+	fi
+	if `definedProperty "${lv}"`; then
+		subjectsDN="${subjectsDN} L('${lv}')"
+	fi
+	if `definedProperty "${spv}"`; then
+		subjectsDN="${subjectsDN} SP('${spv}')"
+	fi
+	if `definedProperty "${cv}"`; then
+		subjectsDN="${subjectsDN} C('${cv}')"
+	fi
+	subjectsDN="${subjectsDN})"
+	echo "${subjectsDN}"
 	return 0
 }
