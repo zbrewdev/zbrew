@@ -88,15 +88,15 @@ jclStdoutAdd="//STEP1 EXEC PGM=IEFBR14
 //MYOUT  DD DSN=FRED.JACK,DISP=SHR
 //SYSIN  DD DSN=MY.MAGIC.FILE,DISP=SHR"
 
-actual=`jclAddDatasetToDD "STEP1" "MYDD" "ZBREW.MYDD.DATASET" "${jcl}"`
+actual=`jclAddDatasetToDD "${jcl}" "STEP1" "MYDD" "ZBREW.MYDD.DATASET"`
 zbrewtest "jclAddDatasetToDD failed for STEP1.MYDD" "0" "$?" 
 zbrewtest "jclAddDatasetToDD failed for STEP1.MYDD" "${jclMyDDAdd}" "${actual}"
 
-actual=`jclAddDatasetToDD "STEP3" "SYSIN" "ZBREW.MYSYSIN.DATASET" "${jcl}"`
+actual=`jclAddDatasetToDD "${jcl}" "STEP3" "SYSIN" "ZBREW.MYSYSIN.DATASET"`
 zbrewtest "jclAddDatasetToDD failed for STEP1.MYSYSIN" "0" "$?" 
 zbrewtest "jclAddDatasetToDD failed for STEP1.MYSYSIN" "${jclSYSINAdd}" "${actual}"
 
-actual=`jclAddDatasetToDD "STEP2" "STDOUT" "ZBREW.MYSTDOUT.DATASET" "${jcl}"`
+actual=`jclAddDatasetToDD "${jcl}" "STEP2" "STDOUT" "ZBREW.MYSTDOUT.DATASET"`
 zbrewtest "jclAddDatasetToDD failed for STEP2.MYSTDOUT" "0" "$?" 
 zbrewtest "jclAddDatasetToDD failed for STEP2.MYSTDOUT" "${jclStdoutAdd}" "${actual}"
 
