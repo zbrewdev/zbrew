@@ -318,11 +318,15 @@ racfSubjectsDN() {
 	return 0
 }
 
-jclAddDatasetToDD() {
-	step="$1"
-	dd="$2"
-	dataset="$3"
-	jcl="$4"
+jclRemoveOrAddDD() {
+	verb="$1"
+	jcl="$2"
+	step="$3"
+	dd="$4"
+
+	if [ "${verb}" = "ADD" ]; then
+		dataset="$5"
+	fi
 
 #
 # Extract the contents of the STEP ${step} into stepText 
@@ -381,15 +385,6 @@ jclAddDatasetToDD() {
 		beforeDD=''
 	fi
 
-	ddText=`echo "${rest}" | head -n ${endM1}`
-
-#
-# Add the new dataset to the TOP of the DDName concatenation
-# MSF - make this prettier by putting the right number of spaces after the //
-#
-	ddlen=`echo "//$dd" | wc -c | xargs echo` # length includes 'new line' 
-	secondLineDDText=`echo "${rest}" | head -1 | cut -c ${ddlen}-80`
-
 #	echo "Before Step:"
 	if [ "${beforeStep}" != '' ]; then		
 		echo "${beforeStep}"
@@ -398,10 +393,22 @@ jclAddDatasetToDD() {
 	if [ "${beforeDD}" != '' ]; then		
 		echo "${beforeDD}"
 	fi
-#	echo "DD:"
-	echo "//${dd} DD DSN=${dataset},DISP=SHR"
-	echo "//${secondLineDDText}"
-	echo "${ddText}" | tail +2
+
+	if [ "${verb}" = "ADD" ]; then
+		ddText=`echo "${rest}" | head -n ${endM1}`
+		#
+		# Add the new dataset to the TOP of the DDName concatenation
+		# MSF - make this prettier by putting the right number of spaces after the //
+		#
+		ddlen=`echo "//$dd" | wc -c | xargs echo` # length includes 'new line' 
+		secondLineDDText=`echo "${rest}" | head -1 | cut -c ${ddlen}-80`
+
+		#	echo "DD:"
+		echo "//${dd} DD DSN=${dataset},DISP=SHR"
+		echo "//${secondLineDDText}"
+		echo "${ddText}" | tail +2	
+	fi
+
 #	echo "After DD:"
 	if [ "${afterDD}" != '' ]; then		
 		echo "${afterDD}"
@@ -411,4 +418,14 @@ jclAddDatasetToDD() {
 		echo "${afterStep}"
 	fi
 	return 0
+}
+
+jclAddDatasetToDD() {
+	jclRemoveOrAddDD "ADD" "$1" "$2" "$3" "$4"
+	return $?
+}
+
+jclRemoveDD() {
+	jclRemoveOrAddDD "REMOVE" "$1" "$2" "$3" 
+	return $?
 }
