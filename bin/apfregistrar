@@ -125,7 +125,11 @@ for dataset in ${datasets}; do
 		text="${entry}
 ${text}"
 	fi
-	opercmd "SETPROG APF,${op},DSNAME=${dataset},${setstr}"
+	opercmd "SETPROG APF,${op},DSNAME=${dataset},${setstr}" >/dev/null 2>&1
+	if [ $? -gt 0 ]; then
+		echo "apfregistrar: Unable to APF authorize ${dataset}" >&2
+		exit 16
+	fi
 done
 
 registrar "${sw}" "${verb}" "${parmlibds}" "${member}" "${header}" "${footer}" "${pfx}" "${sfx}" "${text}"

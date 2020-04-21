@@ -222,7 +222,7 @@ elif [ "$ftr" = true ] ; then
 	exit 16
 else 
 	if [ "${verb}" = "DISABLE" ]; then
-		echo "registrar: Error. Trying to disable ${sw} but it is not present" >&2
+		echo "registrar: Warning. Trying to disable ${sw} but it is not present" >&2
 		exit 0
 	fi
 

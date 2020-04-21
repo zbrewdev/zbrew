@@ -7,8 +7,6 @@ callerdir() {
 		fi
 	fi
 	if [ "${calledasdir}" = '' ]; then
-#		resolvedas=$(whence "${calledas}")
-#		calledasdir="$(dirname ${resolvedas})"
 		calledasdir=$(abspath "${calledas}")
 	fi
 	echo "${calledasdir}"
@@ -62,8 +60,19 @@ zbrewtest() {
 
 	if [ "${lexpected}" != "${lactual}" ]; then
 		echo "Test Failed. ${lmsg}" >&2
-		echo "Expected: ${lexpected}" >&2
-		echo "Actual: ${lactual}" >&2
+		lines=`echo "${lexpected}" | wc -l | xargs echo`
+		if [ ${lines} -gt 1 ]; then
+			fexpected=/tmp/$$.zbrewtest.expected
+			factual=/tmp/$$.zbrewtest.actual
+			echo "diff <expected> <actual>" >&2
+			echo "${lexpected}" >${fexpected}
+			echo "${lactual}" >${factual}
+			diff ${fexpected} ${factual}
+			rm -f ${fexpected} ${factual}
+		else 
+			echo "Expected: ${lexpected}" >&2
+			echo "Actual: ${lactual}" >&2
+		fi
 		exit 16
 	fi	
 }
@@ -188,10 +197,13 @@ undefinedProperty() {
 		echo false
 	fi
 }
-
-securityProduct() {
-	# MSF TBD: Look up the security product (RACF, TSS, ACF2) and return it
-	echo "RACF"
+definedProperty() {
+	negate=`undefinedProperty "$1"`
+	if ${negate}; then
+		echo false;
+	else
+		echo true
+	fi
 }
 
 racfGroupExists() {
@@ -210,4 +222,210 @@ racfProfileExists() {
 	else
 		echo false
 	fi
+}
+
+racfUserExists() {
+	user="$1"
+	tsocmd "listuser ${user}" >/dev/null 2>&1
+	if [ $? -gt 0 ]; then
+		echo false
+	else
+		echo true
+	fi
+}
+
+racfPermitUsers() {
+	class="$1"
+	profile="$2"
+	access="$3"
+	shift 3
+	users="$*"
+
+	if `undefinedProperty "${users}"`; then
+		return 0
+	fi
+
+	for user in $users; do
+		if `racfUserExists "${user}"` ; then
+			tsocmd "PERMIT ${profile} CLASS(${class}) DELETE ID(${user})" >/dev/null 2>/dev/null
+			issueTSO "PERMIT ${profile} CLASS(${class}) ACCESS(${access}) ID(${user})"
+			chk "$?" "Unable to permit ${profile} class(${class}) access(${access}) id(${user})"
+		fi
+	done
+	return 0
+}
+
+racfActivateAndShareClasses() {
+	classes="$*"
+
+	for class in $classes; do
+		issueTSO "SETROPTS CLASSACT(${class}) RACLIST(${class})"
+		chk "$?" "Unable to activate and share ${class}"
+	done
+	return 0
+}
+
+racfSetGenericClasses() {
+	classes="$*"
+
+	for class in $classes; do
+		issueTSO "SETROPTS GENERIC(${class})"
+		chk "$?" "Unable to set class ${class} as generic"
+	done
+	return 0
+}
+
+racfRefreshClasses() {
+	classes="$*"
+
+	for class in $classes; do
+		issueTSO "SETROPTS RACLIST(${class}) REFRESH"
+		chk "$?" "Unable to refresh class ${class}"
+	done
+	return 0
+}
+
+racfSubjectsDN() {
+	commonName="$1"
+	tv="${ZBREW_X509DN_T}"	
+	ouv="${ZBREW_X509DN_OU}"	
+	ov="${ZBREW_X509DN_O}"	
+	lv="${ZBREW_X509DN_L}"	
+	spv="${ZBREW_X509DN_SP}"	
+	cv="${ZBREW_X509DN_C}"	
+
+	subjectsDN="SUBJECTSDN(CN('${commonName}')"
+	if `definedProperty "${tv}"`; then
+		subjectsDN="${subjectsDN} T('${tv}')"
+	fi
+	if `definedProperty "${ouv}"`; then
+		subjectsDN="${subjectsDN} OU('${ouv}')"
+	fi
+	if `definedProperty "${ov}"`; then
+		subjectsDN="${subjectsDN} O('${ov}')"
+	fi
+	if `definedProperty "${lv}"`; then
+		subjectsDN="${subjectsDN} L('${lv}')"
+	fi
+	if `definedProperty "${spv}"`; then
+		subjectsDN="${subjectsDN} SP('${spv}')"
+	fi
+	if `definedProperty "${cv}"`; then
+		subjectsDN="${subjectsDN} C('${cv}')"
+	fi
+	subjectsDN="${subjectsDN})"
+	echo "${subjectsDN}"
+	return 0
+}
+
+jclRemoveOrAddDD() {
+	verb="$1"
+	jcl="$2"
+	step="$3"
+	dd="$4"
+
+	if [ "${verb}" = "ADD" ]; then
+		dataset="$5"
+	fi
+
+#
+# Extract the contents of the STEP ${step} into stepText 
+#
+	start=`echo "${jcl}" | awk -vstep=$step ' /\/\/[A-Z0-9]+[ ]+EXEC / { if (substr($1,3) == step) { print NR; exit 0 }}'`
+	if [ "${start}" = '' ]; then
+		echo "No step named ${step} found in JCL." >&2
+		return 4
+	fi
+	startM1=`expr $start - 1`
+	rest=`echo "${jcl}" | tail +${start}`
+	end=`echo "${rest}" | tail +2 | awk ' /\/\/[A-Z0-9]+[ ]+EXEC / { print NR; exit 0 }'`
+
+	if [ "${end}" = '' ]; then
+		end=`echo "${rest}" | wc -l`
+		end=`expr $end + 1` # because the end is one line after the end of the file
+		afterStep=''
+	else
+		end=`expr $end + 1` # because end did not include the first line
+		afterStep=`echo "${rest}" | tail +${end}`
+	fi
+
+	endM1=`expr $end - 1`
+	stepText=`echo "${rest}" | head -n ${endM1}`
+	if [ ${start} -gt 1 ]; then
+		beforeStep=`echo "${jcl}" | head -n ${startM1}`
+	else
+		beforeStep=''
+	fi
+
+#
+# Extract the DDName from the step
+#
+	start=`echo "${stepText}" | awk -vdd=$dd ' /\/\/[A-Z0-9]+[ ]+/ { if (substr($1,3) == dd) { print NR; exit 0 }}'`
+	if [ "${start}" = '' ]; then
+		echo "No DD named ${dd} for step ${step} found in JCL." >&2
+		return 4
+	fi
+	startM1=`expr $start - 1`
+	rest=`echo "${stepText}" | tail +${start}`
+	end=`echo "${rest}" | tail +2 | awk ' /\/\/[A-Z0-9]+[ ]+/ { print NR; exit 0 }'`
+
+	if [ "${end}" = '' ]; then
+		end=`echo "${rest}" | wc -l`
+		end=`expr $end + 1` # because the end is one line after the end of the file
+		afterDD=''
+	else
+		end=`expr $end + 1` # because end did not include the first line 
+		afterDD=`echo "${rest}" | tail +${end}`
+	fi
+
+	endM1=`expr $end - 1`
+	if [ ${start} -gt 1 ]; then
+		beforeDD=`echo "${stepText}" | head -n ${startM1}`
+	else
+		beforeDD=''
+	fi
+
+#	echo "Before Step:"
+	if [ "${beforeStep}" != '' ]; then		
+		echo "${beforeStep}"
+	fi
+#	echo "Before DD:"
+	if [ "${beforeDD}" != '' ]; then		
+		echo "${beforeDD}"
+	fi
+
+	if [ "${verb}" = "ADD" ]; then
+		ddText=`echo "${rest}" | head -n ${endM1}`
+		#
+		# Add the new dataset to the TOP of the DDName concatenation
+		# MSF - make this prettier by putting the right number of spaces after the //
+		#
+		ddlen=`echo "//$dd" | wc -c | xargs echo` # length includes 'new line' 
+		secondLineDDText=`echo "${rest}" | head -1 | cut -c ${ddlen}-80`
+
+		#	echo "DD:"
+		echo "//${dd} DD DSN=${dataset},DISP=SHR"
+		echo "//${secondLineDDText}"
+		echo "${ddText}" | tail +2	
+	fi
+
+#	echo "After DD:"
+	if [ "${afterDD}" != '' ]; then		
+		echo "${afterDD}"
+	fi
+#	echo "After Step:"
+	if [ "${afterStep}" != '' ]; then		
+		echo "${afterStep}"
+	fi
+	return 0
+}
+
+jclAddDatasetToDD() {
+	jclRemoveOrAddDD "ADD" "$1" "$2" "$3" "$4"
+	return $?
+}
+
+jclRemoveDD() {
+	jclRemoveOrAddDD "REMOVE" "$1" "$2" "$3" 
+	return $?
 }
