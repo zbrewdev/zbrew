@@ -96,7 +96,7 @@ zz
 rc=$?
 else 
 	mvscmd --pgm=DFHCSDUP --args="${args}" --steplib=${ZBREW_DFHHLQ}.CICS.SDFHLOAD --dfhcsd=${ZBREW_DFHHLQ}.CICS.DFHCSD --sysprint="${out}" --sysin=stdin <<zz
-REMOVE GROUP(${prefix}) LIST(${list})
+DELETE ALL GROUP(${prefix}) REMOVE
 zz
 rc=$?
 fi
@@ -105,7 +105,7 @@ if [ $rc -gt 0 ]; then
 	# Ignore DFH5510 warning message - since we are installing system services, they may begin with reserved letters like 'C'
 	cat "${out}" | awk ' 
 		{ if ((substr($1,0,3) == "DFH") && (($2 == "W") || ($2 != "I"))) { 
-			if ($1 != "DFH5510") { 
+			if ($1 != "DFH5510" && $1 != "DFH5182") { 
 				print $0 | "cat 1>&2"; exit 1; 
 			}
 		} 
