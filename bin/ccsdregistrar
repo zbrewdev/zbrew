@@ -31,20 +31,18 @@ msg() {
 #
 syntax() {
 	echo "\
-ccsdregistrar [-vd] <swname> enable|disable <member> [<enablement text>]
+ccsdregistrar [-vd] <swname> enable|disable [<enablement text>]
 
 Examples:
-	Enable EQAE20 proc DBGMGR with enablement text \"//DBGMGR PROC PRM=,...//*\"
-		ccsdregistrar eqae20 enable dbgmgr \"//DBGMGR PROC PRM=,...//*\"
-	Disable EQAE20 proc DBGMGR
-        	ccsdregistrar eqae20 disable dbgmgr
+	Enable EQAE20 CCSD with SYSIN text \"...\" under GROUP EQA
+		ccsdregistrar eqae20 enable \"...\"
+	Disable EQAE20 CCSD from GROUP EQA
+        	ccsdregistrar eqae20 disable
 Note:
-	The PDS \${ZBREW_ROOT}PROCLIB is created if it does not already exist
-	The PDS member will have the new PROC written with a header/trailer comment
-	The PDS member will have the PROC removed if it is disabled
+	The CCSD at \${ZBREW_DFHHLQ}.CICS.DFHCSD will be updated with the new CCSD information under GROUP(<prefix>) and LIST(ZBREW_DFH_GRPLIST)
+		(where <prefix> is the first 3 letters of <swname>)
 	Enabling a member that already has an entry is an error.
 	Disabling a member that does not have an entry is silent.
-	Disabling a member removes the JCL but does not delete the member
 " >&2
      	exit 8
 }
