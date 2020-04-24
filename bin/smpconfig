@@ -48,9 +48,7 @@ Examples:
 definecsicluster() {
      name="$1"
 
-     echo "  LISTCAT ENTRIES(${dataset})" | mvscmdauth --pgm=idcams --sysprint=dummy --sysin=stdin
-     rc=$?
-     if [ $rc -eq 0 ]; then
+     if `vsamexists "${name}"`; then
 	echo "SMP/E dataset: ${name} already exists. Run with -c to re-create if required" >&2
 	return 16
      fi

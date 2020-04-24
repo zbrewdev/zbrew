@@ -39,7 +39,7 @@ Examples:
 	Disable EQAE20 CCSD from GROUP EQA
         	ccsdregistrar eqae20 disable
 Note:
-	The CCSD at \${ZBREW_DFHHLQ}.CICS.DFHCSD will be updated with the new CCSD information under GROUP(<prefix>) and LIST(ZBREW_DFH_GRPLIST)
+	The CCSD at \${ZBREW_TGT_HLQ}CICS.DFHCSD will be updated with the new CCSD information under GROUP(<prefix>) and LIST(ZBREW_DFH_GRPLIST)
 		(where <prefix> is the first 3 letters of <swname>)
 	Enabling a member that already has an entry is an error.
 	Disabling a member that does not have an entry is silent.
@@ -87,13 +87,14 @@ args='PAGESIZE(9999)'
 out=/tmp/dfhcsdup.$$.out
 touch "${out}"
 if [ "${verb}" = "ENABLE" ]; then
-	mvscmd --pgm=DFHCSDUP --args="${args}" --steplib=${ZBREW_DFHHLQ}.CICS.SDFHLOAD --dfhcsd=${ZBREW_DFHHLQ}.CICS.DFHCSD --sysprint="${out}" --sysin=stdin <<zz
+	mvscmd --pgm=DFHCSDUP --args="${args}" --steplib=${ZBREW_DFHHLQ}.CICS.SDFHLOAD --dfhcsd=${ZBREW_TGT_HLQ}CICS.DFHCSD --sysprint="${out}" --sysin=stdin <<zz
+DELETE ALL GROUP(${prefix}) REMOVE
 ${text}
 ADD GROUP(${prefix}) LIST(${list})
 zz
 rc=$?
 else 
-	mvscmd --pgm=DFHCSDUP --args="${args}" --steplib=${ZBREW_DFHHLQ}.CICS.SDFHLOAD --dfhcsd=${ZBREW_DFHHLQ}.CICS.DFHCSD --sysprint="${out}" --sysin=stdin <<zz
+	mvscmd --pgm=DFHCSDUP --args="${args}" --steplib=${ZBREW_DFHHLQ}.CICS.SDFHLOAD --dfhcsd=${ZBREW_TGT_HLQ}CICS.DFHCSD --sysprint="${out}" --sysin=stdin <<zz
 DELETE ALL GROUP(${prefix}) REMOVE
 zz
 rc=$?
@@ -103,7 +104,7 @@ if [ $rc -gt 0 ]; then
 	# Ignore DFH5510 warning message - since we are installing system services, they may begin with reserved letters like 'C'
 	cat "${out}" | awk ' 
 		{ if ((substr($1,0,3) == "DFH") && (($2 == "W") || ($2 != "I"))) { 
-			if ($1 != "DFH5510" && $1 != "DFH5182") { 
+			if ($1 != "DFH5510" && $1 != "DFH5182" && $1 != "DFH5136") { 
 				print $0 | "cat 1>&2"; exit 1; 
 			}
 		} 
