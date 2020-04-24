@@ -318,27 +318,27 @@ racfSubjectsDN() {
 	return 0
 }
 
-jclRemoveOrAddDD() {
+jclRemoveAddOrReplaceDD() {
 	verb="$1"
 	jcl="$2"
 	step="$3"
 	dd="$4"
 
-	if [ "${verb}" = "ADD" ]; then
+	if [ "${verb}" = "ADD" ] || [ "${verb}" = "REPLACE" ] ; then
 		dataset="$5"
 	fi
 
 #
 # Extract the contents of the STEP ${step} into stepText 
 #
-	start=`echo "${jcl}" | awk -vstep=$step ' /\/\/[A-Z0-9]+[ ]+EXEC / { if (substr($1,3) == step) { print NR; exit 0 }}'`
+	start=`echo "${jcl}" | awk -vstep=$step ' /\/\/[A-Z0-9\$#@]+[ ]+EXEC / { if (substr($1,3) == step) { print NR; exit 0 }}'`
 	if [ "${start}" = '' ]; then
 		echo "No step named ${step} found in JCL." >&2
 		return 4
 	fi
 	startM1=`expr $start - 1`
 	rest=`echo "${jcl}" | tail +${start}`
-	end=`echo "${rest}" | tail +2 | awk ' /\/\/[A-Z0-9]+[ ]+EXEC / { print NR; exit 0 }'`
+	end=`echo "${rest}" | tail +2 | awk ' /\/\/[A-Z0-9\$#@]+[ ]+EXEC / { print NR; exit 0 }'`
 
 	if [ "${end}" = '' ]; then
 		end=`echo "${rest}" | wc -l`
@@ -360,14 +360,21 @@ jclRemoveOrAddDD() {
 #
 # Extract the DDName from the step
 #
-	start=`echo "${stepText}" | awk -vdd=$dd ' /\/\/[A-Z0-9]+[ ]+/ { if (substr($1,3) == dd) { print NR; exit 0 }}'`
+	start=`echo "${stepText}" | awk -vdd=$dd ' /\/\/[A-Z0-9\$#@]+[ ]+/ { if (substr($1,3) == dd) { print NR; exit 0 }}'`
 	if [ "${start}" = '' ]; then
-		echo "No DD named ${dd} for step ${step} found in JCL." >&2
-		return 4
+		#
+		# If DDName was not there, add it to the end of the step, if operation was not 'REMOVE'
+		echo "${beforeStep}"
+		echo "${stepText}"
+		if [ "${verb}" != "REMOVE" ]; then
+			echo "//${dd} DD DSN=${dataset},DISP=SHR"
+		fi
+		echo "${afterStep}"
+		return 0
 	fi
 	startM1=`expr $start - 1`
 	rest=`echo "${stepText}" | tail +${start}`
-	end=`echo "${rest}" | tail +2 | awk ' /\/\/[A-Z0-9]+[ ]+/ { print NR; exit 0 }'`
+	end=`echo "${rest}" | tail +2 | awk ' /\/\/[A-Z0-9\$#@]+[ ]+/ { print NR; exit 0 }'`
 
 	if [ "${end}" = '' ]; then
 		end=`echo "${rest}" | wc -l`
@@ -407,6 +414,8 @@ jclRemoveOrAddDD() {
 		echo "//${dd} DD DSN=${dataset},DISP=SHR"
 		echo "//${secondLineDDText}"
 		echo "${ddText}" | tail +2	
+	elif [ "${verb}" = "REPLACE" ]; then
+		echo "//${dd} DD DSN=${dataset},DISP=SHR"
 	fi
 
 #	echo "After DD:"
@@ -421,11 +430,139 @@ jclRemoveOrAddDD() {
 }
 
 jclAddDatasetToDD() {
-	jclRemoveOrAddDD "ADD" "$1" "$2" "$3" "$4"
+	jclRemoveAddOrReplaceDD "ADD" "$1" "$2" "$3" "$4"
 	return $?
 }
 
 jclRemoveDD() {
-	jclRemoveOrAddDD "REMOVE" "$1" "$2" "$3" 
+	jclRemoveAddOrReplaceDD "REMOVE" "$1" "$2" "$3" 
 	return $?
 }
+
+jclReplaceDD() {
+	jclRemoveAddOrReplaceDD "REPLACE" "$1" "$2" "$3" "$4"
+	return $?
+}
+
+supportsCICS() {
+	return `definedProperty "$ZBREW_DFHHLQ"`
+}
+
+cicsSYSINUpdate() {
+	sysin="$1"
+	cicskey="$2"
+	cicsvalue="$3"
+
+	case ${cicskey} in
+		GRPLIST)
+			echo "${sysin}"	| awk -vcicsvalue=$cicsvalue '
+				BEGIN {
+					found=0;
+				}
+				/^[ ]*GRPLIST/ {
+					openParen=index($1,"(")
+					closeParen=index($1,")")
+					if (openParen > 0 && closeParen > 0) {
+						origlist=substr($1,openParen+1,closeParen-openParen-1)
+					} else {
+						equals=index($1,"=")
+						if (equals == 0) {
+							exit(16);
+						}
+						origlist=substr($1,equals+1)
+					}
+					found=1
+					print "GRPLIST=("cicsvalue","origlist")"
+					next
+				}
+				/^\.END/ {
+					if (!found) {
+						print "GRPLIST="cicsvalue
+					}
+				}
+				// {
+					print
+				}
+			'
+			;;
+
+		SEC|XTRAN|XCMD|XDCT|XFCT|XHFS|XJCT|XPPT|XPSB|XPTKT|XRES|GMTRAN)
+			# YES or NO is the only valid value, except for GMTRAN where it is a transaction
+			echo "${sysin}" | awk -vcicsvalue=$cicsvalue -vcicskey=$cicskey '
+				BEGIN {
+					found=0;
+				}
+				/^\.END/ {
+					if (!found) {
+						print cicskey"="cicsvalue
+					}
+				}
+				{
+					equals=index($1,"=")
+					if (equals != 0) {
+						origkey=substr($1,1,equals-1)
+						if (origkey==cicskey) {
+							found=1
+							print cicskey"="cicsvalue
+						} else {
+							print
+						}
+					} else {
+						print
+					}
+                                }
+                        '
+			;;
+		*)
+			echo "Unexpected CICS parameter ${cicskey} passed to cicsSYSINUpdate" >&2
+			return 4
+			;;
+	esac
+	return 0
+}
+
+stopCICS() {
+	region=$(echo $1 | tr '[:lower:]' '[:upper:]')
+
+	#
+	# Shutdown any current CICS regions running
+	# Look for either a 'not active' or 'ended' message
+	#
+	timestamp=`opercmd "modify ${region},cemt p shut" 2>/dev/null | tail -1 | awk '{ print $2 " " $3; }'`
+	while [ true ]; do
+		pout=`pcon -s ${timestamp} 2>/dev/null`
+		echo "${pout}" | grep "IEE341I ${region}" | grep "NOT ACTIVE"
+		if [ $? -eq 0 ]; then         
+			break;
+		fi
+	        echo "${pout}" | grep "HASP395 ${region} ENDED" 
+		if [ $?	-eq 0 ]; then      
+			break;
+		fi
+		sleep 1
+	done
+	return 0
+}
+
+startCICS() {
+	region=$(echo $1 | tr '[:lower:]' '[:upper:]')
+
+	#
+	# Shutdown any current CICS regions running
+	# Look for either a 'not active' or 'ended' message
+	#
+	timestamp=`opercmd "start ${region}" 2>/dev/null | tail -1 | awk '{ print $2 " " $3; }'`
+	while [ true ]; do
+		pout=`pcon -s ${timestamp} 2>/dev/null`
+		echo "${pout}" | grep "DFHSI1517 ${region}"
+		if [ $? -eq 0 ]; then         
+			return 0;
+		fi
+		echo "${pout}" | egrep "IEE122I|DFHXS1106"
+		if [ $? -eq 0 ]; then         
+			return 1;
+		fi
+		sleep 1
+	done
+}
+		
