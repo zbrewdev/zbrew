@@ -444,32 +444,80 @@ jclReplaceDD() {
 	return $?
 }
 
+supportsCICS() {
+	return `definedProperty "$ZBREW_DFHHLQ"`
+}
+
 cicsSYSINUpdate() {
 	sysin="$1"
-	cicsparm="$2"
-	addition="$3"
+	cicskey="$2"
+	cicsvalue="$3"
 
-	if [ "${cicsparm}" = "GRPLIST" ]; then
-		echo "${sysin}"	| awk -vaddition=$addition '
-			/^[ ]*GRPLIST/ {
-				openParen=index($1,"(")
-				closeParen=index($1,")")
-				if (openParen > 0 && closeParen > 0) {
-					origlist=substr($1,openParen+1,closeParen-openParen-1)
-				} else {
-					equals=index($1,"=")
-					origlist=substr($1,equals+1)
+	case ${cicskey} in
+		GRPLIST)
+			echo "${sysin}"	| awk -vcicsvalue=$cicsvalue '
+				BEGIN {
+					found=0;
 				}
-				print "GRPLIST=("addition","origlist")"
-				next
-			}
-			// {
-				print
-			}'
-	else
-		echo "Unexpected CICS parameter ${cicsparm} passed to cicsSYSINUpdate" >&2
-		return 4
-	fi
+				/^[ ]*GRPLIST/ {
+					openParen=index($1,"(")
+					closeParen=index($1,")")
+					if (openParen > 0 && closeParen > 0) {
+						origlist=substr($1,openParen+1,closeParen-openParen-1)
+					} else {
+						equals=index($1,"=")
+						if (equals == 0) {
+							exit(16);
+						}
+						origlist=substr($1,equals+1)
+					}
+					found=1
+					print "GRPLIST=("cicsvalue","origlist")"
+					next
+				}
+				/^\.END/ {
+					if (!found) {
+						print "GRPLIST="cicsvalue
+					}
+				}
+				// {
+					print
+				}
+			'
+			;;
+
+		SEC|XTRAN|XCMD|XDCT|XFCT|XHFS|XJCT|XPPT|XPSB|XPTKT|XRES|GMTRAN)
+			# YES or NO is the only valid value, except for GMTRAN where it is a transaction
+			echo "${sysin}" | awk -vcicsvalue=$cicsvalue -vcicskey=$cicskey '
+				BEGIN {
+					found=0;
+				}
+				/^\.END/ {
+					if (!found) {
+						print cicskey"="cicsvalue
+					}
+				}
+				{
+					equals=index($1,"=")
+					if (equals != 0) {
+						origkey=substr($1,1,equals-1)
+						if (origkey==cicskey) {
+							found=1
+							print cicskey"="cicsvalue
+						} else {
+							print
+						}
+					} else {
+						print
+					}
+                                }
+                        '
+			;;
+		*)
+			echo "Unexpected CICS parameter ${cicskey} passed to cicsSYSINUpdate" >&2
+			return 4
+			;;
+	esac
 	return 0
 }
 
