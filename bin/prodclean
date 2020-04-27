@@ -62,7 +62,7 @@ ussname=$(echo ${sw} | tr '[:upper:]' '[:lower:]');
 zosname=$(echo ${sw} | tr '[:lower:]' '[:upper:]');
 prefix=`echo "${ussname}" | awk '{ print substr($1, 0, 3) }'`
 
-smpelibs="${ZBREW_WORKROOT}/zbrew-${prefix}/${ussname}/${ussname}bom.json"
+smpelibs="${ZBREW_REPOROOT}/zbrew-${prefix}/${ussname}/${ussname}bom.json"
 ussname=$(echo ${ussname} | tr '[:lower:]' '[:upper:]')
 
 swparent=`readparent ${ussname} <${smpelibs}`
@@ -102,7 +102,7 @@ if [ "$swchild" != "0" ] && [ "$swchild" != "" ]; then
         for ch in ${swchild}; do
 		swchild_lower=$(echo ${ch} | tr '[:upper:]' '[:lower:]');
 		chprefix=`echo "${swchild_lower}" | awk '{ print substr($1, 0, 3) }'`
-		swdir="${ZBREW_WORKROOT}/zbrew-${chprefix}/${swchild_lower}/"
+		swdir="${ZBREW_REPOROOT}/zbrew-${chprefix}/${swchild_lower}/"
 		if [ -e "${swdir}" ]; then
 	                if [ "${verbose}" = "1" ]; then
 	                        echo " " >&2

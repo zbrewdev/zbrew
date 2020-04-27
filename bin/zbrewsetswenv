@@ -10,9 +10,13 @@
 
 . zbrewsetenv 
 
+if ! [ -d "${ZBREW_WORKROOT}" ]; then
+	echo "zbrewsetswenv: ZBREW_WORKROOT must point to the zbrew work root directory" >&2
+	return 4
+fi
 sw=$(echo $1 | tr '[:upper:]' '[:lower:]');
 ucsw=$(echo $1 | tr '[:lower:]' '[:upper:]');
 prefix=`echo ${sw} | awk '{print substr($0,0,3)}'`
 
-props="${ZBREW_WORKROOT}/zbrew-${prefix}/${sw}/${sw}props.json"
+props="${ZBREW_WORKROOT}/props/${sw}props.json"
 zbrewpropse "${ucsw}" "config" "${props}"
