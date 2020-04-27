@@ -565,4 +565,8 @@ startCICS() {
 		sleep 1
 	done
 }
-		
+	
+supportsIMS() {
+	return `definedProperty "$ZBREW_DFSHLQ"`
+}
+
