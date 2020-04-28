@@ -368,7 +368,7 @@ force=0
 restart="NORESTART"
 opts=""
 workdir=''
-while getopts ":cvdqfrw:" opt; do
+while getopts ":cvdqfr:w:" opt; do
   case ${opt} in
     d )
       debug=1
