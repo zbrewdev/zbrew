@@ -156,6 +156,38 @@ zbrewswinstalled() {
 	return 1
 }
 
+a2e() {
+	file="$1"
+	tmpfile="${ZBREW_TMP}/ascii.$$"
+	iconv -t IBM-1047 -f ISO8859-1 <"${file}" >"${tmpfile}"
+	if [ $? -gt 0 ]; then
+		return $?
+	fi
+
+	mv "${tmpfile}" "${file}"
+	if [ $? -gt 0 ]; then
+		return $?
+	fi
+	chtag -tc IBM-1047 "${file}"
+	return $?
+}
+
+e2a() {
+	file="$1"
+	tmpfile="${ZBREW_TMP}/ascii.$$"
+	iconv -f IBM-1047 -t ISO8859-1 <"${file}" >"${tmpfile}"
+	if [ $? -gt 0 ]; then
+		return $?
+	fi
+
+	mv "${tmpfile}" "${file}"
+	if [ $? -gt 0 ]; then
+		return $?
+	fi
+	chtag -tc ISO8859-1 "${file}"
+	return $?
+}
+
 issueTSO() {
 	cmd=$1
 	tmpout="${ZBREW_TMP}/$$tso.out"
@@ -443,6 +475,67 @@ jclReplaceDD() {
 	jclRemoveAddOrReplaceDD "REPLACE" "$1" "$2" "$3" "$4"
 	return $?
 }
+		
+parmlibAddOrRemoveDataset() {
+	verb="$1"
+	ds="$2"
+	parmlib=`pparm 2>/dev/null`
+	if [ $? -gt 0 ]; then
+		return $?
+	fi
+	if [ "${verb}" = "ADD" ]; then
+		parmlib="${ds}
+${parmlib}"
+	fi
+	newparmlibhfs=/tmp/parmlib.$$.txt
+	newparmlibds=`mvstmp`
+	dtouch "${newparmlibds}"
+	if [ $? -gt 0 ]; then
+		return $?
+	fi
+	for libds in $parmlib; do 
+		if [ "${verb}" = "REMOVE" ] && [ "${libds}" = "${ds}" ]; then
+			continue;
+		fi
+		if [ "${libds}" = "SYS1.PARMLIB" ]; then
+			# SETLOAD will append SYS1.PARMLIB automatically
+			continue;
+		fi
+		dls -l "$libds" | awk ' { printf("%-8s %-44s %6s\n","PARMLIB", $1, $5); }' >>"${newparmlibhfs}"
+		if [ $? -gt 0 ]; then
+			return $?
+		fi
+	done
+	a2e "${newparmlibhfs}"
+	if [ $? -gt 0 ]; then
+		return $?
+	fi
+	dcp "${newparmlibhfs}" "${newparmlibds}(LOAD@@)"	
+	if [ $? -gt 0 ]; then
+		return $?
+	fi
+	rm "${newparmlibhfs}"
+
+	opercmd "SETLOAD @@,PARMLIB,DSN=${newparmlibds}" 2>/dev/null >/dev/null
+	if [ $? -gt 0 ]; then
+		echo "Unable to update parmlib. Temporary dataset: ${newparmlibds} retained" >&2
+		return $?
+	fi
+	drm "${newparmlibds}"
+	return 0 	
+}
+
+parmlibRemoveDataset() {
+	dataset=$(echo $1 | tr '[:lower:]' '[:upper:]');
+	parmlibAddOrRemoveDataset "REMOVE" "${dataset}"
+	return $?
+}
+
+parmlibAddDataset() {
+	dataset=$(echo $1 | tr '[:lower:]' '[:upper:]');
+	parmlibAddOrRemoveDataset "ADD" "${dataset}"
+	return $?
+}
 
 supportsCICS() {
 	return `definedProperty "$ZBREW_DFHHLQ"`
@@ -565,4 +658,3 @@ startCICS() {
 		sleep 1
 	done
 }
-		
