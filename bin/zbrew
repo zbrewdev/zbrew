@@ -3,6 +3,8 @@
 InvalidOption=1
 TooFewParms=2
 UnknownAction=3
+InvalidWorkDir=4
+WorkDirRequired=4
 
 #
 # Temporary hack - replace with a proper message file
@@ -19,6 +21,8 @@ msg() {
 		${InvalidOption}) msgtext="Invalid option specified: -";;
 		${TooFewParms}) msgtext="Too few Parameters specified. Expected 2 but received: ";;
 		${UnknownAction}) msgtext="Unknown action specified: ";;
+		${InvalidWorkDir}) msgtext="Unknown working directory specified: ";;
+		${WorkDirRequired}) msgtext="Working directory must be specified via -w option or through ZBREW_WORKROOT ";;
 		*) msgtext="Internal Error. Unknow msgnum: ${msgnum}";;
 	esac
 	echo "ZCL000"${msgnum}${msgtype} "${msgtext}${args}" >&2
@@ -29,21 +33,26 @@ msg() {
 #
 syntax() {
 	echo "\
-zbrew [-cvdfr] search|order|smpreceiveptf|install|update|receivezos|configure|deconfigure|uninstall <software>
+zbrew [-cvdfrw] search|order|smpreceiveptf|install|update|receivezos|configure|deconfigure|uninstall <software>
 	and <software> is the software to search for
 	(Note that install invokes several functions which are: ${install_verbs})
 	-c: clean files before processing (e.g. delete SMP/E CSI datasets) 
 	-f: forces SMP/E processing to continue through apply checks and other processing when RC=4 
 	-r function_name install: restart install at specific function (function_name must be one of: ${install_verbs})
 	   If concatenating options and using -r it must be the last option..  (eg -cvr)
+	-w workdir: specify the work directory zbrew should use. 
+	   The zbrew work root directory can alternately be specified with ZBREW_WORKROOT environment variable.
 
 Note:
-	zbrew has a properties file called zbrewglobalprops.json. The following properties need to be specified:
-		ZBREW_WORKROOT: 	The writable directory root where ORDER information is provided.
-					Software packages you ORDER will have a corresponding order file called <software>order.json
-					See the README for more details
+	zbrew has files it needs to operate. You provide these files under the directory ZBREW_WORKROOT (see the -w option)
+	ZBREW_WORKROOT has the following files and directories under it:
+	props/zbrewglobalprops.json:	Global properties used for installation and configuration of software packages
+	props/<software>properties.json:Properties used for installation and configuration of the software package <software>
+	order:				Directory of ORDER files describing how software package <software> can be installed
+	pkg:				Directory of software packages to be installed from Passport Advantage
+	config:				Directory containing generated scripts for configuration of software
+	deconfig:			Directory containing generated scripts for de-configuration (removal) of software
 
-	
 Here is a sample order file for COBOL 6.3.0 you would create at \${ZBREW_WORKROOT}/order/igy630order.json
 {
    "software": [{
@@ -65,6 +74,7 @@ zbrew Examples:
 	zbrew search cobol     <-- search for products with COBOL in their description
 	zbrew order igy630     <-- submit an order for IGY630 software (receive can not be performed until complete)
 	zbrew install igy630   <-- check that all pre-reqs required for COBOL are satisfied, then SMP/E RECEIVE/APPLY/ACCEPT the product (with and w/o CHECK)
+	zbrew -w /zbrew/workroot install igy630   <-- install COBOL compiler, specifying the zbrew workroot directory as /zbrew/workroot
 	zbrew -c -v install igy630   <-- do uninstall first and then verbose install
 	zbrew -r smpconfig install igy630   <-- restart install at the smpconfig step
 	zbrew -fr smpapplycheck install igy630   <-- restart install at the smpapplycheck step and ALLOW RC=4
@@ -172,7 +182,7 @@ prodreq() {
 	if [ ${verbose} -gt 0 ]; then
 		echo "Checking requisites ${opts} ${sw}" >&2
 	fi
-	SWDIR="${ZBREW_WORKROOT}/zbrew-${prefix}/${ussname}/"
+	SWDIR="${ZBREW_REPOROOT}/zbrew-${prefix}/${ussname}/"
 	json="${SWDIR}${ussname}req.json"
 	if [ -f "${json}" ]; then
 		smpchkreq ${opts} ${ussname} ${json}
@@ -276,7 +286,7 @@ configure() {
 		echo "Datasets of pattern: ${ZBREW_TGT_HLQ}${zosname}.* already exist. Configuration aborted." >&2
 		return 16
 	fi 
-	prodconfig="${ZBREW_WORKROOT}/zbrew-${prefix}/${ussname}/${ussname}config"
+	prodconfig="${ZBREW_REPOROOT}/zbrew-${prefix}/${ussname}/${ussname}config"
         if ! [ -f "${prodconfig}" ]; then
 		echo "Unable to find product configuration program: ${prodconfig}. Installation failed." >&2
 		zbrewlog "configure RC: 16"
@@ -313,7 +323,7 @@ deconfigure() {
 	        echo "deconfigure ${opts} ${sw}" >&2
 	fi
 
-	proddeconfig="${ZBREW_WORKROOT}/zbrew-${prefix}/${ussname}/${ussname}deconfig"
+	proddeconfig="${ZBREW_REPOROOT}/zbrew-${prefix}/${ussname}/${ussname}deconfig"
         if [ -f "${proddeconfig}" ]; then
      	        ${proddeconfig} ${opts}
 		rc=$?
@@ -323,7 +333,7 @@ deconfigure() {
 	 	fi
 	fi
 	if [ "${ZBREW_TGT_HLQ}" != "${ZBREW_TGT_HLQ%.*}" ]; then
-		bom="${ZBREW_WORKROOT}/zbrew-${prefix}/${ussname}/${ussname}bom.json"
+		bom="${ZBREW_REPOROOT}/zbrew-${prefix}/${ussname}/${ussname}bom.json"
 		if ! [ -f "${bom}" ]; then
 			echo "deconfigure: Unable to find BOM file: ${bom}" >&2
 			zbrewlog "deconfigure RC: $?"
@@ -357,7 +367,8 @@ clean=0
 force=0
 restart="NORESTART"
 opts=""
-while getopts ":cvdqfr:" opt; do
+workdir=''
+while getopts ":cvdqfr:w:" opt; do
   case ${opt} in
     d )
       debug=1
@@ -381,6 +392,13 @@ while getopts ":cvdqfr:" opt; do
 	exit 4
       fi
       ;;
+    w )
+      workdir=${OPTARG}
+      if ! [ -d "${workdir}" ]; then
+      	msg zbrew ${InvalidWorkDir} E "${OPTARG}"
+	exit 8
+      fi
+      ;;
     c )
       clean=1
       ;;
@@ -397,7 +415,7 @@ while getopts ":cvdqfr:" opt; do
 	msg zbrew ${InvalidOption} E "${OPTARG}"
       fi
       syntax
-      exit 4
+      exit 8
       ;;
   esac
 done
@@ -408,6 +426,18 @@ if [ $# -lt 2 ]; then
 	exit 16
 fi
 
+if [ "${workdir}" = '' ]; then
+	workdir="${ZBREW_WORKROOT}"
+fi
+if [ "${workdir}" = '' ]; then
+	msg zbrew ${WorkDirRequired} E 
+	exit 8
+fi
+if ! [ -d "${workdir}" ]; then
+	msg zbrew ${InvalidWorkDir} E "${OPTARG}"
+	exit 4
+fi
+export ZBREW_WORKROOT="${workdir}"
 . zbrewsetenv
 
 sw=$2
@@ -432,7 +462,7 @@ fi
 
 if [ "${clean}" = "1" ]; then
 	prefix=`echo "${ussname}" | awk '{ print substr($1, 0, 3) }'`
-	bomfile="${ZBREW_WORKROOT}/zbrew-${prefix}/${ussname}/${ussname}bom.json"
+	bomfile="${ZBREW_REPOROOT}/zbrew-${prefix}/${ussname}/${ussname}bom.json"
 	swparent=`readparent ${ussname} <${bomfile}`
 	rc=$?
 	if [ $rc -gt 0 ]; then

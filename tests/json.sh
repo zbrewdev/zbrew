@@ -7,7 +7,7 @@
 
 # First, make sure the zhw repo has been installed
 
-zbrewzhw_dir="${ZBREW_WORKROOT}/zbrew-zhw"
+zbrewzhw_dir="${ZBREW_REPOROOT}/zbrew-zhw"
 if ! [ -e "${zbrewzhw_dir}" ]; then
 	echo "Need to install zhw repo to run this test" >&2
 	exit 1

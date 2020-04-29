@@ -60,6 +60,7 @@ There are corresponding git repos for the software packages which have a -<sw> a
 ***How to run zbrew:***
 
 The zbrew program resides in _ZBREWROOT/bin_ directory. You can either run the program with the fully qualified name or you can put the _ZBREWROOT/bin_ directory into your PATH. The instructions that follow assume it is in your PATH. 
+You need to specify a zbrew work root directory that zbrew can read properties from and that it can write results to. You can either export the environment variable: _ZBREW\_WORKROOT_ or you can specify the zbrew work root directory with the -w option on the zbrew command line.
 
 If you do not know the name of the product, issue:
 - zbrew search _string_
@@ -81,7 +82,7 @@ e.g.
 *For ShopZ:*
 - Go into ShopZ and order your CBPDO software as you normally would. You will be send information on how to install, along with a file called _rfnjobs.txt_
 - Copy this file to z/OS under _/tmp/rfnjobs.txt_, then issue:
-- _ZBREWROOT/utils/shopzgenorder sw </tmp/rfnjobs.txt >ZBREWROOT/*sw*order.json_, where _sw is the software you are installing, e.g. eqae20
+- _ZBREWROOT/utils/shopzgenorder sw </tmp/rfnjobs.txt >ZBREW_WORKROOT/*sw*order.json_, where _sw_ is the software you are installing, e.g. eqae20
 
 *For Local zFS file system*
 - Only zhw110 has been created as a local zFS product. The ORDER file for _zhw110order.json_ is:
@@ -91,7 +92,7 @@ e.g.
 		"name":"ZHW110",
 		"order":{
 			"SMPE_DELIVERY":"LOCAL",
-			"SMPE_LOCALREPO":"https://github.com/mikefultonbluemix"
+			"SMPE_LOCALREPO":"https://github.com/zbrewdev"
                  }
 	}]
 }
@@ -99,9 +100,14 @@ e.g.
 
 
 To run zbrew to install and configure a particular software package, issue:
-- zbrew install _sw
-- zbrew configure _sw
-e.g.
+- export ZBREW_WORKROOT=<root>
+- Set up your order, pkg, and props directories
+- zbrew install _sw_
+- zbrew configure _sw_
+e.g. to install and configure zhw110 using the ADCD V24 system configuration:
+- export ZBREW_WORKROOT=$HOME/zbrewwork
+- mkdir ${ZBREW_WORKROOT}/props
+- cp ${ZBREWROOT}/zbrew/zbrewglobalprops_ADCDV24.props ${ZBREW_WORKROOT}/props
 - zbrew install zhw110
 - zbrew configure zhw110
 
