@@ -506,10 +506,10 @@ ${parmlib}"
 			return $?
 		fi
 	done
-	a2e "${newparmlibhfs}"
-	if [ $? -gt 0 ]; then
-		return $?
-	fi
+	#a2e "${newparmlibhfs}"
+	#if [ $? -gt 0 ]; then
+	#	return $?
+	#fi
 	dcp "${newparmlibhfs}" "${newparmlibds}(LOAD@@)"	
 	if [ $? -gt 0 ]; then
 		return $?

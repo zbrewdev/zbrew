@@ -63,25 +63,30 @@ sh -c "(export PATH=$PATH; mvscmd --pgm=HW --sysprint=*)" | grep -q 'Hello world
 zbrewtest "Unable to run hello-world. opercmd output in: ${opout}" "0" "$?"
 
 parmlibAddDataset "${TMPCSV}"	
-zbrewtest "Unable to update (add dataset) parmlib" "0" "$?"
+zbrewtest "Unable to update (add dataset) parmlib. opercmd output in: ${opout}" "0" "$?"
 
 decho "REMOVE(${TMPLOAD})" "${TMPCSV}(CSVLLARM)"
-zbrewtest "Unable to update ${TMPCSV} dataset" "0" "$?"
+zbrewtest "Unable to update ${TMPCSV} dataset. opercmd output in: ${opout}" "0" "$?"
 
 opercmd "MODIFY LLA,UPDATE=RM" >>${opout} 2>&1
 
 parmlibRemoveDataset "${TMPCSV}"	
-zbrewtest "Unable to update (remove dataset) parmlib" "0" "$?"
+zbrewtest "Unable to update (remove dataset) parmlib. opercmd output in: ${opout}" "0" "$?"
 
 opercmd "SETPROG LNKLST DEFINE NAME(${ENDLST}) COPYFROM(CURRENT)" >>${opout} 2>&1 
 opercmd "SETPROG LNKLST DELETE NAME(${ENDLST}) DSNAME(${TMPLOAD})" >>${opout} 2>&1
 opercmd "SETPROG LNKLST ACTIVATE NAME(${ENDLST})" >>${opout} 2>&1
 opercmd "SETPROG LNKLST UNDEFINE NAME(${LNKLST})" >>${opout} 2>&1
 
-sh -c "(export PATH=$PATH; mvscmd --pgm=HW --sysprint=dummy)"
+sh -c "(export PATH=$PATH; mvscmd --pgm=HW --sysprint=dummy 2>/dev/null)"
 zbrewtest "Was able to find hello-world. opercmd output in: ${opout}" "15" "$?"
 
+opercmd "SETPROG LNKLST UNALLOCATE" >>${opout} 2>&1
+drm -f ${TMPLOAD}
+zbrewtest "Unable to delete load module. opercmd output in: ${opout}" "0" "$?"
+opercmd "SETPROG LNKLST ALLOCATE" >>${opout} 2>&1
+
 rm -rf ${tmpsrc} ${tmpo} ${opout}
-drm -f ${TMPLOAD} ${TMPCSV}
+drm -f ${TMPCSV}
 
 exit 0
