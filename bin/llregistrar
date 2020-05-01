@@ -34,9 +34,9 @@ syntax() {
 llregistrar [-vd] <swname> enable|disable [dataset]+
 
 Examples:
-	Enable linklist entry for dataset ZBREW.EQAE20.SEQABMOD
+	Enable linklist and LLA entry for dataset ZBREW.EQAE20.SEQABMOD
 		llregistrar eqae20 enable zbrew.eqae20.seqabmod
-	Disable linklist entry for EQAE20 datasets
+	Disable linklist and LLA entry for EQAE20 datasets
         	llregistrar eqae20 disable
 Note:
 	The PDS \${ZBREW_ROOT}PARMLIB is created if it does not already exist
@@ -49,22 +49,6 @@ Note:
 " >&2
      	exit 8
 }
-
-nextllname() {
-	cur="$1"
-	num=${cur#ZBREW*}
-	if [ "${num}" = "${cur}" ]; then
-		echo "ZBREW1"
-	else
-		if `isinteger ${num}`; then
-			next=`expr $num + 1`
-			echo "ZBREW${next}"
-		else 
-			echo "ZBREW1"
-		fi
-	fi
-}
-		
 
 opts=""         	
 while getopts ":vdf" opt; do
@@ -114,15 +98,6 @@ footer="${pfx} --- ${sw} LNKLST end   --- ${sfx}"
 
 parmlibds="${ZBREW_TGT_HLQ}PARMLIB"
 member="PROG${ZBREW_PARMLIB_SFX}"
-llaresults=`opercmd 'd lla' 2>/dev/null`
-lladatasets=`echo "$llaresults" | awk 'BEGIN { header=0; } { if (header) { print substr($0,60,44) } } / ENTRY/ {header=1}'`
-curllname=`echo "$llaresults" | grep 'LNKLST SET' | awk ' { print $3; }'`
-nextllname=`nextllname "${curllname}"`
-opercmd "SETPROG LNKLST DEFINE NAME(${nextllname}) COPYFROM(CURRENT)" >/dev/null 2>&1
-if [ $? -gt 0 ]; then
-	echo "llregistrar: Unable to define dynamic LNKLST ${nextllname} copying from current" >&2
-	exit 16
-fi
 
 datasets=$(echo $datasets | tr '[:lower:]' '[:upper:]');
 for dataset in ${datasets}; do
@@ -135,27 +110,26 @@ done
 
 if [ "${verb}" = "DISABLE" ]; then
 	registrar "${sw}" "DISABLE" "${parmlibds}" "${member}" "${header}" "${footer}" "${pfx}" "${sfx}"
-	for dataset in ${datasets}; do
-		opercmd "SETPROG LNKLST,DELETE,NAME=${nextllname},DSNAME=${dataset}" >/dev/null 2>&1
-		if [ $? -gt 0 ]; then
-			echo "llregistrar: Unable to delete ${dataset} from linklist" >&2
-			exit 16
-		fi
-	done
-	opercmd "SETPROG LNKLST ACTIVATE NAME(${nextllname})" >/dev/null 2>&1
+	llaRemoveDatasets "${datasets}"
 	if [ $? -gt 0 ]; then
-		echo "llregistrar: Unable to activate ${nextllname}" >&2
+		echo "llregistrar: Unable to remove ${datasets} from link list and LLA" >&2
 		exit 16
 	fi
 	exit $?
 fi
 
 # ENABLE follows
-
 llqs=''
 #
 # add new datasets
 #
+echo "Add datasets ${datasets}"
+llaAddDatasets ${datasets}
+if [ $? -gt 0 ]; then
+	echo "llregistrar: Unable to add ${datasets} to dynamic linklist" >&2
+	exit 16
+fi
+
 for dataset in ${datasets}; do
 	llqs="${llqs} ${dataset##*.}"
 	entry="LNKLST ADD NAME(${iplllname}) DSNAME(${dataset})"
@@ -165,17 +139,12 @@ for dataset in ${datasets}; do
 		text="${entry}
 ${text}"
 	fi
-	opercmd "SETPROG LNKLST,ADD,NAME=${nextllname},DSNAME=${dataset}" >/dev/null 2>&1
-	if [ $? -gt 0 ]; then
-		echo "llregistrar: Unable to add ${dataset} to linklist" >&2
-		exit 16
-	fi
 done
 
 #
-# remove old datasets with the same llq as one of the new datasets and then 
-# re-add them to push them to the bottom (so they are still in the list, but lower search order than new datasets)
+# remove old datasets with the same llq as one of the new datasets
 #
+olddatasets=''
 for lladataset in ${lladatasets}; do
 	llq="${lladataset##*.}"
 	isolddataset=true
@@ -187,25 +156,21 @@ for lladataset in ${lladatasets}; do
 	if ${isolddataset} ; then
 		for newllq in ${llqs}; do
 			if [ "${newllq}" = "${llq}" ]; then
-				opercmd "SETPROG LNKLST,DELETE,NAME=${nextllname},DSNAME=${lladataset}"
-				if [ $? -gt 0 ]; then
-					echo "llregistrar: Unable to (temporarily) delete ${lldataset} from linklist" >&2
-					exit 16
-				fi
-				opercmd "SETPROG LNKLST,ADD,NAME=${nextllname},DSNAME=${lladataset}"
-				if [ $? -gt 0 ]; then
-					echo "llregistrar: Unable to add ${lldataset} from linklist" >&2
-					exit 16
+				olddatasets="${olddatasets} ${lladataset}"
+				entry="LNKLST DELETE NAME(${iplllname}) DSNAME(${lladataset})"
+				if [ "${text}" = "" ]; then
+					text="${entry}"
+				else
+					text="${entry}
+${text}"
 				fi
 			fi
 		done
 	fi
 done
-opercmd "SETPROG LNKLST ACTIVATE NAME(${nextllname})"
-if [ $? -gt 0 ]; then
-	echo "llregistrar: Unable to activate ${nextllname} linklist" >&2
-	exit 16
+if [ "${olddatasets}" != '' ]; then
+	llaRemoveDatasets ${olddatasets}
 fi
-
 registrar "${sw}" "${verb}" "${parmlibds}" "${member}" "${header}" "${footer}" "${pfx}" "${sfx}" "${text}"
+
 exit $?

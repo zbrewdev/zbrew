@@ -26,13 +26,13 @@ echo 'int main() { puts("Hello world"); return(0); }' >${tmpsrc}
 zbrewtest "Unable to compile hello-world" "0" "$?"
 rm "${tmpsrc}" "${tmpo}"
 
-llaAddDataset "${TMPLOAD}"
+llaAddDatasets "${TMPLOAD}"
 zbrewtest "Unable to load ${TMPLOAD} into LLA" "0" "$?"
 
 sh -c "(export PATH=$PATH; mvscmd --pgm=ZHW --sysprint=*)" | grep -q 'Hello world'
 zbrewtest "Unable to run hello-world" "0" "$?"
 
-llaRemoveDataset "${TMPLOAD}"
+llaRemoveDatasets "${TMPLOAD}"
 zbrewtest "Unable to remove ${TMPLOAD} from LLA" "0" "$?"
 
 sh -c "(export PATH=$PATH; mvscmd --pgm=ZHW --sysprint=dummy 2>/dev/null)"

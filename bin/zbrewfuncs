@@ -351,12 +351,12 @@ racfSubjectsDN() {
 }
 
 jclRemoveAddOrReplaceDD() {
-	verb="$1"
+	jverb="$1"
 	jcl="$2"
 	step="$3"
 	dd="$4"
 
-	if [ "${verb}" = "ADD" ] || [ "${verb}" = "REPLACE" ] ; then
+	if [ "${jverb}" = "ADD" ] || [ "${jverb}" = "REPLACE" ] ; then
 		dataset="$5"
 	fi
 
@@ -398,7 +398,7 @@ jclRemoveAddOrReplaceDD() {
 		# If DDName was not there, add it to the end of the step, if operation was not 'REMOVE'
 		echo "${beforeStep}"
 		echo "${stepText}"
-		if [ "${verb}" != "REMOVE" ]; then
+		if [ "${jverb}" != "REMOVE" ]; then
 			echo "//${dd} DD DSN=${dataset},DISP=SHR"
 		fi
 		echo "${afterStep}"
@@ -433,7 +433,7 @@ jclRemoveAddOrReplaceDD() {
 		echo "${beforeDD}"
 	fi
 
-	if [ "${verb}" = "ADD" ]; then
+	if [ "${jverb}" = "ADD" ]; then
 		ddText=`echo "${rest}" | head -n ${endM1}`
 		#
 		# Add the new dataset to the TOP of the DDName concatenation
@@ -446,7 +446,7 @@ jclRemoveAddOrReplaceDD() {
 		echo "//${dd} DD DSN=${dataset},DISP=SHR"
 		echo "//${secondLineDDText}"
 		echo "${ddText}" | tail +2	
-	elif [ "${verb}" = "REPLACE" ]; then
+	elif [ "${jverb}" = "REPLACE" ]; then
 		echo "//${dd} DD DSN=${dataset},DISP=SHR"
 	fi
 
@@ -477,13 +477,13 @@ jclReplaceDD() {
 }
 		
 parmlibAddOrRemoveDataset() {
-	verb="$1"
+	pverb="$1"
 	ds="$2"
 	parmlib=`pparm 2>/dev/null`
 	if [ $? -gt 0 ]; then
 		return $?
 	fi
-	if [ "${verb}" = "ADD" ]; then
+	if [ "${pverb}" = "ADD" ]; then
 		parmlib="${ds}
 ${parmlib}"
 	fi
@@ -494,7 +494,7 @@ ${parmlib}"
 		return $?
 	fi
 	for libds in $parmlib; do 
-		if [ "${verb}" = "REMOVE" ] && [ "${libds}" = "${ds}" ]; then
+		if [ "${pverb}" = "REMOVE" ] && [ "${libds}" = "${ds}" ]; then
 			continue;
 		fi
 		if [ "${libds}" = "SYS1.PARMLIB" ]; then
@@ -589,13 +589,14 @@ llnameUndefined() {
 	fi
 }
 
-llaAddOrRemoveDataset() {
+llaAddOrRemoveDatasets() {
 	#set -x
-	verb=$(echo $1 | tr '[:lower:]' '[:upper:]');
-	dataset=$(echo $2 | tr '[:lower:]' '[:upper:]');
+	lverb=$(echo $1 | tr '[:lower:]' '[:upper:]');
+	shift
+	datasets=$(echo $* | tr '[:lower:]' '[:upper:]');
 
-	if [ "${dataset}" = '' ]; then
-		echo "Syntax: llaAddOrRemoveDataset ADD|REMOVE <dataset>" >&2
+	if [ "${datasets}" = '' ]; then
+		echo "Syntax: llaAddOrRemoveDatasets ADD|REMOVE [<dataset>]+" >&2
 		exit 16
 	fi
 
@@ -614,25 +615,30 @@ llaAddOrRemoveDataset() {
 		if `llnameUndefined "${nextllname}"` ; then	
 			break;
 		fi
+		curllname="${nextllname}"
 	done
 
 	opout="${ZBREW_TMP}/llaAddRemoveDatasets.$$.out"
 	rm -f "${opout}"
 
 	opercmd "SETPROG LNKLST DEFINE NAME(${nextllname}) COPYFROM(CURRENT)" >>${opout} 2>&1
-	if [ "${verb}" = "ADD" ]; then
-		opercmd "SETPROG LNKLST ADD NAME(${nextllname}) DSNAME(${dataset})" >>${opout} 2>&1
-	elif [ "${verb}" = "REMOVE" ]; then
-		opercmd "SETPROG LNKLST DELETE NAME(${nextllname}) DSNAME(${dataset})" >>${opout} 2>&1
+	if [ "${lverb}" = "ADD" ]; then
+		for dataset in ${datasets}; do
+			opercmd "SETPROG LNKLST ADD NAME(${nextllname}) DSNAME(${dataset})" >>${opout} 2>&1
+		done
+	elif [ "${lverb}" = "REMOVE" ]; then
+		for dataset in ${datasets}; do
+			opercmd "SETPROG LNKLST DELETE NAME(${nextllname}) DSNAME(${dataset})" >>${opout} 2>&1
+		done
 	else
-		echo "VERB must be ADD or REMOVE. ${verb} specified." >&2
+		echo "VERB must be ADD or REMOVE. ${lverb} specified." >&2
 		return 8
 	fi
 	opercmd "SETPROG LNKLST ACTIVATE NAME(${nextllname})" >>${opout} 2>&1
 	llerr=`cat "${opout}"`
 	rm -f "${opout}"
 
-	if [ "${verb}" = "REMOVE" ]; then
+	if [ "${lverb}" = "REMOVE" ]; then
 		parmlibAddDataset "${TMPCSV}"
 		rc=$?
 		if [ $rc -gt 0 ]; then
@@ -640,8 +646,10 @@ llaAddOrRemoveDataset() {
 			echo "${llerr}" >&2
 			return $rc
 		fi
-
-		decho "REMOVE(${dataset})" "${TMPCSV}(CSVLLA@@)"
+		decho "/* Remove a set of Datasets */" "${TMPCSV}(CSVLLA@@)"
+		for dataset in ${datasets}; do
+			decho -a "REMOVE(${dataset})" "${TMPCSV}(CSVLLA@@)"
+		done
 		rc=$?
 		if [ $rc -gt 0 ]; then
 			echo "Unable to update temporary member CSVLLA@@ in dataset ${TMPCSV}" >&2
@@ -665,13 +673,13 @@ llaAddOrRemoveDataset() {
 	return 0
 }
 
-llaRemoveDataset() {
-	llaAddOrRemoveDataset "REMOVE" "$1"
+llaRemoveDatasets() {
+	llaAddOrRemoveDatasets "REMOVE" "$1"
         return $?
 }
 
-llaAddDataset() {
-	llaAddOrRemoveDataset "ADD" "$1"
+llaAddDatasets() {
+	llaAddOrRemoveDatasets "ADD" "$1"
         return $?
 }
 
