@@ -156,6 +156,38 @@ zbrewswinstalled() {
 	return 1
 }
 
+a2e() {
+	file="$1"
+	tmpfile="${ZBREW_TMP}/ascii.$$"
+	iconv -t IBM-1047 -f ISO8859-1 <"${file}" >"${tmpfile}"
+	if [ $? -gt 0 ]; then
+		return $?
+	fi
+
+	mv "${tmpfile}" "${file}"
+	if [ $? -gt 0 ]; then
+		return $?
+	fi
+	chtag -tc IBM-1047 "${file}"
+	return $?
+}
+
+e2a() {
+	file="$1"
+	tmpfile="${ZBREW_TMP}/ascii.$$"
+	iconv -f IBM-1047 -t ISO8859-1 <"${file}" >"${tmpfile}"
+	if [ $? -gt 0 ]; then
+		return $?
+	fi
+
+	mv "${tmpfile}" "${file}"
+	if [ $? -gt 0 ]; then
+		return $?
+	fi
+	chtag -tc ISO8859-1 "${file}"
+	return $?
+}
+
 issueTSO() {
 	cmd=$1
 	tmpout="${ZBREW_TMP}/$$tso.out"
@@ -319,12 +351,12 @@ racfSubjectsDN() {
 }
 
 jclRemoveAddOrReplaceDD() {
-	verb="$1"
+	jverb="$1"
 	jcl="$2"
 	step="$3"
 	dd="$4"
 
-	if [ "${verb}" = "ADD" ] || [ "${verb}" = "REPLACE" ] ; then
+	if [ "${jverb}" = "ADD" ] || [ "${jverb}" = "REPLACE" ] ; then
 		dataset="$5"
 	fi
 
@@ -366,7 +398,7 @@ jclRemoveAddOrReplaceDD() {
 		# If DDName was not there, add it to the end of the step, if operation was not 'REMOVE'
 		echo "${beforeStep}"
 		echo "${stepText}"
-		if [ "${verb}" != "REMOVE" ]; then
+		if [ "${jverb}" != "REMOVE" ]; then
 			echo "//${dd} DD DSN=${dataset},DISP=SHR"
 		fi
 		echo "${afterStep}"
@@ -401,7 +433,7 @@ jclRemoveAddOrReplaceDD() {
 		echo "${beforeDD}"
 	fi
 
-	if [ "${verb}" = "ADD" ]; then
+	if [ "${jverb}" = "ADD" ]; then
 		ddText=`echo "${rest}" | head -n ${endM1}`
 		#
 		# Add the new dataset to the TOP of the DDName concatenation
@@ -414,7 +446,7 @@ jclRemoveAddOrReplaceDD() {
 		echo "//${dd} DD DSN=${dataset},DISP=SHR"
 		echo "//${secondLineDDText}"
 		echo "${ddText}" | tail +2	
-	elif [ "${verb}" = "REPLACE" ]; then
+	elif [ "${jverb}" = "REPLACE" ]; then
 		echo "//${dd} DD DSN=${dataset},DISP=SHR"
 	fi
 
@@ -442,6 +474,213 @@ jclRemoveDD() {
 jclReplaceDD() {
 	jclRemoveAddOrReplaceDD "REPLACE" "$1" "$2" "$3" "$4"
 	return $?
+}
+		
+parmlibAddOrRemoveDataset() {
+	pverb="$1"
+	ds="$2"
+	parmlib=`pparm 2>/dev/null`
+	if [ $? -gt 0 ]; then
+		return $?
+	fi
+	if [ "${pverb}" = "ADD" ]; then
+		parmlib="${ds}
+${parmlib}"
+	fi
+	newparmlibhfs=/tmp/parmlib.$$.txt
+	newparmlibds=`mvstmp`
+	dtouch "${newparmlibds}"
+	if [ $? -gt 0 ]; then
+		return $?
+	fi
+	for libds in $parmlib; do 
+		if [ "${pverb}" = "REMOVE" ] && [ "${libds}" = "${ds}" ]; then
+			continue;
+		fi
+		if [ "${libds}" = "SYS1.PARMLIB" ]; then
+			# SETLOAD will append SYS1.PARMLIB automatically
+			continue;
+		fi
+		dls -l "$libds" | awk ' { printf("%-8s %-44s %6s\n","PARMLIB", $1, $5); }' >>"${newparmlibhfs}"
+		if [ $? -gt 0 ]; then
+			return $?
+		fi
+	done
+	#a2e "${newparmlibhfs}"
+	#if [ $? -gt 0 ]; then
+	#	return $?
+	#fi
+	dcp "${newparmlibhfs}" "${newparmlibds}(LOAD@@)"	
+	if [ $? -gt 0 ]; then
+		return $?
+	fi
+	rm "${newparmlibhfs}"
+
+	opercmd "SETLOAD @@,PARMLIB,DSN=${newparmlibds}" 2>/dev/null >/dev/null
+	if [ $? -gt 0 ]; then
+		echo "Unable to update parmlib. Temporary dataset: ${newparmlibds} retained" >&2
+		return $?
+	fi
+	drm "${newparmlibds}"
+	return 0 	
+}
+
+parmlibRemoveDataset() {
+	parmdataset=$(echo $1 | tr '[:lower:]' '[:upper:]');
+	parmlibAddOrRemoveDataset "REMOVE" "${parmdataset}"
+	return $?
+}
+
+parmlibAddDataset() {
+	parmdataset=$(echo $1 | tr '[:lower:]' '[:upper:]');
+	parmlibAddOrRemoveDataset "ADD" "${parmdataset}"
+	return $?
+}
+
+curllname() {
+	opout="${ZBREW_TMP}/curllname.$$.out"
+	llaresults=`opercmd 'D LLA' 2>${opout}`
+	llaerr=`cat "${opout}"`
+	rm -f "${opout}"
+
+	lladatasets=`echo "$llaresults" | awk 'BEGIN { header=0; } { if (header) { print substr($0,60,44) } } / ENTRY/ {header=1}'`
+	if [ $? -gt 0 ]; then
+		echo "${laerr}" >&2
+		return $?
+	fi
+	curllname=`echo "$llaresults" | grep 'LNKLST SET' | awk ' { print $3; }'`
+	if [ $? -gt 0 ]; then
+		echo "${laerr}" >&2
+		return $?
+	fi
+	echo "${curllname}"
+	return 0
+}
+
+nextllname() {
+	cur="$1"
+	pfx="$2"
+
+	if [ "${pfx}" = '' ]; then
+		echo "Syntax: nextllname <cur> <pfx>" >&2
+		exit 16
+	fi
+	num=${cur#${pfx}*}
+	if [ "${num}" = "${cur}" ]; then
+		echo "${pfx}1"
+	else
+            	if `isinteger ${num}`; then
+                        next=`expr $num + 1`
+                        echo "${pfx}${next}"
+		else
+                    	echo "${pfx}1"
+		fi
+	fi
+}
+
+llnameUndefined() {
+	name="$1"
+
+	opercmd "D PROG,LNKLST,NAME=${name}" 2>/dev/null | grep -q CSV480I
+	if [ $? -eq 0 ]; then
+		echo true
+	else
+		echo false
+	fi
+}
+
+llaAddOrRemoveDatasets() {
+	#set -x
+	lverb=$(echo $1 | tr '[:lower:]' '[:upper:]');
+	shift
+	datasets=$(echo $* | tr '[:lower:]' '[:upper:]');
+
+	if [ "${datasets}" = '' ]; then
+		echo "Syntax: llaAddOrRemoveDatasets ADD|REMOVE [<dataset>]+" >&2
+		exit 16
+	fi
+
+	TMPCSV=`mvstmp`
+
+	dtouch "${TMPCSV}"
+	rc=$?
+	if [ $rc -gt 0 ]; then
+		echo "Unable to allocate temporary dataset ${TMPCSV}" >&2
+		return $rc
+	fi
+
+	curllname=`curllname`
+	while true ; do
+		nextllname=`nextllname "${curllname}" "ZBREW"`
+		if `llnameUndefined "${nextllname}"` ; then	
+			break;
+		fi
+		curllname="${nextllname}"
+	done
+
+	opout="${ZBREW_TMP}/llaAddRemoveDatasets.$$.out"
+	rm -f "${opout}"
+
+	opercmd "SETPROG LNKLST DEFINE NAME(${nextllname}) COPYFROM(CURRENT)" >>${opout} 2>&1
+	if [ "${lverb}" = "ADD" ]; then
+		for dataset in ${datasets}; do
+			opercmd "SETPROG LNKLST ADD NAME(${nextllname}) DSNAME(${dataset})" >>${opout} 2>&1
+		done
+	elif [ "${lverb}" = "REMOVE" ]; then
+		for dataset in ${datasets}; do
+			opercmd "SETPROG LNKLST DELETE NAME(${nextllname}) DSNAME(${dataset})" >>${opout} 2>&1
+		done
+	else
+		echo "VERB must be ADD or REMOVE. ${lverb} specified." >&2
+		return 8
+	fi
+	opercmd "SETPROG LNKLST ACTIVATE NAME(${nextllname})" >>${opout} 2>&1
+	llerr=`cat "${opout}"`
+	rm -f "${opout}"
+
+	if [ "${lverb}" = "REMOVE" ]; then
+		parmlibAddDataset "${TMPCSV}"
+		rc=$?
+		if [ $rc -gt 0 ]; then
+			echo "Unable to update parmlib to add dataset ${TMPCSV}" >&2
+			echo "${llerr}" >&2
+			return $rc
+		fi
+		decho "/* Remove a set of Datasets */" "${TMPCSV}(CSVLLA@@)"
+		for dataset in ${datasets}; do
+			decho -a "REMOVE(${dataset})" "${TMPCSV}(CSVLLA@@)"
+		done
+		rc=$?
+		if [ $rc -gt 0 ]; then
+			echo "Unable to update temporary member CSVLLA@@ in dataset ${TMPCSV}" >&2
+			return $rc
+		fi
+
+		opercmd "MODIFY LLA,UPDATE=@@" >>${opout} 2>&1
+		opercmd "SETPROG LNKLST UNALLOCATE" >>${opout} 2>&1
+		opercmd "SETPROG LNKLST ALLOCATE" >>${opout} 2>&1
+		llerr=`cat "${opout}"`
+		rm -f "${opout}"
+
+		parmlibRemoveDataset "${TMPCSV}"
+		rc=$?
+		if [ $rc -gt 0 ]; then
+			echo "Unable to update parmlib to remove dataset ${TMPCSV}" >&2
+			echo "${llerr}" >&2
+			return $rc
+		fi
+	fi
+	return 0
+}
+
+llaRemoveDatasets() {
+	llaAddOrRemoveDatasets "REMOVE" "$1"
+        return $?
+}
+
+llaAddDatasets() {
+	llaAddOrRemoveDatasets "ADD" "$1"
+        return $?
 }
 
 supportsCICS() {
@@ -608,6 +847,3 @@ vsamcp() {
 	rm -rf "${sysprint}"
 	return $?
 }
-
-	
-		
