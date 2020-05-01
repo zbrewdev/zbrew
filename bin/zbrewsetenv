@@ -45,7 +45,16 @@ zbrewroot="${zbrewdir%/*}"
 
 export mydir=$(callerdir ${0})
 
-props="${zbrewroot}/zbrewglobalprops.json"
+if ! [ -d "${ZBREW_WORKROOT}" ]; then
+	echo "zbrewsetenv: ZBREW_WORKROOT must point to the zbrew work root directory" >&2
+	return 4
+fi
+
+props="${ZBREW_WORKROOT}/props/zbrewglobalprops.json"
 zbrewpropse zbrew config "${props}"
 
 export ZBREW_ROOT=${zbrewroot}
+if `undefinedProperty "${ZBREW_REPOROOT}"` ; then
+	reporoot="${zbrewroot%/*}"
+	ZBREW_REPOROOT="${reporoot}"
+fi

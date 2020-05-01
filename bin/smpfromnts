@@ -111,7 +111,7 @@ prefix=`echo "${zosname}" | awk '{ print substr($1, 0, 3) }'`
 lprefix=`echo "${ussname}" | awk '{ print substr($1, 0, 3) }'`
 NTS="${ZBREW_TMP}/smpnts.${zosname}"
 
-bomfile="${ZBREW_WORKROOT}/zbrew-${lprefix}/${ussname}/${ussname}bom.json"
+bomfile="${ZBREW_REPOROOT}/zbrew-${lprefix}/${ussname}/${ussname}bom.json"
 swparent=`readparent ${ussname} <${bomfile}`
 rc=$?
 if [ $rc -gt 0 ]; then
@@ -129,13 +129,13 @@ if [ "$prefix" = "ZHW" ]; then
         rm -rf /$ZBREW_TMP/smpnts.ZHW110 2>/dev/null
 	order='order1'
         mkdir -p "${NTS}/${order}"
-        prodpkg="${ZBREW_WORKROOT}/zbrew-${lprefix}/${ussname}/${ussname}crtpkg"
+        prodpkg="${ZBREW_REPOROOT}/zbrew-${lprefix}/${ussname}/${ussname}crtpkg"
         if [ -f "${prodpkg}" ]; then
                 ${prodpkg} ${NTS}/${order}
                 rc=$?
         else
-                echo "Unable to find product packaging program: ${prodpkg}. Installation failed."
-                return 16
+                echo "Unable to find product packaging program: ${prodpkg}. Installation failed." >&2
+                exit 16
         fi
 fi
 

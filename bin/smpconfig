@@ -48,9 +48,7 @@ Examples:
 definecsicluster() {
      name="$1"
 
-     echo "  LISTCAT ENTRIES(${dataset})" | mvscmdauth --pgm=idcams --sysprint=dummy --sysin=stdin
-     rc=$?
-     if [ $rc -eq 0 ]; then
+     if `vsamexists "${name}"`; then
 	echo "SMP/E dataset: ${name} already exists. Run with -c to re-create if required" >&2
 	return 16
      fi
@@ -296,7 +294,7 @@ ussname=$(echo ${sw} | tr '[:upper:]' '[:lower:]');
 zosname=$(echo ${sw} | tr '[:lower:]' '[:upper:]');
 prefix=`echo "${ussname}" | awk '{ print substr($1, 0, 3) }'`
 
-bomfile="${ZBREW_WORKROOT}/zbrew-${prefix}/${ussname}/${ussname}bom.json"
+bomfile="${ZBREW_REPOROOT}/zbrew-${prefix}/${ussname}/${ussname}bom.json"
 swparent=`readparent ${ussname} <${bomfile}`
 rc=$?
 if [ $rc -gt 0 ]; then
