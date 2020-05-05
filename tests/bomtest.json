@@ -1,7 +1,7 @@
 { 
 	"software": [
 	{
-		"name":"BOMTEST",
+		"relid":"BOMTEST",
 		"parent":"PARENT1",
 		"child":["CHILD1","CHILD2","CHILD3"],
 		"datasets":[ 

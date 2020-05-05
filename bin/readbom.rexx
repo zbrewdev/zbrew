@@ -21,7 +21,7 @@ Arg swname .
     return rc
   end
   do el = 1 to json.software.0
-    entry = json.software.el.name
+    entry = json.software.el.relid
     if (entry = swname) then do
       do d = 1 to json.software.el.datasets.0
         n = json.software.el.datasets.d.dsname

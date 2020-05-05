@@ -21,7 +21,7 @@ if (rc <> 0) then do
 end
 
 do el = 1 to json.software.0
-  entry = json.software.el.name
+  entry = json.software.el.relid
   if (entry = swname) then do
     props = json.software.el.category
     do p = 1 to json.software.el.category.0

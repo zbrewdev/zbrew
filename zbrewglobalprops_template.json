@@ -1,6 +1,6 @@
 {
  	"software": [{
-		"name":"ZBREW",
+		"relid":"ZBR100",
 		"config":{
 			"ZBREW_TMP_MINSPACE":"250000",
 			"ZBREW_TMP":"/tmp",
