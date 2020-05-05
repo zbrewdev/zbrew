@@ -19,4 +19,4 @@ ucsw=$(echo $1 | tr '[:lower:]' '[:upper:]');
 prefix=`echo ${sw} | awk '{print substr($0,0,3)}'`
 
 props="${ZBREW_WORKROOT}/props/${sw}props.json"
-zbrewpropse "${ucsw}" "config" "${props}"
+zbrewpropse "${ucsw}" "props" "${props}"

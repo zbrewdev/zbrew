@@ -33,5 +33,5 @@ do el = 1 to json.software.0
   end
 end
 
-SayErr 'readprops: Unable to find software: ' || swname
+call SayErr 'readprops: Unable to find software: ' || swname
 return 4
