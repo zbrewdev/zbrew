@@ -53,6 +53,51 @@ zbrewlog() {
 	echo "${log_time} ${log_msg}" >> ${log_dir}
 }	
 
+zbrewdeploy() {
+	dir="$1"
+	bom="$2"
+
+	if [ "${bom}" = "" ] || ! [ -d "${dir}" ] || ! [ -f "${bom}" ]; then
+		echo "Syntax: zbrewdeploy <directory> <bom>" >&2
+		echo "Deploy the bill of materials to the specified directory" >&2
+		return 8
+	fi
+	rm -rf "${dir}"
+	mkdir -p "${dir}"
+	rc=$?
+	if [ $rc -gt 0 ]; then
+		echo "zbrewdeploy: Unable to make directory: ${dir}" >&2
+		return $rc
+	fi
+
+	names=`cat "${bom}"`
+	rc=$?
+	if [ $rc -gt 0 ]; then
+		echo "zbrewdeploy: Unable to read bom file: ${bom}" >&2
+		return $rc
+	fi
+	code="${names}"
+	for c in ${code}; do
+		path=${c%%/*}
+		if [ "${path}" != "${c}" ]; then
+			mkdir -p "${dir}/${path}"
+			rc=$?
+			if [ $rc -gt 0 ]; then
+				echo "zbrewdeploy: Unable to make directory: ${dir}/${path}" >&2
+				return $rc
+			fi
+		fi
+		cp -p "${c}" "${dir}/${c}"
+		rc=$?
+		if [ $rc -gt 0 ]; then
+			echo "zbrewdeploy: Unable to copy file ${c} to file ${dir}/${c}" >&2
+			return $rc
+		fi
+	done
+	return 0	
+}
+
+	
 zbrewtest() {
 	lmsg="$1"
 	lexpected="$2"

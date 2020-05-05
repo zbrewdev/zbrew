@@ -91,8 +91,7 @@ e.g.
  	"software": [{
 		"name":"ZHW110",
 		"order":{
-			"SMPE_DELIVERY":"LOCAL",
-			"SMPE_LOCALREPO":"https://github.com/zbrewdev"
+			"SMPE_DELIVERY":"LOCAL"
                  }
 	}]
 }

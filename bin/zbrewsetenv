@@ -51,7 +51,7 @@ if ! [ -d "${ZBREW_WORKROOT}" ]; then
 fi
 
 props="${ZBREW_WORKROOT}/props/zbrewglobalprops.json"
-zbrewpropse zbrew config "${props}"
+zbrewpropse zbr100 "props" "${props}"
 
 export ZBREW_ROOT=${zbrewroot}
 if `undefinedProperty "${ZBREW_REPOROOT}"` ; then
