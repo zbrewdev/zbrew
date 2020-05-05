@@ -78,7 +78,7 @@ zbrewdeploy() {
 	fi
 	code="${names}"
 	for c in ${code}; do
-		path=${c%%/*}
+		path=${c%/*}
 		if [ "${path}" != "${c}" ]; then
 			mkdir -p "${dir}/${path}"
 			rc=$?
