@@ -14,6 +14,52 @@
             "description": "ID of the software package in the form <SW>VRM where <SW> is the 3 character software id and VRM is the version, release, modification of the software in question",
             "type":"string"
           },
+          "order": {
+            "description": "Information required to install the software package",
+            "type": "object", 
+            "properties": {
+              "PRODUCT_CODE": {
+                "description": "Required for Software using IBM Software Registration",
+                "type": "string"
+              },              
+              "PRODUCT_NAME": {
+                "description": "Required for Software using IBM Software Registration",
+                "type": "string"
+              },              
+              "FEATURE_NAME": {
+                "description": "Required for Software using IBM Software Registration",
+                "type": "string"
+              },              
+              "SMPE_DELIVERY": {
+                "description": "One of: SHOPZ, PPA, LOCAL",
+                "type": "string"
+              },                            
+              "SMPE_FTPHOST": {
+                "description": "Required for software to be received from SHOPZ",
+                "type": "string"
+              },              
+              "SMPE_FTPUSER": {
+                "description": "Required for software to be received from SHOPZ",
+                "type": "string"
+              },              
+              "SMPE_FTPPW": {
+                "description": "Required for software to be received from SHOPZ",
+                "type": "string"
+              },              
+              "SMPE_FTPFILE": {
+                "description": "Required for software to be received from SHOPZ",
+                "type": "string"
+              },              
+              "SMPE_FTPHASH": {
+                "description": "Required for software to be received from SHOPZ",
+                "type": "string"
+              },
+              "SMPE_FTPID": {
+                "description": "Required for software to be received from SHOPZ",
+                "type": "string"
+              }
+            }
+          },
           "prereq": {
             "description": "List of pre-requisite software required for this software package",
             "type": "array", 
@@ -105,8 +151,7 @@
                 }
               }
             } 
-            }  
-          },          
+            },           
           "datasets": {
             "description": "List of datasets in the software package",
             "type": "array", 
@@ -171,4 +216,4 @@
       }
     }
   }
-} 
+}
