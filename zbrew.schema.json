@@ -1,0 +1,99 @@
+{
+  "$id": "https://zbrew.dev/zbrew/zbrew.schema.json",
+  "$schema": "http://json-schema.org/2019-09/schema#",
+  "title": "zbrew software package json schema",
+  "type": "object",
+  "properties": {
+    "software": {
+      "description": "zbrew Software Package object",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "relid": {
+            "description": "Name of the software package in the form <SW>VRM where <SW> is the 3 character software id and VRM is the version, release, modification of the software in question",
+            "type":"string"
+          },
+          "prereq": {
+            "description": "List of pre-requisite software required for this software package",
+            "type": "array", 
+            "items": {
+              "type": "object",
+              "properties": {
+              }
+            }  
+          }, 
+          "coreq": {
+            "description": "List of co-requisite software required for this software package",
+            "type": "array", 
+            "items": {
+              "type": "object",
+              "properties": {
+              }
+            }  
+          },          
+          "datasets": {
+            "description": "List of datasets in the software package",
+            "type": "array", 
+            "items": {
+              "type": "object",
+              "properties": {
+                "dsname": {
+                  "description": "SMP/E Dataset name",
+                  "type": "string"
+                },
+                "dstype": {
+                  "description": "Type of dataset (PDSE, PDS, ZFS, SEQ)",
+                  "type": "string",
+                  "default": "PDSE"
+                },
+                "recfm": {
+                  "description": "SMP/E Dataset name",
+                  "type": "string",
+                  "default": "FB"
+                },
+                "lrecl": {
+                  "description": "Logical Record length (FB, VB, FBA, VBA, U)"
+                  "type": "integer",
+                  "minimum": 0, 
+                  "maximum": 32760,
+                  "default": "80 for fixed datasets (FB, FBA), 137 for variable datasets (VB, VBA), 0 for unformatted datasets (U). For variable datasets, the length must include the 4-byte prefix area"
+                },                    
+                "primary": {
+                  "description": "Primary size for dataset (in tracks)",
+                  "type": "integer",
+                  "minimum": 1
+                },                
+                "secondary": {
+                  "description": "Secondary size for dataset (in tracks)",
+                  "type": "integer",
+                  "minimum": 1
+                },                
+                "zones": {
+                  "description": "SMP/E Zones (currently restricted to one zone)",     
+                  "type": "array",
+                  "items": {
+                    "description": "SMP/E Zone",
+                    "type":"string"
+                  }                  
+                },                
+                "dddefpath": {
+                  "description": "DDDEF Path for ZFS Dataset",
+                  "type": "string"
+                },                
+                "mountpnt": {
+                  "description": "Mount point for ZFS Dataset",
+                  "type": "string"
+                },                
+                "leaves": {
+                  "description": "Comma-delimited set of leaves for ZFS Dataset (to become an array)",                
+                  "type": "string",
+                },              
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
