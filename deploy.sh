@@ -1,5 +1,5 @@
 #!/bin/sh
 . zbrewsetenv 
 
-zbrewdeploy $1 zbrew.bom
+zbrewdeploy "$1" zbrewbin.bom
 exit $? 
