@@ -11,7 +11,7 @@
         "type": "object",
         "properties": {
           "relid": {
-            "description": "Name of the software package in the form <SW>VRM where <SW> is the 3 character software id and VRM is the version, release, modification of the software in question",
+            "description": "ID of the software package in the form <SW>VRM where <SW> is the 3 character software id and VRM is the version, release, modification of the software in question",
             "type":"string"
           },
           "prereq": {
@@ -20,6 +20,43 @@
             "items": {
               "type": "object",
               "properties": {
+                "prodid": {
+                  "description": "ID of the pre-requisite software package in the form <SW> where <SW> is the 3 character software id in question",
+                  "type": "string"
+                },
+                "release": {
+                  "description": "List of releases of this pre-requisite software supported by the software package",
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "relid": {
+                        "description": "ID of the pre-requisite software package in the form <SW>VRM where <SW> is the 3 character software id and VRM is the version, release, modification of the software in question",
+                        "type": "string"                      
+                      },
+                      "fmids": {
+                        "description": "List of FMIDs of this pre-requisite software supported by the software package",
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "fmid": {
+                              "description": "ID of the pre-requisite software FMID in question",
+                              "type": "string"
+                            },
+                            "ptfs": {
+                              "description": "List of PTFs of this pre-requisite software required by the software package",
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              } 
+                            }                          
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
               }
             }  
           }, 
@@ -29,7 +66,45 @@
             "items": {
               "type": "object",
               "properties": {
+                "prodid": {
+                  "description": "ID of the co-requisite software package in the form <SW> where <SW> is the 3 character software id in question",
+                  "type": "string"
+                },
+                "release": {
+                  "description": "List of releases of this co-requisite software supported by the software package",
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "relid": {
+                        "description": "ID of the co-requisite software package in the form <SW>VRM where <SW> is the 3 character software id and VRM is the version, release, modification of the software in question",
+                        "type": "string"                      
+                      },
+                      "fmids": {
+                        "description": "List of FMIDs of this co-requisite software supported by the software package",
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "fmid": {
+                              "description": "ID of the co-requisite software FMID in question",
+                              "type": "string"
+                            },
+                            "ptfs": {
+                              "description": "List of PTFs of this co-requisite software required by the software package",
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              } 
+                            }                          
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
               }
+            } 
             }  
           },          
           "datasets": {
@@ -96,4 +171,4 @@
       }
     }
   }
-}
+} 
