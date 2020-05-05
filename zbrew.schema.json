@@ -14,6 +14,10 @@
             "description": "ID of the software package in the form <SW>VRM where <SW> is the 3 character software id and VRM is the version, release, modification of the software in question",
             "type":"string"
           },
+          "parent": {
+            "description": "ID of the owning software package in the form <SW>VRM where <SW> is the 3 character software id and VRM is the version, release, modification of the software in question. Only required if this software package must be installed with an enclosing package and not stand-alone.",
+            "type":"string"
+          },
           "order": {
             "description": "Information required to install the software package",
             "type": "object", 
