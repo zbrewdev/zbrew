@@ -288,7 +288,7 @@ configure() {
 	fi 
 	prodconfig="${ZBREW_REPOROOT}/zbrew-${prefix}/${ussname}/${ussname}config"
         if ! [ -f "${prodconfig}" ]; then
-		echo "Unable to find product configuration program: ${prodconfig}. Installation failed." >&2
+		echo "Unable to find product configuration program: ${prodconfig} for ${ussname}. Configure failed." >&2
 		zbrewlog "configure RC: 16"
                 return 16               
 	fi
@@ -331,6 +331,10 @@ deconfigure() {
 			zbrewlog "deconfigure RC: $?"
 			return $rc
 	 	fi
+	else 
+		echo "Error: unable to find ${proddeconfig} to deconfigure ${ussname}. Deconfigure failed." >&2
+		zbrewlog "deconfigure RC: 8"
+		return 8
 	fi
 	if [ "${ZBREW_TGT_HLQ}" != "${ZBREW_TGT_HLQ%.*}" ]; then
 		bom="${ZBREW_REPOROOT}/zbrew-${prefix}/${ussname}/${ussname}bom.json"
