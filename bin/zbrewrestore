@@ -70,7 +70,7 @@ if ! [ -f "${bom}" ]; then
 	exit $rc
 fi
 
-mountpoints=`readbom "${ussname}" <"${bom}" | awk ' { if ($2 == "ZFS") { print $1 ":" $6; }}'`
+mountpoints=`readbom "${ussname}" <"${bom}" | awk ' { if ($2 == "ZFS") { print $1 ":" $7; }}'`
 rc=$?
 if [ $rc -gt 0 ]; then
 	echo "zbrewrestore: Unable to read BOM file: ${bom}" >&2
