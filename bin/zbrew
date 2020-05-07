@@ -343,7 +343,7 @@ deconfigure() {
 			zbrewlog "deconfigure RC: $?"
 			return $rc
 		fi
-		mountpoints=`readbom "${ussname}" <"${bom}" | awk ' { if ($2 == "ZFS") { print $6; }}'`
+		mountpoints=`readbom "${ussname}" <"${bom}" | awk ' { if ($2 == "ZFS") { print $7; }}'`
 		rc=$?
 		if [ $rc -gt 0 ]; then
 			echo "deconfigure: Unable to read BOM file: ${bom}" >&2
