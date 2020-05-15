@@ -110,3 +110,39 @@ e.g. to install and configure zhw110 using the ADCD V24 system configuration:
 - zbrew install zhw110
 - zbrew configure zhw110
 
+***zbrew Package Provider Services***
+
+Work needs to be done to provide a clean separation of services used by zbrew itself, and services that can be used by package providers developing their software.
+
+With the previous caveat in mind, here is a current list of services that package providers can use:
+- Z Open Automation Utility (ZOAU) Services: zbrew itself requires ZOAU and therefore it is reasonable for package providers to leverages these services as well
+- Shell Functions from _zbrewfuncs_:
+   - you can use most of the functions in _zbrewfuncs_ by sourcing _zbrewfuncs_ from a z/OS shell environment (but not  another shell such as bash). Most of these are not complex functions, but may save you some coding:
+   - documentation is still lacking, but the services include: 
+      - a2e, e2a : convert a file, in place from ISO8859-1 code page to IBM-1047 (or vice-versa)
+      - zbrewprops, zbrewpropse : read a JSON file of key/value pairs and export the corresponding set of environment variables
+      - zbrewswinstalled : determine if a particular piece of software is installed
+      - issueTSO : issue a TSO command and route errors to stderr
+      - chk : handy routine for checking a return code and printing out a corresponding message and exiting if the return code is non-zero
+      - isinteger : true if the value is integral, false otherwise
+      - definedProperty / undefinedProperty : services that check if a value is defined or not. zbrew treats values that are '' or NONE as not defined, otherwise they are defined.
+      - racfUserExists, racfGroupExists, racfProfileExists : wrapper routines to perform basic RACF existance checks
+      - racfPermitUsers, racfActivateAndShareClasses, racfSetGenericClasses, racfRefreshClasses, racfSubjectsDN : wrapper routines to perform basic RACF operations
+      - jclAddDatasetToDD, jclRemoveDD, jclReplaceDD : add, remove or replace the contents of a DD statement in a JCL stream
+      - parmlibAddDataset, parmlibRemoveDataset : add or remove a dataset from the active PARMLIB concatenation
+      - llaAddDatasets, llaRemoveDatasets : add or remove datasets from the active LLA
+      - supportsCICS : target environment supports CICS
+      - stopCICS, startCICS : start or stop a CICS region
+      - vsamexists : returns true if the VSAM cluster exists
+      - vsamcp : make a copy of a VSAM cluster 
+      
+- you can use the _\*registrar_ shell scripts to enable or disable the active state of a feature, and to make the feature available after IPL
+  - apfregistrar: enable or disable an APF authorization for a dataset (perform a dynamic SETPROG APF and update the PROGxx member)
+  - procregistrar: enable or disable a new PROCLIB member (perform dynamic JES proclib update and update the PROCLIB dataset member)
+  - llregistrar: enable or disable a new dataset in the LLA (perform dynamic LLA update and update the PROGxx member)
+  - swregistrar: enable or disable the software specified (update the IFAPRDxx member)
+  - ccsdregistrar: enable or disable the CICS CCSD definitions under a GROUP 
+  - registrar: general routine to enable or disable text for given software in a PDS member
+  - secmgr: return the name of the active security manager on the system
+  - zbrewsetenv: set up the zbrew environment by sourcing this file from a z/OS shell environment (but not another shell such as bash)
+  - zbrewsetswenv: set up the zbrew environment for a particular software package by sourcing this file from a z/OS shell environment (but not another shell such as bash)
