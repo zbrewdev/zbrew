@@ -1,7 +1,11 @@
 /* REXX */
+VERBOSE = 0
+parse arg user APIKey paxFile .
 
-VERBOSE = 1
-parse arg . 
+ if paxfile == '' then do
+    say "Syntax: bintrayget <user> <apikey> <pax file>"
+    exit 4
+ end
 
  call HTTP_getToolkitConstants
  if RESULT <> 0 then do
@@ -10,20 +14,12 @@ parse arg .
 
  ConnectionHandle = ''
  RequestHandle = ''
- apiKey = '08ae005768de4fa48c412b61ba0f1557'
- ConnectionUri = 'http://api.geosvc.com'
- sCountry='CA'
- sState='BC'
- sCity='Squamish'
- dCountry='CA'
- dState='BC'
- dCity='Vancouver'
 
- requestPath = '/rest/'||sCountry||'/'||sState||'/'||sCity||'/distance'
- queryParms = '?apikey='apikey
- queryParms = queryParms||'&p='||dCity||'&r='||dState
- queryParms = queryParms||'&c='dCountry
- requestPath = requestPath||queryParms
+ /* See C example at: https://github.com/IBM/zOS-Client-Web-Enablement-Toolkit/tree/master/Example-Download */
+ /* See 'curl' format at https://github.com/zbrewdev/zbrew-cicd/blob/master/zbrewCICD.sh, RepoDownload: curl -ks -u${DEPLOY_USER}:${DEPLOY_API_KEY} ${artifact_url} -o ${paxfile} */
+
+ ConnectionUri='http://dl.bintray.com'
+ requestPath=paxFile
 
  ExpectedResponseStatus = 200
  ResponseStatusCode = ''
@@ -56,9 +52,11 @@ parse arg .
  if RESULT <> 0 then do
     exit fatalError( 'Unable to make HTTP REQUEST' )
  end
- if ResponseStatusCode == ExpectedResponseStatus then
-    writeData( ResponseBody )
- else
+
+ if ResponseStatusCode == ExpectedResponseStatus then do
+    rc = writeData( ResponseBody )
+ end
+ else do
     exit fatalError( 'Bad response received: ' ResponseStatusCode ' from http request.' )
  end
  call HTTP_terminate RequestHandle, HWTH_NOFORCE
@@ -72,39 +70,17 @@ parse arg .
  /*******************************************************************/
  /* Function:  writeData()                                          */
  /*                                                                 */
- /* Use JSON Parser services to process the airport data returned   */
- /* by the web server.  For simplicity, write results to standard   */
- /* out (in a real world application, this data could be displayed  */
- /* real-time in an application, written to storage media or        */
- /* displayed in some log or other media).                          */
- /*                                                                 */
- /* Return 0 if all parsing activity was performed successfully,    */
+ /* Return 0 if successful                                          */
  /* -1 if otherwise.                                                */
  /*******************************************************************/
 writeData:
- distanceData = arg(1)
- parserHandle = ''
- isJSON = 0;
- jRespHead = "application/json"
- l = length(jRespHead)
- /******************************************************************/
- /* Check to make sure that the data coming back is in JSON format */
- /* Loop thru all of the response headers and see if any of them   */
- /* say Content-Type=application/json                              */
- /******************************************************************/
- if VERBOSE then
-   say "CHECKING HEADERS"
+trace 'o'
 
- do i = 1 to ResponseHeaders.0           /* 1 to total # of headers*/
-   Say ResponseHeaders.i
-   /* Header Name check */
-   if ResponseHeaders.i = "Content-Type" then
-     /* Header value check */
-     if substr(ResponseHeaders.i.1,1,l) = jRespHead then do
-       isJSON = 1;
-     end
- end
- return 0 
+ data=arg(1)
+ say data.length
+ say ResponseHeaders.0
+
+ return 0
 
 HTTP_getToolkitConstants:
   if VERBOSE then do
@@ -142,45 +118,38 @@ HTTP_init:
     RequestHandle = HandleOut
  end
  return 0  
+ 
+HTTP_hwthset:
+Parse Arg verbose, handle, key, val
+
+  if verbose then do
+    say key ' set to: ' val
+  end
+  ReturnCode = -1
+  DiagArea. = ''
+  address hwthttp "hwthset ReturnCode" handle "key val DiagArea."
+  RexxRC = RC
+  if HTTP_isError(RexxRC,ReturnCode) then do
+    call HTTP_surfaceDiag 'hwthset', RexxRC, ReturnCode, DiagArea.
+    exit fatalError( '** hwthset ' key ' failure')
+  end 
+  return 0
 
 HTTP_setupConnection:
- if VERBOSE then do
-    say '****** Set HWTH_OPT_VERBOSE for connection ******'
-    ReturnCode = -1
-    DiagArea. = ''
-    address hwthttp "hwthset " "ReturnCode " "ConnectionHandle " "HWTH_OPT_VERBOSE " "HWTH_VERBOSE_ON " "DiagArea."
-    RexxRC = RC
-    if HTTP_isError(RexxRC,ReturnCode) then do
-       call HTTP_surfaceDiag 'hwthset', RexxRC, ReturnCode, DiagArea.
-       return fatalError( '** hwthset (HWTH_OPT_VERBOSE) failure **' )
-    end 
-
-    call TurnOnVerboseOutput
-  end 
+trace 'o'
 
  if VERBOSE then do
-    say '****** Set HWTH_OPT_URI for connection ******'
- end
- ReturnCode = -1
- DiagArea. = ''
- address hwthttp "hwthset " "ReturnCode " "ConnectionHandle " "HWTH_OPT_URI " "ConnectionUri " "DiagArea."
- RexxRC = RC
- if HTTP_isError(RexxRC,ReturnCode) then do
-    call HTTP_surfaceDiag 'hwthset', RexxRC, ReturnCode, DiagArea.
-    return fatalError( '** hwthset (HWTH_OPT_URI) failure **' )
- end  
+   call HTTP_hwthset verbose, "HWTH_OPT_VERBOSE", "HWTH_VERBOSE_ON"
+   call TurnOnVerboseOutput
+ end 
 
- if VERBOSE then do
-    say '****** Set HWTH_OPT_COOKIETYPE for session cookies ******'
- end
- ReturnCode = -1
- DiagArea. = ''
- address hwthttp "hwthset " "ReturnCode " "ConnectionHandle " "HWTH_OPT_COOKIETYPE " "HWTH_COOKIETYPE_SESSION " "DiagArea."
- RexxRC = RC
- if HTTP_isError(RexxRC,ReturnCode) then do
-    call HTTP_surfaceDiag 'hwthset', RexxRC, ReturnCode, DiagArea.
-    return fatalError( '** hwthset (HWTH_OPT_COOKIETYPE) failure **' )
- end  
+ call HTTP_hwthset verbose, "ConnectionHandle", "HWTH_OPT_URI", ConnectionUri 
+ call HTTP_hwthset verbose, "ConnectionHandle", "HWTH_OPT_COOKIETYPE", "HWTH_COOKIETYPE_SESSION"
+ call HTTP_hwthset verbose, "ConnectionHandle", "HWTH_OPT_USE_SSL", "HWTH_SSL_USE"
+ call HTTP_hwthset verbose, "ConnectionHandle", "HWTH_OPT_SSLKEYTYPE", "HWTH_SSLKEYTYPE_KEYRINGNAME"
+ call HTTP_hwthset verbose, "ConnectionHandle", "HWTH_OPT_SSLKEY", "*AUTH*/*"
+ call HTTP_hwthset verbose, "ConnectionHandle", "HWTH_OPT_XDOMAIN_REDIRECTS", "HWTH_XDOMAIN_REDIRS_ALLOWED"
+
  if VERBOSE then do
     say 'Connection setup successful'
  end
@@ -205,72 +174,15 @@ HTTP_connect:
  return 0 
 
 HTTP_setupRequest:
- if VERBOSE then do
-    say '****** Set HWTH_OPT_REQUESTMETHOD for request ******'
- end
-
- ReturnCode = -1
- DiagArea. = ''
- address hwthttp "hwthset " "ReturnCode " "RequestHandle " "HWTH_OPT_REQUESTMETHOD " "HWTH_HTTP_REQUEST_GET" "DiagArea."
- RexxRC = RC
- if HTTP_isError(RexxRC,ReturnCode) then do
-    call HTTP_surfaceDiag 'hwthset', RexxRC, ReturnCode, DiagArea.
-    return fatalError 'hwthset (HWTH_OPT_REQUESTMETHOD) failure **' )
- end 
-
- if VERBOSE then do
-    say'****** Set HWTH_OPT_URI for request ******'
- end
-
- if VERBOSE then do
-    say 'request URI:' requestPath
- end
-
- ReturnCode = -1
- DiagArea. = ''
-
- address hwthttp "hwthset " "ReturnCode " "RequestHandle " "HWTH_OPT_URI " "requestPath " "DiagArea."
- RexxRC = RC
- if HTTP_isError(RexxRC,ReturnCode) then do
-    call HTTP_surfaceDiag 'hwthset', RexxRC, ReturnCode, DiagArea.
-    return fatalError( '** hwthset (HWTH_OPT_URI) failure **' )
- end 
-
- ReturnCode = -1
- DiagArea. = ''
- if VERBOSE then do
-    say '****** Set HWTH_OPT_RESPONSEHDR_USERDATA for request ******'
- end
- address hwthttp "hwthset " "ReturnCode " "RequestHandle " "HWTH_OPT_RESPONSEHDR_USERDATA " "ResponseHeaders. " "DiagArea."
- RexxRC = RC
- if HTTP_isError(RexxRC,ReturnCode) then do
-    call HTTP_surfaceDiag 'hwthset', RexxRC, ReturnCode, DiagArea.
-    return fatalError( '** hwthset (HWTH_OPT_RESPONSEHDR_USERDATA) failure **')
- end 
-
- ReturnCode = -1
- DiagArea. = ''
- if VERBOSE then do
-    say '****** Set HWTH_OPT_TRANSLATE_RESPBODY for request ******'
- end
- address hwthttp "hwthset " "ReturnCode " "RequestHandle " "HWTH_OPT_TRANSLATE_RESPBODY " "HWTH_XLATE_RESPBODY_A2E " "DiagArea."
- RexxRC = RC
- if HTTP_isError(RexxRC,ReturnCode) then do
-    call HTTP_surfaceDiag 'hwthset', RexxRC, ReturnCode, DiagArea.
-    return fatalError( '** hwthset (HWTH_OPT_TRANSLATE_RESPBODY) failure **' )
- end /* endif hwthset failure */
-
- ReturnCode = -1
- DiagArea. = ''
- if VERBOSE then do
-    say '****** Set HWTH_OPT_RESPONSEBODY_USERDATA for request ******'
- end
- address hwthttp "hwthset " "ReturnCode " "RequestHandle " "HWTH_OPT_RESPONSEBODY_USERDATA " "ResponseBody " "DiagArea."
- RexxRC = RC
- if HTTP_isError(RexxRC,ReturnCode) then do
-    call HTTP_surfaceDiag 'hwthset', RexxRC, ReturnCode, DiagArea.
-    return fatalError( '** hwthset (HWTH_OPT_RESPONSEBODY_USERDATA) failure **')
- end /* endif hwthset failure */
+trace 'o'
+ call HTTP_hwthset verbose, "RequestHandle", "HWTH_OPT_HTTPAUTH", "HWTH_HTTPAUTH_BASIC"
+ call HTTP_hwthset verbose, "RequestHandle", "HWTH_OPT_USERNAME", user
+ call HTTP_hwthset verbose, "RequestHandle", "HWTH_OPT_PASSWORD", APIKey
+ call HTTP_hwthset verbose, "RequestHandle", "HWTH_OPT_REQUESTMETHOD", "HWTH_HTTP_REQUEST_GET"
+ call HTTP_hwthset verbose, "RequestHandle", "HWTH_OPT_URI", requestPath
+ call HTTP_hwthset verbose, "RequestHandle", "HWTH_OPT_RESPONSEHDR_USERDATA", "ResponseHeaders."
+ call HTTP_hwthset verbose, "RequestHandle", "HWTH_OPT_TRANSLATE_RESPBODY", "HWTH_XLATE_RESPBODY_A2E"
+ call HTTP_hwthset verbose, "RequestHandle", "HWTH_OPT_RESPONSEBODY_USERDATA", "ResponseBody"
 
  call HTTP_setRequestHeaders
  if RESULT <> 0 then do
@@ -322,6 +234,7 @@ HTTP_terminate:
  return 0
 
 HTTP_request:
+trace 'o'
  ReturnCode = -1
  DiagArea. = ''
 
@@ -329,6 +242,7 @@ HTTP_request:
     say 'Making HTTP Request'
  end
 
+ ResponseBody='Nothing'
  address hwthttp "hwthrqst " "ReturnCode " "ConnectionHandle " "RequestHandle " "HttpStatusCode " "HttpReasonCode " "DiagArea."
  RexxRC = RC
  if HTTP_isError(RexxRC,ReturnCode) then do
@@ -341,11 +255,12 @@ HTTP_request:
  return 0 
 
 HTTP_setRequestHeaders:
+trace 'o'
  SList = ''
  acceptJsonHeader = 'Accept:application/json'
  acceptXMLHeader = 'Accept:application/xml'
  acceptLanguageHeader = 'Accept-Language: en-US'
- hostHeader = 'Host: api.geosvc.com'
+ hostHeader = 'Host: dl.bintray.com'
  /**********************************************************************/
  /* Create a brand new SList and specify the first header to be an     */
  /* "Accept" header that requests that the server return any response  */
