@@ -54,7 +54,7 @@ parse arg user APIKey paxFile .
  end
 
  if ResponseStatusCode == ExpectedResponseStatus then do
-    rc = writeData( ResponseBody )
+    call writeData
  end
  else do
     exit fatalError( 'Bad response received: ' ResponseStatusCode ' from http request.' )
@@ -76,7 +76,9 @@ parse arg user APIKey paxFile .
 writeData:
 trace 'o'
 
- if ResponseBody == '' then do
+ payloadlength = LENGTH(ResponseBody)
+ say 'Payload length <' payloadlength '>'
+ if payloadlength == 0 then do
    say 'ResponseBody empty'
  end
  return 0
@@ -180,7 +182,8 @@ trace 'o'
  call HTTP_hwthset verbose, "RequestHandle", "HWTH_OPT_REQUESTMETHOD", "HWTH_HTTP_REQUEST_GET"
  call HTTP_hwthset verbose, "RequestHandle", "HWTH_OPT_URI", requestPath
  call HTTP_hwthset verbose, "RequestHandle", "HWTH_OPT_RESPONSEHDR_USERDATA", "ResponseHeaders."
- call HTTP_hwthset verbose, "RequestHandle", "HWTH_OPT_RESPONSEBODY_USERDATA", "ResponseBody "
+ call HTTP_hwthset verbose, "RequestHandle", "HWTH_OPT_TRANSLATE_RESPBODY", "HWTH_XLATE_RESPBODY_NONE"
+ call HTTP_hwthset verbose, "RequestHandle", "HWTH_OPT_RESPONSEBODY_USERDATA", "ResponseBody"
 
  call HTTP_setRequestHeaders
  if RESULT <> 0 then do
@@ -247,6 +250,8 @@ trace 'o'
     return fatalError( '** hwthrqst failure **' )
  end
 
+Say 'Response Body Length: ' LENGTH(ResponseBody)
+
  ResponseStatusCode = strip(HttpStatusCode,'L',0)
  ResponseReasonCode = strip(HttpReasonCode)
  return 0 
@@ -254,8 +259,7 @@ trace 'o'
 HTTP_setRequestHeaders:
 trace 'o'
  SList = ''
- acceptJsonHeader = 'Accept:application/json'
- acceptXMLHeader = 'Accept:application/xml'
+ acceptMediaHeader = 'Accept:*/*' 
  acceptLanguageHeader = 'Accept-Language: en-US'
  hostHeader = 'Host: dl.bintray.com'
  /**********************************************************************/
@@ -268,7 +272,7 @@ trace 'o'
  if VERBOSE then do
     say 'Create new SList'
  end
- address hwthttp "hwthslst " "ReturnCode " "RequestHandle " "HWTH_SLST_NEW " "SList " "acceptJsonHeader " "DiagArea."
+ address hwthttp "hwthslst " "ReturnCode " "RequestHandle " "HWTH_SLST_NEW " "SList " "acceptMediaHeader " "DiagArea."
  RexxRC = RC
  if HTTP_isError(RexxRC,ReturnCode) then do
     call HTTP_surfaceDiag 'hwthslst', RexxRC, ReturnCode, DiagArea.
@@ -276,7 +280,7 @@ trace 'o'
  end  
 
  if VERBOSE then do
-    say 'Append to SList'
+    say 'Append Accept:*/* to SList'
  end
  address hwthttp "hwthslst " "ReturnCode " "RequestHandle " "HWTH_SLST_APPEND " "SList " "acceptLanguageHeader " "DiagArea."
  RexxRC = RC
@@ -286,7 +290,7 @@ trace 'o'
  end 
 
  if VERBOSE then do
-    say 'Append to SList'
+    say 'Append Language'
  end
  address hwthttp "hwthslst " "ReturnCode " "RequestHandle " "HWTH_SLST_APPEND " "SList " "hostHeader " "DiagArea."
  RexxRC = RC
