@@ -1,5 +1,5 @@
 /* REXX */
-VERBOSE = 0
+VERBOSE = 1
 parse arg user APIKey paxFile .
 
  if paxfile == '' then do
@@ -76,10 +76,9 @@ parse arg user APIKey paxFile .
 writeData:
 trace 'o'
 
- data=arg(1)
- say data.length
- say ResponseHeaders.0
-
+ if ResponseBody == '' then do
+   say 'ResponseBody empty'
+ end
  return 0
 
 HTTP_getToolkitConstants:
@@ -139,7 +138,7 @@ HTTP_setupConnection:
 trace 'o'
 
  if VERBOSE then do
-   call HTTP_hwthset verbose, "HWTH_OPT_VERBOSE", "HWTH_VERBOSE_ON"
+   call HTTP_hwthset verbose, "ConnectionHandle", "HWTH_OPT_VERBOSE", "HWTH_VERBOSE_ON"
    call TurnOnVerboseOutput
  end 
 
@@ -181,8 +180,7 @@ trace 'o'
  call HTTP_hwthset verbose, "RequestHandle", "HWTH_OPT_REQUESTMETHOD", "HWTH_HTTP_REQUEST_GET"
  call HTTP_hwthset verbose, "RequestHandle", "HWTH_OPT_URI", requestPath
  call HTTP_hwthset verbose, "RequestHandle", "HWTH_OPT_RESPONSEHDR_USERDATA", "ResponseHeaders."
- call HTTP_hwthset verbose, "RequestHandle", "HWTH_OPT_TRANSLATE_RESPBODY", "HWTH_XLATE_RESPBODY_A2E"
- call HTTP_hwthset verbose, "RequestHandle", "HWTH_OPT_RESPONSEBODY_USERDATA", "ResponseBody"
+ call HTTP_hwthset verbose, "RequestHandle", "HWTH_OPT_RESPONSEBODY_USERDATA", "ResponseBody "
 
  call HTTP_setRequestHeaders
  if RESULT <> 0 then do
@@ -242,7 +240,6 @@ trace 'o'
     say 'Making HTTP Request'
  end
 
- ResponseBody='Nothing'
  address hwthttp "hwthrqst " "ReturnCode " "ConnectionHandle " "RequestHandle " "HttpStatusCode " "HttpReasonCode " "DiagArea."
  RexxRC = RC
  if HTTP_isError(RexxRC,ReturnCode) then do
@@ -394,7 +391,7 @@ fatalError:
 TurnOnVerboseOutput:
  /**********************************************************/
  say '****** Set HWTH_OPT_VERBOSE_OUTPUT for connection ******'
- traceDataSetName = 'IBMUSER.GEO.LOG'
+ traceDataSetName = '/tmp/bintrayget.out'
  traceDD = 'MYTRACE'
 
  allocRc = allocateDsnToolkitTracefile(traceDataSetName,traceDD)
@@ -414,18 +411,20 @@ TurnOnVerboseOutput:
  /*************************************************/
  /* Procedure:  allocateDsnToolkitTracefile       */
  /*                                               */
- /* Allocate a previously created trace data set  */
+ /* Allocate a previously created trace file      */
  /* with the required attributes (which           */
  /* must already exist), and a known DDname.      */
  /*************************************************/
 allocateDsnToolkitTracefile: procedure expose (PROC_GLOBALS)
-  datasetName = arg(1)
+  /* datasetName = arg(1) */
+  hfsName = arg(1) 
   DDname = arg(2)
 
   /* allocates datasetName to DDName and directs messages */
   /* to z/OS UNIX standard error (sdterr)                 */
   alloc = 'alloc fi('||DDname||') '
-  alloc = alloc||'da('||quoted(datasetName)||') old msg(2)'
+  /* alloc = alloc||'da('||quoted(datasetName)||') old msg(2)' */
+  alloc = alloc||'path('||quoted(hfsName)') reuse msg(2)'
   call bpxwdyn alloc
   allocRc = Result
   say 'BPXWDYN Result: '||allocRc
