@@ -99,6 +99,17 @@ HTTP_check:Procedure
  end
  return 0
 
+HTTP_hwt:
+trace 'o' 
+  Parse arg svc, parms
+
+  returnCode = -1
+  diagArea.  = ''
+
+  address hwthttp svc "returnCode" parms "diagArea."
+  call HTTP_check svc, rc, returnCode, diagArea.
+  return
+  
 HTTP_getToolkitConstants:
 trace 'o'
   if verbose then do
@@ -110,44 +121,35 @@ trace 'o'
  if verbose then do
     say 'Including HWT Constants...'
  end
- address hwthttp "hwtconst " "returnCode " "diagArea."
- call HTTP_check "hwtconst", rc, returnCode, diagArea.
+ call HTTP_hwt "hwtconst", ""
 
  return 0  
 
 HTTP_hwthinit:Procedure
 trace 'o'
 parse arg verbose, handleType
- 
- returnCode = -1
- diagArea. = ''
- address hwthttp "hwthinit returnCode handleType handleOut diagArea."
- call HTTP_check "hwthinit", rc, returnCode, diagArea.
 
+ call HTTP_hwt "hwthinit", "handleType handleOut"  
  return handleOut
  
 HTTP_hwthset:
+trace 'o'
 parse Arg verbose, handle, key, val
 
   if verbose then do
-    say key ' set to: ' val
+    say key 'set to:' val
   end
-  returnCode = -1
-  diagArea. = ''
-  address hwthttp "hwthset returnCode" handle "key val diagArea."
-  call HTTP_check "hwthset", rc, returnCode, diagArea.
+  call HTTP_hwt "hwthset", handle "key val"
   return 0
 
 HTTP_hwthsetvar:
+trace 'o'
 parse arg verbose, handle, key, val
 
   if verbose then do
-    say key ' set to: ' val
+    say key 'set to:' val
   end
-  returnCode = -1
-  diagArea. = ''
-  address hwthttp "hwthset returnCode" handle "key" val "diagArea."
-  call HTTP_check "hwthsetvar", rc, returnCode, diagArea.
+  call HTTP_hwt "hwthset", handle "key" val
   return 0
 
 HTTP_setupConnection:Procedure expose connectionHandle
@@ -172,19 +174,16 @@ parse arg verbose, uri, tracefile
  end
  return
 
-HTTP_connect:
+HTTP_connect:Procedure Expose connectionHandle
 trace 'o'
  parse arg verbose
  if verbose then do
     say 'Connect'
  end
 
- returnCode = -1
- diagArea. = ''
- address hwthttp "hwthconn " "returnCode " "connectionHandle " "diagArea."
- call HTTP_check "hwthconn", rc, returnCode, diagArea.
+ call HTTP_hwt "hwthconn", "connectionHandle"
  if verbose then do
-    say 'Connect (hwthconn) successful'
+    say 'Connection successful'
  end
  return
 
