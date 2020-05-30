@@ -60,20 +60,14 @@ end
  ResponseBody = ''
 
  connectionHandle=''
- connectionHandle=HTTP_hwthinit(verbose, HWTH_HANDLETYPE_CONNECTION)
- connectionHandle=HTTP_setupConnection(verbose, "connectionHandle", connectionURI, connectionHandle, tracefile)
-
- connectionHandle=HTTP_connect(verbose, connectionHandle)
- if RESULT <> 0 then do
-    exit fatalError( 'Unable to make HTTP connection' )
- end
+ call HTTP_hwthinit verbose, HWTH_HANDLETYPE_CONNECTION 
+ call HTTP_setupConnection verbose, "connectionHandle", connectionURI, tracefile
+ call HTTP_connect verbose
 
  requestHandle=''
- requestHandle=HTTP_hwthinit(verbose, HWTH_HANDLETYPE_HTTPREQUEST)
-
- requestHandle=HTTP_setupRequest(verbose, "requestHandle", user, password, requestPath, requestHandle)
-
- responseStatusCode=HTTP_request(verbose, connectionHandle, requestHandle)
+ call HTTP_hwthinit verbose, HWTH_HANDLETYPE_HTTPREQUEST 
+ call HTTP_setupRequest verbose, "requestHandle", user, password, requestPath
+ responseStatusCode=HTTP_request(verbose)
 
  if ResponseStatusCode == ExpectedResponseStatus then do
     call writeData
@@ -127,7 +121,7 @@ trace 'o'
 
  return 0  
 
-HTTP_hwthinit:Procedure
+HTTP_hwthinit:
 trace 'o'
 parse arg verbose, handleType
  
@@ -136,7 +130,13 @@ parse arg verbose, handleType
  address hwthttp "hwthinit returnCode handleType handleOut diagArea."
  call HTTP_check "hwthinit", rc, returnCode, diagArea.
 
- return handleOut
+ if handleType == HWTH_HANDLETYPE_CONNECTION then do
+   connectionHandle = handleOut
+ end
+ else do
+   requestHandle = handleOut
+ end
+ return 
  
 HTTP_hwthset:
 parse Arg verbose, handle, key, val
@@ -170,16 +170,16 @@ parse arg verbose, handle, key, val
   end 
   return 0
 
-HTTP_setupConnection:Procedure
-trace 'r'
-parse arg verbose, handleName, uri, connectionHandle, tracefile
+HTTP_setupConnection:
+trace 'o'
+parse arg verbose, handleName, uri, tracefile
 
  if verbose then do
-   call HTTP_hwthset verbose, handleName, "HWTH_OPT_VERBOSE", "HWTH_VERBOSE_ON"
+   call HTTP_hwthset verbose, "connectionHandle", "HWTH_OPT_VERBOSE", "HWTH_VERBOSE_ON"
    call TurnOnVerboseOutput tracefile
  end 
 
- call HTTP_hwthset verbose, handleName, "HWTH_OPT_URI", uri
+ call HTTP_hwthset verbose, handleName, "HWTH_OPT_URI", "http://"uri
  call HTTP_hwthset verbose, handleName, "HWTH_OPT_COOKIETYPE", "HWTH_COOKIETYPE_SESSION"
  call HTTP_hwthset verbose, handleName, "HWTH_OPT_USE_SSL", "HWTH_SSL_USE"
  call HTTP_hwthset verbose, handleName, "HWTH_OPT_SSLKEYTYPE", "HWTH_SSLKEYTYPE_KEYRINGNAME"
@@ -189,11 +189,11 @@ parse arg verbose, handleName, uri, connectionHandle, tracefile
  if verbose then do
     say 'Connection setup successful'
  end
- return connectionHandle
+ return
 
-HTTP_connect:Procedure
-trace 'r'
- parse arg verbose, connectionHandle
+HTTP_connect:
+trace 'o'
+ parse arg verbose
  if verbose then do
     say 'Connect'
  end
@@ -205,16 +205,17 @@ trace 'r'
  if verbose then do
     say 'Connect (hwthconn) successful'
  end
- return connectionHandle
+ return
 
-HTTP_setupRequest:Procedure
-trace 'r'
-Parse Arg verbose, handleName, user, password, requestPath, requestHandle
+HTTP_setupRequest:
+ trace 'o'
+ parse Arg verbose, handleName, user, password, requestPath
+
  call HTTP_hwthset verbose, handleName, "HWTH_OPT_HTTPAUTH", "HWTH_HTTPAUTH_BASIC"
  call HTTP_hwthset verbose, handleName, "HWTH_OPT_userNAME", user
  call HTTP_hwthset verbose, handleName, "HWTH_OPT_password", password
  call HTTP_hwthset verbose, handleName, "HWTH_OPT_REQUESTMETHOD", "HWTH_HTTP_REQUEST_GET"
- call HTTP_hwthset verbose, handleName, "HWTH_OPT_URI", requestPath
+ call HTTP_hwthset verbose, handleName, "HWTH_OPT_URI", "/"requestPath
  call HTTP_hwthsetvar verbose, handleName, "HWTH_OPT_RESPONSEHDR_userDATA", "ResponseHeaders."
  call HTTP_hwthset verbose, handleName, "HWTH_OPT_TRANSLATE_RESPBODY", "HWTH_XLATE_RESPBODY_NONE"
  call HTTP_hwthsetvar verbose, handleName, "HWTH_OPT_RESPONSEBODY_userDATA", "ResponseBody"
@@ -227,65 +228,11 @@ Parse Arg verbose, handleName, user, password, requestPath, requestHandle
     say 'Request setup successful'
  end
 
- return requestHandle
+ return 
 
- /*******************************************************************/
- /* Function:  writeData()                                          */
- /*                                                                 */
- /* return 0 if successful                                          */
- /* -1 if otherwise.                                                */
- /*******************************************************************/
-writeData:
+HTTP_request:
 trace 'o'
-
- payloadlength = LENGTH(ResponseBody)
- say 'Payload length <' payloadlength '>'
- if payloadlength == 0 then do
-   say 'ResponseBody empty'
- end
- return 0
-HTTP_disconnect:
- if verbose then do
-    say 'Disconnect'
- end
-
- returnCode = -1
- diagArea. = ''
- address hwthttp "hwthdisc " "returnCode " "connectionHandle " "diagArea."
- rexxRC = RC
- if HTTP_Error(rexxRC,returnCode) > 0 then do
-    call HTTP_surfaceDiag 'hwthdisc', rexxRC, returnCode, diagArea.
-    return fatalError( '** hwthdisc failure **' )
- end 
- if verbose then do
-    say 'Disconnect (hwthdisc) succeeded'
- end
- return 0 
-
-HTTP_terminate:
-
- handleIn = arg(1)
- forceOption = arg(2)
- if verbose then do
-    say 'Terminate'
- end
-
- returnCode = -1
- diagArea. = ''
- address hwthttp "hwthterm " "returnCode " "handleIn " "forceOption " "diagArea."
- rexxRC = RC
- if HTTP_Error(rexxRC,returnCode) > 0 then do
-    call HTTP_surfaceDiag 'hwthterm', rexxRC, returnCode, diagArea.
-    return fatalError( '** hwthterm failure **' )
- end  
- if verbose then do
-    say 'Terminate (hwthterm) succeeded'
- end
- return 0
-
-HTTP_request:Procedure 
-trace 'r'
-Parse arg verbose, connectionHandle, requestHandle
+Parse arg verbose
 
  returnCode = -1
  diagArea. = ''
@@ -365,6 +312,60 @@ trace 'o'
 
  return 0
 
+ /*******************************************************************/
+ /* Function:  writeData()                                          */
+ /*                                                                 */
+ /* return 0 if successful                                          */
+ /* -1 if otherwise.                                                */
+ /*******************************************************************/
+writeData:
+trace 'o'
+
+ payloadlength = LENGTH(ResponseBody)
+ say 'Payload length <' payloadlength '>'
+ if payloadlength == 0 then do
+   say 'ResponseBody empty'
+ end
+ return 0
+
+HTTP_disconnect:
+ if verbose then do
+    say 'Disconnect'
+ end
+
+ returnCode = -1
+ diagArea. = ''
+ address hwthttp "hwthdisc " "returnCode " "connectionHandle " "diagArea."
+ rexxRC = RC
+ if HTTP_Error(rexxRC,returnCode) > 0 then do
+    call HTTP_surfaceDiag 'hwthdisc', rexxRC, returnCode, diagArea.
+    return fatalError( '** hwthdisc failure **' )
+ end 
+ if verbose then do
+    say 'Disconnect (hwthdisc) succeeded'
+ end
+ return 0 
+
+HTTP_terminate:
+
+ handleIn = arg(1)
+ forceOption = arg(2)
+ if verbose then do
+    say 'Terminate'
+ end
+
+ returnCode = -1
+ diagArea. = ''
+ address hwthttp "hwthterm " "returnCode " "handleIn " "forceOption " "diagArea."
+ rexxRC = RC
+ if HTTP_Error(rexxRC,returnCode) > 0 then do
+    call HTTP_surfaceDiag 'hwthterm', rexxRC, returnCode, diagArea.
+    return fatalError( '** hwthterm failure **' )
+ end  
+ if verbose then do
+    say 'Terminate (hwthterm) succeeded'
+ end
+ return 0
 
 /*************************************************************/
 /* Function:  HTTP_Error                                     */
