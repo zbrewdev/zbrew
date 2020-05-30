@@ -64,7 +64,7 @@ end
  call HTTP_connect verbose
 
  requestHandle=HTTP_hwthinit(verbose, HWTH_HANDLETYPE_HTTPREQUEST)
- call HTTP_setupRequest verbose, user, password, requestPath
+ call HTTP_setupRequest verbose, user, password, requestPath, connectionURI
  responseStatusCode=HTTP_request(verbose)
 
  if ResponseStatusCode == ExpectedResponseStatus then do
@@ -73,11 +73,11 @@ end
  else do
     exit fatalError( 'Bad response received: ' ResponseStatusCode ' from http request.' )
  end
- call HTTP_terminate requestHandle, HWTH_NOFORCE
- call HTTP_disconnect
- call HTTP_terminate connectionHandle, HWTH_NOFORCE
+ call HTTP_terminate verbose, requestHandle, HWTH_NOFORCE
+ call HTTP_disconnect verbose
+ call HTTP_terminate verbose, connectionHandle, HWTH_NOFORCE
 
- call closeToolkitTrace traceDD
+ call closeToolkitTrace verbose, traceDD
 
  exit 0
 
@@ -189,7 +189,7 @@ trace 'o'
 
 HTTP_setupRequest:Procedure Expose requestHandle
  trace 'o'
- parse Arg verbose, user, password, requestPath
+ parse Arg verbose, user, password, requestPath, uri
 
  handleName="requestHandle"
  call HTTP_hwthset verbose, handleName, "HWTH_OPT_HTTPAUTH", "HWTH_HTTPAUTH_BASIC"
@@ -201,7 +201,7 @@ HTTP_setupRequest:Procedure Expose requestHandle
  call HTTP_hwthset verbose, handleName, "HWTH_OPT_TRANSLATE_RESPBODY", "HWTH_XLATE_RESPBODY_NONE"
  call HTTP_hwthsetvar verbose, handleName, "HWTH_OPT_RESPONSEBODY_userDATA", "ResponseBody"
 
- call HTTP_setRequestHeaders
+ call HTTP_setRequestHeaders verbose, uri
  if RESULT <> 0 then do
     return fatalError( '** Unable to set Request Headers **' )
  end
@@ -215,61 +215,44 @@ HTTP_request:
 trace 'o'
 Parse arg verbose
 
- returnCode = -1
- diagArea. = ''
-
  if verbose then do
     say 'Making HTTP Request'
  end
 
- address hwthttp "hwthrqst " "returnCode " "connectionHandle " "requestHandle " "HttpStatusCode " "HttpReasonCode " "diagArea."
- call HTTP_check "hwthrqst", rc, returnCode, diagArea.
-
-say 'Response Body Length: ' LENGTH(ResponseBody)
+ call HTTP_hwt "hwthrqst", "connectionHandle requestHandle HttpStatusCode HttpReasonCode"
 
  ResponseStatusCode = strip(HttpStatusCode,'L',0)
  ResponseReasonCode = strip(HttpReasonCode)
 
  return ResponseStatusCode
 
-HTTP_setRequestHeaders:
+HTTP_setRequestHeaders:Procedure Expose requestHandle
 trace 'o'
+ Parse Arg verbose, uri
  SList = ''
  acceptMediaHeader = 'Accept:*/*' 
  acceptLanguageHeader = 'Accept-Language: en-US'
- hostHeader = 'Host: dl.bintray.com'
- /**********************************************************************/
- /* Create a brand new SList and specify the first header to be an     */
- /* "Accept" header that requests that the server return any response  */
- /* body text in JSON format.                                          */
- /**********************************************************************/
- returnCode = -1
- diagArea. = ''
+ hostHeader = 'Host:' uri 
+
  if verbose then do
     say 'Create new SList'
  end
- address hwthttp "hwthslst " "returnCode " "requestHandle " "HWTH_SLST_NEW " "SList " "acceptMediaHeader " "diagArea."
- call HTTP_check "hwthslst-new", rc, returnCode, diagArea.
+ call HTTP_hwt "hwthslst", "requestHandle HWTH_SLST_NEW SList acceptMediaHeader"
 
  if verbose then do
     say 'Append Accept:*/* to SList'
  end
- address hwthttp "hwthslst " "returnCode " "requestHandle " "HWTH_SLST_APPEND " "SList " "acceptLanguageHeader " "diagArea."
- call HTTP_check "hwthslst-append", rc, returnCode, diagArea.
+ call HTTP_hwt "hwthslst", "requestHandle HWTH_SLST_APPEND SList acceptLanguageHeader"
 
  if verbose then do
     say 'Append Language'
  end
- address hwthttp "hwthslst " "returnCode " "requestHandle " "HWTH_SLST_APPEND " "SList " "hostHeader " "diagArea."
- call HTTP_check "hwthslst-append", rc, returnCode, diagArea.
+ call HTTP_hwt "hwthslst", "requestHandle HWTH_SLST_APPEND SList hostHeader"
 
  if verbose then do
     say '****** Set HWTH_OPT_HTTPHEADERS for request ******'
  end
- returnCode = -1
- diagArea. = ''
- address hwthttp "hwthset " "returnCode " "requestHandle " "HWTH_OPT_HTTPHEADERS " "SList " "diagArea."
- call HTTP_check "hwthsset-hdrs", rc, returnCode, diagArea.
+ call HTTP_hwt "hwthset", "requestHandle HWTH_OPT_HTTPHEADERS SList"
 
  return 0
 
@@ -289,32 +272,30 @@ trace 'o'
  end
  return 0
 
-HTTP_disconnect:
+HTTP_disconnect:Procedure Expose connectionHandle
+Parse Arg verbose
+
  if verbose then do
     say 'Disconnect'
  end
 
- returnCode = -1
- diagArea. = ''
- address hwthttp "hwthdisc " "returnCode " "connectionHandle " "diagArea."
- call HTTP_check "hwthdisc", rc, returnCode, diagArea.
+ call HTTP_hwt "hwthdisc", "connectionHandle"
+
  if verbose then do
     say 'Disconnect (hwthdisc) succeeded'
  end
  return 0 
 
-HTTP_terminate:
+HTTP_terminate:Procedure 
+Parse arg verbose, handleIn, forceOption
+trace 'o'
 
- handleIn = arg(1)
- forceOption = arg(2)
  if verbose then do
     say 'Terminate'
  end
 
- returnCode = -1
- diagArea. = ''
- address hwthttp "hwthterm " "returnCode " "handleIn " "forceOption " "diagArea."
- call HTTP_check "hwthdisc", rc, returnCode, diagArea.
+ call HTTP_hwt "hwthterm", "handleIn forceOption"
+
  if verbose then do
     say 'Terminate (hwthterm) succeeded'
  end
@@ -398,17 +379,13 @@ fatalError:
 /* Allocates the trace dataset and sets the    */
 /* output data set                             */
 /***********************************************/
-TurnOnVerboseOutput:
- /**********************************************************/
- say '****** Set HWTH_OPT_VERBOSE_OUTPUT for connection ******'
- traceDataSetName = tracefile
+TurnOnVerboseOutput: Procedure Expose connectionHandle
+ Parse Arg tracefile
  traceDD = 'MYTRACE'
 
- allocRc = allocateDsnToolkitTracefile(traceDataSetName,traceDD)
+ allocRc = allocateDsnToolkitTracefile(tracefile,traceDD)
 
- diagArea. = ''
- address hwthttp "hwthset " "returnCode " "connectionHandle " "HWTH_OPT_VERBOSE_OUTPUT " "traceDD" "diagArea."
- call HTTP_check "hwthset-verbose", rc, returnCode, diagArea.
+ call HTTP_hwt "hwthset", "HWTH_OPT_VERBOSE_OUTPUT traceDD"
 
  say 'Trace output location: 'traceDataSetName
  return
@@ -421,14 +398,12 @@ TurnOnVerboseOutput:
  /* must already exist), and a known DDname.      */
  /*************************************************/
 allocateDsnToolkitTracefile: procedure expose (PROC_GLOBALS)
-  /* datasetName = arg(1) */
   hfsName = arg(1) 
   DDname = arg(2)
 
   /* allocates datasetName to DDName and directs messages */
-  /* to z/OS UNIX standard error (sdterr)                 */
+  /* to z/OS UNIX standard error (stderr)                 */
   alloc = 'alloc fi('||DDname||') '
-  /* alloc = alloc||'da('||quoted(datasetName)||') old msg(2)' */
   alloc = alloc||'path('||quoted(hfsName)') reuse msg(2)'
   call bpxwdyn alloc
   allocRc = Result
@@ -443,9 +418,12 @@ allocateDsnToolkitTracefile: procedure expose (PROC_GLOBALS)
  /* caused allocation to associate with an HFS file.        */
  /***********************************************************/
 closeToolkitTrace: procedure expose (PROC_GLOBALS)
-  DDname = arg(1)
-  call bpxwdyn 'free fi('DDname')'
-  return /* end procedure */
+  Parse arg verbose, DDname
+
+  if verbose then do
+    call bpxwdyn 'free fi('DDname')'
+  end
+  return
 
  /*******************************************************/
  /* Function:  quoted                                   */
