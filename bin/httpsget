@@ -1,0 +1,506 @@
+/* REXX */
+/*
+ * httpsget: Securely connect to a server and download a file
+ * For syntax: httpsget -?
+ */
+trace 'o'
+parse arg parms
+
+parse var parms opt rest
+
+verbose=0
+user=''
+password=''
+url=''
+outfile=''
+
+do while SUBSTR(opt,1,1) = '-'
+  if opt = '-v' then do
+    verbose = 1
+    parse var rest tracefile opt rest
+  end
+  else if opt = '-u' then do
+    parse var rest userpassword opt rest
+    parse var userpassword user':'password 
+  end  
+  else if opt = '-o' then do
+    parse var rest outfile opt rest
+  end  
+  else if opt = '-?' then do
+    Call Syntax
+  end  
+  else do
+    say 'Unknown Option: ' opt ' ignored'
+    parse var rest opt rest
+  end
+end
+parms = opt rest
+parse var parms url .
+
+if url == '' then do
+  call Syntax
+end
+
+parse var url 'https://'connectionURI'/'requestPath .
+
+if connectionURI == '' || requestPath == '' then do
+  say 'URL not in valid format.'
+  call Syntax
+end
+
+ call HTTP_getToolkitConstants
+ if RESULT <> 0 then do
+    exit fatalError( '** Environment error **' )
+ end
+
+ ExpectedResponseStatus = 200
+ ResponseStatusCode = ''
+ ResponseReason = ''
+ ResponseHeaders. = ''
+ ResponseBody = ''
+
+ connectionHandle=''
+ connectionHandle=HTTP_hwthinit(verbose, HWTH_HANDLETYPE_CONNECTION)
+ connectionHandle=HTTP_setupConnection(verbose, "connectionHandle", connectionURI, connectionHandle, tracefile)
+
+ connectionHandle=HTTP_connect(verbose, connectionHandle)
+ if RESULT <> 0 then do
+    exit fatalError( 'Unable to make HTTP connection' )
+ end
+
+ requestHandle=''
+ requestHandle=HTTP_hwthinit(verbose, HWTH_HANDLETYPE_HTTPREQUEST)
+
+ requestHandle=HTTP_setupRequest(verbose, "requestHandle", user, password, requestPath, requestHandle)
+
+ responseStatusCode=HTTP_request(verbose, connectionHandle, requestHandle)
+
+ if ResponseStatusCode == ExpectedResponseStatus then do
+    call writeData
+ end
+ else do
+    exit fatalError( 'Bad response received: ' ResponseStatusCode ' from http request.' )
+ end
+ call HTTP_terminate requestHandle, HWTH_NOFORCE
+ call HTTP_disconnect
+ call HTTP_terminate connectionHandle, HWTH_NOFORCE
+
+ call closeToolkitTrace traceDD
+
+ exit 0
+
+Syntax:Procedure
+Trace 'o'
+  say "Syntax: httpsget [-o <outfile>|-v <tracefile>|-u <user:password>] <url>"
+  say "  -o  : location to write output to (default is stdout)"
+  say "  -v  : verbose output to stdout and detailed trace file written to <tracefile>"
+  say "  -u  : user and password to be passed to <url>"
+  say " <url>: web location to read file from, in the form https://<uri>/<path>" 
+exit 4
+
+HTTP_check:Procedure
+ Parse arg msg, rexxRC, returnCode, diagArea.
+ code=HTTP_Error(rexxRC, returnCode)
+ if code > 0 then do
+    call HTTP_surfaceDiag msg, rexxRC, returnCode, diagArea.
+    exit code
+ end
+ return 0
+
+HTTP_getToolkitConstants:
+trace 'o'
+  if verbose then do
+    say 'Setting hwtcalls on, syscalls sigoff'
+  end
+ call hwtcalls 'on'
+ call syscalls 'SIGOFF'
+
+ if verbose then do
+    say 'Including HWT Constants...'
+ end
+ address hwthttp "hwtconst " "returnCode " "diagArea."
+ rexxRC = RC
+ if HTTP_Error(rexxRC,returnCode) > 0 then do
+    call HTTP_surfaceDiag 'hwtconst', rexxRC, returnCode, diagArea.
+    return fatalError( '** hwtconst (hwthttp) failure **' )
+  end 
+
+ return 0  
+
+HTTP_hwthinit:Procedure
+trace 'o'
+parse arg verbose, handleType
+ 
+ returnCode = -1
+ diagArea. = ''
+ address hwthttp "hwthinit returnCode handleType handleOut diagArea."
+ call HTTP_check "hwthinit", rc, returnCode, diagArea.
+
+ return handleOut
+ 
+HTTP_hwthset:
+parse Arg verbose, handle, key, val
+
+  if verbose then do
+    say key ' set to: ' val
+  end
+  returnCode = -1
+  diagArea. = ''
+  address hwthttp "hwthset returnCode" handle "key val diagArea."
+  rexxRC = RC
+  if HTTP_Error(rexxRC,returnCode) > 0 then do
+    call HTTP_surfaceDiag 'hwthset', rexxRC, returnCode, diagArea.
+    exit fatalError( '** hwthset ' key ' failure')
+  end 
+  return 0
+
+HTTP_hwthsetvar:
+parse arg verbose, handle, key, val
+
+  if verbose then do
+    say key ' set to: ' val
+  end
+  returnCode = -1
+  diagArea. = ''
+  address hwthttp "hwthset returnCode" handle "key" val "diagArea."
+  rexxRC = RC
+  if HTTP_Error(rexxRC,returnCode) > 0 then do
+    call HTTP_surfaceDiag 'hwthset', rexxRC, returnCode, diagArea.
+    exit fatalError( '** hwthset ' key ' failure')
+  end 
+  return 0
+
+HTTP_setupConnection:Procedure
+trace 'r'
+parse arg verbose, handleName, uri, connectionHandle, tracefile
+
+ if verbose then do
+   call HTTP_hwthset verbose, handleName, "HWTH_OPT_VERBOSE", "HWTH_VERBOSE_ON"
+   call TurnOnVerboseOutput tracefile
+ end 
+
+ call HTTP_hwthset verbose, handleName, "HWTH_OPT_URI", uri
+ call HTTP_hwthset verbose, handleName, "HWTH_OPT_COOKIETYPE", "HWTH_COOKIETYPE_SESSION"
+ call HTTP_hwthset verbose, handleName, "HWTH_OPT_USE_SSL", "HWTH_SSL_USE"
+ call HTTP_hwthset verbose, handleName, "HWTH_OPT_SSLKEYTYPE", "HWTH_SSLKEYTYPE_KEYRINGNAME"
+ call HTTP_hwthset verbose, handleName, "HWTH_OPT_SSLKEY", "*AUTH*/*"
+ call HTTP_hwthset verbose, handleName, "HWTH_OPT_XDOMAIN_REDIRECTS", "HWTH_XDOMAIN_REDIRS_ALLOWED"
+
+ if verbose then do
+    say 'Connection setup successful'
+ end
+ return connectionHandle
+
+HTTP_connect:Procedure
+trace 'r'
+ parse arg verbose, connectionHandle
+ if verbose then do
+    say 'Connect'
+ end
+
+ returnCode = -1
+ diagArea. = ''
+ address hwthttp "hwthconn " "returnCode " "connectionHandle " "diagArea."
+ call HTTP_check "hwthconn", rc, returnCode, diagArea.
+ if verbose then do
+    say 'Connect (hwthconn) successful'
+ end
+ return connectionHandle
+
+HTTP_setupRequest:Procedure
+trace 'r'
+Parse Arg verbose, handleName, user, password, requestPath, requestHandle
+ call HTTP_hwthset verbose, handleName, "HWTH_OPT_HTTPAUTH", "HWTH_HTTPAUTH_BASIC"
+ call HTTP_hwthset verbose, handleName, "HWTH_OPT_userNAME", user
+ call HTTP_hwthset verbose, handleName, "HWTH_OPT_password", password
+ call HTTP_hwthset verbose, handleName, "HWTH_OPT_REQUESTMETHOD", "HWTH_HTTP_REQUEST_GET"
+ call HTTP_hwthset verbose, handleName, "HWTH_OPT_URI", requestPath
+ call HTTP_hwthsetvar verbose, handleName, "HWTH_OPT_RESPONSEHDR_userDATA", "ResponseHeaders."
+ call HTTP_hwthset verbose, handleName, "HWTH_OPT_TRANSLATE_RESPBODY", "HWTH_XLATE_RESPBODY_NONE"
+ call HTTP_hwthsetvar verbose, handleName, "HWTH_OPT_RESPONSEBODY_userDATA", "ResponseBody"
+
+ call HTTP_setRequestHeaders
+ if RESULT <> 0 then do
+    return fatalError( '** Unable to set Request Headers **' )
+ end
+ if verbose then do
+    say 'Request setup successful'
+ end
+
+ return requestHandle
+
+ /*******************************************************************/
+ /* Function:  writeData()                                          */
+ /*                                                                 */
+ /* return 0 if successful                                          */
+ /* -1 if otherwise.                                                */
+ /*******************************************************************/
+writeData:
+trace 'o'
+
+ payloadlength = LENGTH(ResponseBody)
+ say 'Payload length <' payloadlength '>'
+ if payloadlength == 0 then do
+   say 'ResponseBody empty'
+ end
+ return 0
+HTTP_disconnect:
+ if verbose then do
+    say 'Disconnect'
+ end
+
+ returnCode = -1
+ diagArea. = ''
+ address hwthttp "hwthdisc " "returnCode " "connectionHandle " "diagArea."
+ rexxRC = RC
+ if HTTP_Error(rexxRC,returnCode) > 0 then do
+    call HTTP_surfaceDiag 'hwthdisc', rexxRC, returnCode, diagArea.
+    return fatalError( '** hwthdisc failure **' )
+ end 
+ if verbose then do
+    say 'Disconnect (hwthdisc) succeeded'
+ end
+ return 0 
+
+HTTP_terminate:
+
+ handleIn = arg(1)
+ forceOption = arg(2)
+ if verbose then do
+    say 'Terminate'
+ end
+
+ returnCode = -1
+ diagArea. = ''
+ address hwthttp "hwthterm " "returnCode " "handleIn " "forceOption " "diagArea."
+ rexxRC = RC
+ if HTTP_Error(rexxRC,returnCode) > 0 then do
+    call HTTP_surfaceDiag 'hwthterm', rexxRC, returnCode, diagArea.
+    return fatalError( '** hwthterm failure **' )
+ end  
+ if verbose then do
+    say 'Terminate (hwthterm) succeeded'
+ end
+ return 0
+
+HTTP_request:Procedure 
+trace 'r'
+Parse arg verbose, connectionHandle, requestHandle
+
+ returnCode = -1
+ diagArea. = ''
+
+ if verbose then do
+    say 'Making HTTP Request'
+ end
+
+ address hwthttp "hwthrqst " "returnCode " "connectionHandle " "requestHandle " "HttpStatusCode " "HttpReasonCode " "diagArea."
+ rexxRC = RC
+ if HTTP_Error(rexxRC,returnCode) > 0 then do
+    call HTTP_surfaceDiag 'hwthrqst', rexxRC, returnCode, diagArea.
+    return fatalError( '** hwthrqst failure **' )
+ end
+
+say 'Response Body Length: ' LENGTH(ResponseBody)
+
+ ResponseStatusCode = strip(HttpStatusCode,'L',0)
+ ResponseReasonCode = strip(HttpReasonCode)
+
+ return ResponseStatusCode
+
+HTTP_setRequestHeaders:
+trace 'o'
+ SList = ''
+ acceptMediaHeader = 'Accept:*/*' 
+ acceptLanguageHeader = 'Accept-Language: en-US'
+ hostHeader = 'Host: dl.bintray.com'
+ /**********************************************************************/
+ /* Create a brand new SList and specify the first header to be an     */
+ /* "Accept" header that requests that the server return any response  */
+ /* body text in JSON format.                                          */
+ /**********************************************************************/
+ returnCode = -1
+ diagArea. = ''
+ if verbose then do
+    say 'Create new SList'
+ end
+ address hwthttp "hwthslst " "returnCode " "requestHandle " "HWTH_SLST_NEW " "SList " "acceptMediaHeader " "diagArea."
+ rexxRC = RC
+ if HTTP_Error(rexxRC,returnCode) > 0 then do
+    call HTTP_surfaceDiag 'hwthslst', rexxRC, returnCode, diagArea.
+    return fatalError( '** hwthslst (HWTH_SLST_NEW) failure **' )
+ end  
+
+ if verbose then do
+    say 'Append Accept:*/* to SList'
+ end
+ address hwthttp "hwthslst " "returnCode " "requestHandle " "HWTH_SLST_APPEND " "SList " "acceptLanguageHeader " "diagArea."
+ rexxRC = RC
+ if HTTP_Error(rexxRC,returnCode) > 0 then do
+    call HTTP_surfaceDiag 'hwthslst', rexxRC, returnCode, diagArea.
+    return fatalError( '** hwthslst (HWTH_SLST_APPEND) failure **' )
+ end 
+
+ if verbose then do
+    say 'Append Language'
+ end
+ address hwthttp "hwthslst " "returnCode " "requestHandle " "HWTH_SLST_APPEND " "SList " "hostHeader " "diagArea."
+ rexxRC = RC
+ if HTTP_Error(rexxRC,returnCode) > 0 then do
+    call HTTP_surfaceDiag 'hwthslst', rexxRC, returnCode, diagArea.
+    return fatalError( '** hwthslst (HWTH_SLST_APPEND) failure **' )
+ end
+
+ if verbose then do
+    say '****** Set HWTH_OPT_HTTPHEADERS for request ******'
+ end
+ returnCode = -1
+ diagArea. = ''
+ address hwthttp "hwthset " "returnCode " "requestHandle " "HWTH_OPT_HTTPHEADERS " "SList " "diagArea."
+ rexxRC = RC
+ if HTTP_Error(rexxRC,returnCode) > 0 then do
+    call HTTP_surfaceDiag 'hwthset', rexxRC, returnCode, diagArea.
+    return fatalError( '** hwthset (HWTH_OPT_HTTPHEADERS) failure **' )
+ end 
+
+ return 0
+
+
+/*************************************************************/
+/* Function:  HTTP_Error                                     */
+/*                                                           */
+/* Check the input processing codes. Note that if the input  */
+/* rexxRC is nonzero, then the toolkit return code is moot   */
+/* (the toolkit function was likely not even invoked). If    */
+/* the toolkit return code is relevant, check it against the */
+/* set of { HWTH_xx } return codes for evidence of error.    */
+/* This set is ordered: HWTH_OK < HWTH_WARNING < ...         */
+/* with remaining codes indicating error, so we may check    */
+/* via single inequality.                                    */
+/*                                                           */
+/* returns: REXX return code if non-zero, else toolkitRC     */
+/* otherwise.                                                */
+/*************************************************************/
+HTTP_Error:
+ rexxRC = arg(1)
+ if rexxRC <> 0 then
+    return rexxRC
+ toolkitRC = strip(arg(2),'L',0)
+ if toolkitRC == '' then
+       return 0
+ if toolkitRC <= HWTH_WARNING then
+       return 0
+ return toolkitRC
+
+/*************************************************************/
+/* Function:  HTTP_isWarning                                 */
+/*                                                           */
+/* Check the input processing codes. Note that if the input  */
+/* rexxRC is nonzero, then the toolkit return code is moot   */
+/* (the toolkit function was likely not even invoked). If    */
+/* the toolkit return code is relevant, check it against the */
+/* specific HWTH_WARNING return code.                        */
+/*                                                           */
+/* returns:  1 if toolkit rc HWTH_WARNING is indicated, 0    */
+/* otherwise.                                                */
+/*************************************************************/
+HTTP_isWarning:
+ rexxRC = arg(1)
+ if rexxRC <> 0 then
+    return 0
+ toolkitRC = strip(arg(2),'L',0)
+ if toolkitRC == '' then
+    return 0
+ if toolkitRC <> HWTH_WARNING then
+    return 0
+ return 1 
+
+/***********************************************/
+/* Procedure: HTTP_surfaceDiag()               */
+/*                                             */
+/* Surface input error information.  Note that */
+/* when the rexxRC is nonzero, the toolkitRC   */
+/* and diagArea content are moot and are       */
+/* suppressed (so as to not mislead).          */
+/***********************************************/
+HTTP_surfaceDiag: procedure expose diagArea.
+  say
+  say '*ERROR* ('||arg(1)||') at time: '||Time()
+  say 'Rexx RC: '||arg(2)', Toolkit returnCode: '||arg(3)
+  say 'diagArea.Service: '||diagArea.HWTH_service
+  say 'diagArea.ReasonCode: '||diagArea.HWTH_reasonCode
+  say 'diagArea.ReasonDesc: '||diagArea.HWTH_reasonDesc
+  say
+ return
+
+fatalError:
+ errorMsg = arg(1)
+ say errorMsg
+ return -1  
+
+/***********************************************/
+/* Function:  TurnOnVerboseOutput              */
+/*                                             */
+/* Allocates the trace dataset and sets the    */
+/* output data set                             */
+/***********************************************/
+TurnOnVerboseOutput:
+ /**********************************************************/
+ say '****** Set HWTH_OPT_VERBOSE_OUTPUT for connection ******'
+ traceDataSetName = tracefile
+ traceDD = 'MYTRACE'
+
+ allocRc = allocateDsnToolkitTracefile(traceDataSetName,traceDD)
+
+ diagArea. = ''
+ address hwthttp "hwthset " "returnCode " "connectionHandle " "HWTH_OPT_VERBOSE_OUTPUT " "traceDD" "diagArea."
+
+ rexxRC = RC
+ if HTTP_Error(rexxRC,returnCode) > 0 then do
+    call HTTP_surfaceDiag 'hwthset', rexxRC, returnCode, diagArea.
+    return fatalError( '** hwthset (HWTH_OPT_VERBOSE) failure **')
+ end /* endif hwthset failure */
+
+ say 'Trace output location: 'traceDataSetName
+ return
+
+ /*************************************************/
+ /* Procedure:  allocateDsnToolkitTracefile       */
+ /*                                               */
+ /* Allocate a previously created trace file      */
+ /* with the required attributes (which           */
+ /* must already exist), and a known DDname.      */
+ /*************************************************/
+allocateDsnToolkitTracefile: procedure expose (PROC_GLOBALS)
+  /* datasetName = arg(1) */
+  hfsName = arg(1) 
+  DDname = arg(2)
+
+  /* allocates datasetName to DDName and directs messages */
+  /* to z/OS UNIX standard error (sdterr)                 */
+  alloc = 'alloc fi('||DDname||') '
+  /* alloc = alloc||'da('||quoted(datasetName)||') old msg(2)' */
+  alloc = alloc||'path('||quoted(hfsName)') reuse msg(2)'
+  call bpxwdyn alloc
+  allocRc = Result
+  say 'BPXWDYN Result: '||allocRc
+
+  return allocRc  /* end procedure */
+
+ /***********************************************************/
+ /* Procedure:  closeToolkitTrace                           */
+ /*                                                         */
+ /* Free the ddname which an earlier redirectToolkitTraceXX */
+ /* caused allocation to associate with an HFS file.        */
+ /***********************************************************/
+closeToolkitTrace: procedure expose (PROC_GLOBALS)
+  DDname = arg(1)
+  call bpxwdyn 'free fi('DDname')'
+  return /* end procedure */
+
+ /*******************************************************/
+ /* Function:  quoted                                   */
+ /*******************************************************/
+ quoted:
+  stringIn = arg(1)
+ return "'"||stringIn||"'"
