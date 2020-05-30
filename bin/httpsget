@@ -59,14 +59,12 @@ end
  ResponseHeaders. = ''
  ResponseBody = ''
 
- connectionHandle=''
- call HTTP_hwthinit verbose, HWTH_HANDLETYPE_CONNECTION 
- call HTTP_setupConnection verbose, "connectionHandle", connectionURI, tracefile
+ connectionHandle=HTTP_hwthinit(verbose, HWTH_HANDLETYPE_CONNECTION)
+ call HTTP_setupConnection verbose, connectionURI, tracefile
  call HTTP_connect verbose
 
- requestHandle=''
- call HTTP_hwthinit verbose, HWTH_HANDLETYPE_HTTPREQUEST 
- call HTTP_setupRequest verbose, "requestHandle", user, password, requestPath
+ requestHandle=HTTP_hwthinit(verbose, HWTH_HANDLETYPE_HTTPREQUEST)
+ call HTTP_setupRequest verbose, user, password, requestPath
  responseStatusCode=HTTP_request(verbose)
 
  if ResponseStatusCode == ExpectedResponseStatus then do
@@ -121,7 +119,7 @@ trace 'o'
 
  return 0  
 
-HTTP_hwthinit:
+HTTP_hwthinit:Procedure
 trace 'o'
 parse arg verbose, handleType
  
@@ -130,13 +128,7 @@ parse arg verbose, handleType
  address hwthttp "hwthinit returnCode handleType handleOut diagArea."
  call HTTP_check "hwthinit", rc, returnCode, diagArea.
 
- if handleType == HWTH_HANDLETYPE_CONNECTION then do
-   connectionHandle = handleOut
- end
- else do
-   requestHandle = handleOut
- end
- return 
+ return handleOut
  
 HTTP_hwthset:
 parse Arg verbose, handle, key, val
@@ -170,12 +162,13 @@ parse arg verbose, handle, key, val
   end 
   return 0
 
-HTTP_setupConnection:
+HTTP_setupConnection:Procedure expose connectionHandle
 trace 'o'
-parse arg verbose, handleName, uri, tracefile
+parse arg verbose, uri, tracefile
 
+ handleName="connectionHandle"
  if verbose then do
-   call HTTP_hwthset verbose, "connectionHandle", "HWTH_OPT_VERBOSE", "HWTH_VERBOSE_ON"
+   call HTTP_hwthset verbose, handleName, "HWTH_OPT_VERBOSE", "HWTH_VERBOSE_ON"
    call TurnOnVerboseOutput tracefile
  end 
 
@@ -207,10 +200,11 @@ trace 'o'
  end
  return
 
-HTTP_setupRequest:
+HTTP_setupRequest:Procedure Expose requestHandle
  trace 'o'
- parse Arg verbose, handleName, user, password, requestPath
+ parse Arg verbose, user, password, requestPath
 
+ handleName="requestHandle"
  call HTTP_hwthset verbose, handleName, "HWTH_OPT_HTTPAUTH", "HWTH_HTTPAUTH_BASIC"
  call HTTP_hwthset verbose, handleName, "HWTH_OPT_userNAME", user
  call HTTP_hwthset verbose, handleName, "HWTH_OPT_password", password
