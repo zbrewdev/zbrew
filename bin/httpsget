@@ -49,15 +49,6 @@ if connectionURI == '' || requestPath == '' then do
 end
 
  call HTTP_getToolkitConstants
- if RESULT <> 0 then do
-    exit fatalError( '** Environment error **' )
- end
-
- ExpectedResponseStatus = 200
- ResponseStatusCode = ''
- ResponseReason = ''
- ResponseHeaders. = ''
- ResponseBody = ''
 
  connectionHandle=HTTP_hwthinit(verbose, HWTH_HANDLETYPE_CONNECTION)
  call HTTP_setupConnection verbose, connectionURI, tracefile
@@ -65,18 +56,22 @@ end
 
  requestHandle=HTTP_hwthinit(verbose, HWTH_HANDLETYPE_HTTPREQUEST)
  call HTTP_setupRequest verbose, user, password, requestPath, connectionURI
+
+ ExpectedResponseStatus = 200
+ ResponseBody = ''
  responseStatusCode=HTTP_request(verbose)
 
  if ResponseStatusCode == ExpectedResponseStatus then do
     call writeData
  end
  else do
-    exit fatalError( 'Bad response received: ' ResponseStatusCode ' from http request.' )
+    Say 'Bad response received: ' ResponseStatusCode ' from http request.' 
+    exit 16
  end
+
  call HTTP_terminate verbose, requestHandle, HWTH_NOFORCE
  call HTTP_disconnect verbose
  call HTTP_terminate verbose, connectionHandle, HWTH_NOFORCE
-
  call closeToolkitTrace verbose, traceDD
 
  exit 0
@@ -202,16 +197,14 @@ HTTP_setupRequest:Procedure Expose requestHandle
  call HTTP_hwthsetvar verbose, handleName, "HWTH_OPT_RESPONSEBODY_userDATA", "ResponseBody"
 
  call HTTP_setRequestHeaders verbose, uri
- if RESULT <> 0 then do
-    return fatalError( '** Unable to set Request Headers **' )
- end
+ 
  if verbose then do
     say 'Request setup successful'
  end
 
  return 
 
-HTTP_request:
+HTTP_request:Procedure Expose connectionHandle requestHandle ResponseBody
 trace 'o'
 Parse arg verbose
 
@@ -327,29 +320,6 @@ HTTP_Error:
        return 0
  return toolkitRC
 
-/*************************************************************/
-/* Function:  HTTP_isWarning                                 */
-/*                                                           */
-/* Check the input processing codes. Note that if the input  */
-/* rexxRC is nonzero, then the toolkit return code is moot   */
-/* (the toolkit function was likely not even invoked). If    */
-/* the toolkit return code is relevant, check it against the */
-/* specific HWTH_WARNING return code.                        */
-/*                                                           */
-/* returns:  1 if toolkit rc HWTH_WARNING is indicated, 0    */
-/* otherwise.                                                */
-/*************************************************************/
-HTTP_isWarning:
- rexxRC = arg(1)
- if rexxRC <> 0 then
-    return 0
- toolkitRC = strip(arg(2),'L',0)
- if toolkitRC == '' then
-    return 0
- if toolkitRC <> HWTH_WARNING then
-    return 0
- return 1 
-
 /***********************************************/
 /* Procedure: HTTP_surfaceDiag()               */
 /*                                             */
@@ -367,11 +337,6 @@ HTTP_surfaceDiag: procedure expose diagArea.
   say 'diagArea.ReasonDesc: '||diagArea.HWTH_reasonDesc
   say
  return
-
-fatalError:
- errorMsg = arg(1)
- say errorMsg
- return -1  
 
 /***********************************************/
 /* Function:  TurnOnVerboseOutput              */
