@@ -27,7 +27,7 @@ do while SUBSTR(opt,1,1) = '-'
     parse var rest outfile opt rest
   end  
   else if opt = '-?' then do
-    Call Syntax
+    call Syntax
   end  
   else do
     say 'Unknown Option: ' opt ' ignored'
@@ -93,7 +93,7 @@ exit 4
 HTTP_check:Procedure
  Parse arg msg, rexxRC, returnCode, diagArea.
  code=HTTP_Error(rexxRC, returnCode)
- if code > 0 then do
+ if code > 4 then do
     call HTTP_surfaceDiag msg, rexxRC, returnCode, diagArea.
     exit code
  end
@@ -111,11 +111,7 @@ trace 'o'
     say 'Including HWT Constants...'
  end
  address hwthttp "hwtconst " "returnCode " "diagArea."
- rexxRC = RC
- if HTTP_Error(rexxRC,returnCode) > 0 then do
-    call HTTP_surfaceDiag 'hwtconst', rexxRC, returnCode, diagArea.
-    return fatalError( '** hwtconst (hwthttp) failure **' )
-  end 
+ call HTTP_check "hwtconst", rc, returnCode, diagArea.
 
  return 0  
 
@@ -139,11 +135,7 @@ parse Arg verbose, handle, key, val
   returnCode = -1
   diagArea. = ''
   address hwthttp "hwthset returnCode" handle "key val diagArea."
-  rexxRC = RC
-  if HTTP_Error(rexxRC,returnCode) > 0 then do
-    call HTTP_surfaceDiag 'hwthset', rexxRC, returnCode, diagArea.
-    exit fatalError( '** hwthset ' key ' failure')
-  end 
+  call HTTP_check "hwthset", rc, returnCode, diagArea.
   return 0
 
 HTTP_hwthsetvar:
@@ -155,11 +147,7 @@ parse arg verbose, handle, key, val
   returnCode = -1
   diagArea. = ''
   address hwthttp "hwthset returnCode" handle "key" val "diagArea."
-  rexxRC = RC
-  if HTTP_Error(rexxRC,returnCode) > 0 then do
-    call HTTP_surfaceDiag 'hwthset', rexxRC, returnCode, diagArea.
-    exit fatalError( '** hwthset ' key ' failure')
-  end 
+  call HTTP_check "hwthsetvar", rc, returnCode, diagArea.
   return 0
 
 HTTP_setupConnection:Procedure expose connectionHandle
@@ -236,11 +224,7 @@ Parse arg verbose
  end
 
  address hwthttp "hwthrqst " "returnCode " "connectionHandle " "requestHandle " "HttpStatusCode " "HttpReasonCode " "diagArea."
- rexxRC = RC
- if HTTP_Error(rexxRC,returnCode) > 0 then do
-    call HTTP_surfaceDiag 'hwthrqst', rexxRC, returnCode, diagArea.
-    return fatalError( '** hwthrqst failure **' )
- end
+ call HTTP_check "hwthrqst", rc, returnCode, diagArea.
 
 say 'Response Body Length: ' LENGTH(ResponseBody)
 
@@ -266,31 +250,19 @@ trace 'o'
     say 'Create new SList'
  end
  address hwthttp "hwthslst " "returnCode " "requestHandle " "HWTH_SLST_NEW " "SList " "acceptMediaHeader " "diagArea."
- rexxRC = RC
- if HTTP_Error(rexxRC,returnCode) > 0 then do
-    call HTTP_surfaceDiag 'hwthslst', rexxRC, returnCode, diagArea.
-    return fatalError( '** hwthslst (HWTH_SLST_NEW) failure **' )
- end  
+ call HTTP_check "hwthslst-new", rc, returnCode, diagArea.
 
  if verbose then do
     say 'Append Accept:*/* to SList'
  end
  address hwthttp "hwthslst " "returnCode " "requestHandle " "HWTH_SLST_APPEND " "SList " "acceptLanguageHeader " "diagArea."
- rexxRC = RC
- if HTTP_Error(rexxRC,returnCode) > 0 then do
-    call HTTP_surfaceDiag 'hwthslst', rexxRC, returnCode, diagArea.
-    return fatalError( '** hwthslst (HWTH_SLST_APPEND) failure **' )
- end 
+ call HTTP_check "hwthslst-append", rc, returnCode, diagArea.
 
  if verbose then do
     say 'Append Language'
  end
  address hwthttp "hwthslst " "returnCode " "requestHandle " "HWTH_SLST_APPEND " "SList " "hostHeader " "diagArea."
- rexxRC = RC
- if HTTP_Error(rexxRC,returnCode) > 0 then do
-    call HTTP_surfaceDiag 'hwthslst', rexxRC, returnCode, diagArea.
-    return fatalError( '** hwthslst (HWTH_SLST_APPEND) failure **' )
- end
+ call HTTP_check "hwthslst-append", rc, returnCode, diagArea.
 
  if verbose then do
     say '****** Set HWTH_OPT_HTTPHEADERS for request ******'
@@ -298,11 +270,7 @@ trace 'o'
  returnCode = -1
  diagArea. = ''
  address hwthttp "hwthset " "returnCode " "requestHandle " "HWTH_OPT_HTTPHEADERS " "SList " "diagArea."
- rexxRC = RC
- if HTTP_Error(rexxRC,returnCode) > 0 then do
-    call HTTP_surfaceDiag 'hwthset', rexxRC, returnCode, diagArea.
-    return fatalError( '** hwthset (HWTH_OPT_HTTPHEADERS) failure **' )
- end 
+ call HTTP_check "hwthsset-hdrs", rc, returnCode, diagArea.
 
  return 0
 
@@ -330,11 +298,7 @@ HTTP_disconnect:
  returnCode = -1
  diagArea. = ''
  address hwthttp "hwthdisc " "returnCode " "connectionHandle " "diagArea."
- rexxRC = RC
- if HTTP_Error(rexxRC,returnCode) > 0 then do
-    call HTTP_surfaceDiag 'hwthdisc', rexxRC, returnCode, diagArea.
-    return fatalError( '** hwthdisc failure **' )
- end 
+ call HTTP_check "hwthdisc", rc, returnCode, diagArea.
  if verbose then do
     say 'Disconnect (hwthdisc) succeeded'
  end
@@ -351,11 +315,7 @@ HTTP_terminate:
  returnCode = -1
  diagArea. = ''
  address hwthttp "hwthterm " "returnCode " "handleIn " "forceOption " "diagArea."
- rexxRC = RC
- if HTTP_Error(rexxRC,returnCode) > 0 then do
-    call HTTP_surfaceDiag 'hwthterm', rexxRC, returnCode, diagArea.
-    return fatalError( '** hwthterm failure **' )
- end  
+ call HTTP_check "hwthdisc", rc, returnCode, diagArea.
  if verbose then do
     say 'Terminate (hwthterm) succeeded'
  end
@@ -449,12 +409,7 @@ TurnOnVerboseOutput:
 
  diagArea. = ''
  address hwthttp "hwthset " "returnCode " "connectionHandle " "HWTH_OPT_VERBOSE_OUTPUT " "traceDD" "diagArea."
-
- rexxRC = RC
- if HTTP_Error(rexxRC,returnCode) > 0 then do
-    call HTTP_surfaceDiag 'hwthset', rexxRC, returnCode, diagArea.
-    return fatalError( '** hwthset (HWTH_OPT_VERBOSE) failure **')
- end /* endif hwthset failure */
+ call HTTP_check "hwthset-verbose", rc, returnCode, diagArea.
 
  say 'Trace output location: 'traceDataSetName
  return
