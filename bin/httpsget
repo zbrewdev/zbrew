@@ -153,8 +153,7 @@ parse arg verbose, uri, tracefile
 
  handleName="connectionHandle"
  if verbose then do
-   call HTTP_hwthset verbose, handleName, "HWTH_OPT_VERBOSE", "HWTH_VERBOSE_ON"
-   call TurnOnVerboseOutput tracefile
+   call TurnOnVerboseOutput verbose, handleName, tracefile
  end 
 
  call HTTP_hwthset verbose, handleName, "HWTH_OPT_URI", "http://"uri
@@ -188,8 +187,12 @@ HTTP_setupRequest:Procedure Expose requestHandle
 
  handleName="requestHandle"
  call HTTP_hwthset verbose, handleName, "HWTH_OPT_HTTPAUTH", "HWTH_HTTPAUTH_BASIC"
- call HTTP_hwthset verbose, handleName, "HWTH_OPT_userNAME", user
- call HTTP_hwthset verbose, handleName, "HWTH_OPT_password", password
+ if user <> '' then do
+   call HTTP_hwthset verbose, handleName, "HWTH_OPT_userNAME", user
+ end
+ if password <> '' then do
+   call HTTP_hwthset verbose, handleName, "HWTH_OPT_password", password
+ end
  call HTTP_hwthset verbose, handleName, "HWTH_OPT_REQUESTMETHOD", "HWTH_HTTP_REQUEST_GET"
  call HTTP_hwthset verbose, handleName, "HWTH_OPT_URI", "/"requestPath
  call HTTP_hwthsetvar verbose, handleName, "HWTH_OPT_RESPONSEHDR_userDATA", "ResponseHeaders."
@@ -329,9 +332,13 @@ HTTP_Error:
 /* suppressed (so as to not mislead).          */
 /***********************************************/
 HTTP_surfaceDiag: procedure expose diagArea.
+  msg=arg(1)
+  rexxRC=arg(2)
+  toolkitRC=arg(3)
+
   say
-  say '*ERROR* ('||arg(1)||') at time: '||Time()
-  say 'Rexx RC: '||arg(2)', Toolkit returnCode: '||arg(3)
+  say '*ERROR* (' msg ') at time: '||Time()
+  say 'Rexx RC: ' rexxRC ', Toolkit returnCode: ' toolkitRC '(0x'D2X(toolkitRC)')'
   say 'diagArea.Service: '||diagArea.HWTH_service
   say 'diagArea.ReasonCode: '||diagArea.HWTH_reasonCode
   say 'diagArea.ReasonDesc: '||diagArea.HWTH_reasonDesc
@@ -345,14 +352,14 @@ HTTP_surfaceDiag: procedure expose diagArea.
 /* output data set                             */
 /***********************************************/
 TurnOnVerboseOutput: Procedure Expose connectionHandle
- Parse Arg tracefile
+trace 'r'
+ Parse Arg verbose, handlename, tracefile
  traceDD = 'MYTRACE'
 
  allocRc = allocateDsnToolkitTracefile(tracefile,traceDD)
 
- call HTTP_hwt "hwthset", "HWTH_OPT_VERBOSE_OUTPUT traceDD"
-
- say 'Trace output location: 'traceDataSetName
+ call HTTP_hwthset verbose, handleName, "HWTH_OPT_VERBOSE",        "HWTH_VERBOSE_ON"
+ call HTTP_hwthset verbose, handlename, "HWTH_OPT_VERBOSE_OUTPUT", traceDD
  return
 
  /*************************************************/
@@ -363,13 +370,14 @@ TurnOnVerboseOutput: Procedure Expose connectionHandle
  /* must already exist), and a known DDname.      */
  /*************************************************/
 allocateDsnToolkitTracefile: procedure expose (PROC_GLOBALS)
+trace 'r'
   hfsName = arg(1) 
   DDname = arg(2)
 
   /* allocates datasetName to DDName and directs messages */
   /* to z/OS UNIX standard error (stderr)                 */
   alloc = 'alloc fi('||DDname||') '
-  alloc = alloc||'path('||quoted(hfsName)') reuse msg(2)'
+  alloc = alloc||'path('||quoted(hfsName)') msg(2)'
   call bpxwdyn alloc
   allocRc = Result
   say 'BPXWDYN Result: '||allocRc
