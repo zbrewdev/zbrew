@@ -186,12 +186,15 @@ HTTP_setupRequest:Procedure Expose requestHandle
  parse Arg verbose, user, password, requestPath, uri
 
  handleName="requestHandle"
- call HTTP_hwthset verbose, handleName, "HWTH_OPT_HTTPAUTH", "HWTH_HTTPAUTH_BASIC"
+ if user <> '' | password <> '' then do
+   call HTTP_hwthset verbose, handleName, "HWTH_OPT_HTTPAUTH", "HWTH_HTTPAUTH_BASIC"
+ end
+
  if user <> '' then do
-   call HTTP_hwthset verbose, handleName, "HWTH_OPT_userNAME", user
+   call HTTP_hwthset verbose, handleName, "HWTH_OPT_USERNAME", user
  end
  if password <> '' then do
-   call HTTP_hwthset verbose, handleName, "HWTH_OPT_password", password
+   call HTTP_hwthset verbose, handleName, "HWTH_OPT_PASSWORD", password
  end
  call HTTP_hwthset verbose, handleName, "HWTH_OPT_REQUESTMETHOD", "HWTH_HTTP_REQUEST_GET"
  call HTTP_hwthset verbose, handleName, "HWTH_OPT_URI", "/"requestPath
