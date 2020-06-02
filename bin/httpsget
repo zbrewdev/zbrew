@@ -85,11 +85,11 @@ Trace 'o'
   call SayErr " <url>: web location to read file from, in the form https://<uri>/<path>" 
 exit 4
 
-HTTP_check:Procedure
- Parse arg msg, rexxRC, returnCode, diagArea.
+HTTP_check:Procedure Expose diagArea.
+ Parse arg msg, rexxRC, returnCode
  code=HTTP_Error(rexxRC, returnCode)
  if code > 4 then do
-    call HTTP_surfaceDiag msg, rexxRC, returnCode, diagArea.
+    call HTTP_surfaceDiag msg, rexxRC, returnCode
     exit code
  end
  return 0
@@ -102,7 +102,7 @@ trace 'o'
   diagArea.  = ''
 
   address hwthttp svc "returnCode" parms "diagArea."
-  call HTTP_check svc, rc, returnCode, diagArea.
+  call HTTP_check svc, rc, returnCode
   return
   
 HTTP_getToolkitConstants:
@@ -156,7 +156,7 @@ parse arg verbose, uri, tracefile
    call TurnOnVerboseOutput verbose, handleName, tracefile
  end 
 
- call HTTP_hwthset verbose, handleName, "HWTH_OPT_URI", "http://"uri
+ call HTTP_hwthset verbose, handleName, "HWTH_OPT_URI", "https://"uri
  call HTTP_hwthset verbose, handleName, "HWTH_OPT_COOKIETYPE", "HWTH_COOKIETYPE_SESSION"
  call HTTP_hwthset verbose, handleName, "HWTH_OPT_USE_SSL", "HWTH_SSL_USE"
  call HTTP_hwthset verbose, handleName, "HWTH_OPT_SSLKEYTYPE", "HWTH_SSLKEYTYPE_KEYRINGNAME"
