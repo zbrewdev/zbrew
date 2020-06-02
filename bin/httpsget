@@ -352,7 +352,7 @@ HTTP_surfaceDiag: procedure expose diagArea.
 /* output data set                             */
 /***********************************************/
 TurnOnVerboseOutput: Procedure Expose connectionHandle
-trace 'r'
+trace 'o'
  Parse Arg verbose, handlename, tracefile
  traceDD = 'MYTRACE'
 
@@ -370,9 +370,24 @@ trace 'r'
  /* must already exist), and a known DDname.      */
  /*************************************************/
 allocateDsnToolkitTracefile: procedure expose (PROC_GLOBALS)
-trace 'r'
+trace 'o'
   hfsName = arg(1) 
   DDname = arg(2)
+
+  /* deletes and recreates the file if it does not exist  */
+  call syscalls 'ON'
+  address syscall
+  'open' hfsName O_rdwr+O_creat+O_trunc 660
+  if retval=-1 then do
+    say 'Unable to create (open) file:' hfsName
+    return 16
+  end
+  fd=retval
+  'close' fd
+  if retval=-1 then do
+    say 'Unable to create (close) file:' hfsName
+    return 16
+  end
 
   /* allocates datasetName to DDName and directs messages */
   /* to z/OS UNIX standard error (stderr)                 */
@@ -380,7 +395,6 @@ trace 'r'
   alloc = alloc||'path('||quoted(hfsName)') msg(2)'
   call bpxwdyn alloc
   allocRc = Result
-  say 'BPXWDYN Result: '||allocRc
 
   return allocRc  /* end procedure */
 
