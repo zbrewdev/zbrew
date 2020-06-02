@@ -195,9 +195,9 @@ HTTP_setupRequest:Procedure Expose requestHandle
  end
  call HTTP_hwthset verbose, handleName, "HWTH_OPT_REQUESTMETHOD", "HWTH_HTTP_REQUEST_GET"
  call HTTP_hwthset verbose, handleName, "HWTH_OPT_URI", "/"requestPath
- call HTTP_hwthsetvar verbose, handleName, "HWTH_OPT_RESPONSEHDR_userDATA", "ResponseHeaders."
+ call HTTP_hwthsetvar verbose, handleName, "HWTH_OPT_RESPONSEHDR_USERDATA", "ResponseHeaders."
  call HTTP_hwthset verbose, handleName, "HWTH_OPT_TRANSLATE_RESPBODY", "HWTH_XLATE_RESPBODY_NONE"
- call HTTP_hwthsetvar verbose, handleName, "HWTH_OPT_RESPONSEBODY_userDATA", "ResponseBody"
+ call HTTP_hwthsetvar verbose, handleName, "HWTH_OPT_RESPONSEBODY_USERDATA", "ResponseBody"
 
  call HTTP_setRequestHeaders verbose, uri
  
