@@ -1,0 +1,452 @@
+/* REXX */
+/*
+ * httpsget: Securely connect to a server and download a file
+ * For syntax: httpsget -?
+ */
+trace 'o'
+parse arg parms
+
+parse var parms opt rest
+
+verbose=0
+user=''
+password=''
+url=''
+outfile=''
+
+do while SUBSTR(opt,1,1) = '-'
+  if opt = '-v' then do
+    verbose = 1
+    parse var rest tracefile opt rest
+  end
+  else if opt = '-u' then do
+    parse var rest userpassword opt rest
+    parse var userpassword user':'password 
+  end  
+  else if opt = '-o' then do
+    parse var rest outfile opt rest
+  end  
+  else if opt = '-?' then do
+    call Syntax
+  end  
+  else do
+    call SayErr 'Unknown Option: ' opt ' ignored'
+    parse var rest opt rest
+  end
+end
+parms = opt rest
+parse var parms url .
+
+if url == '' then do
+  call Syntax
+end
+
+parse var url 'https://'connectionURI'/'requestPath .
+
+if connectionURI == '' || requestPath == '' then do
+  call SayErr 'URL not in valid format.'
+  call Syntax
+end
+
+ call HTTP_getToolkitConstants
+
+ connectionHandle=HTTP_hwthinit(verbose, HWTH_HANDLETYPE_CONNECTION)
+ call HTTP_setupConnection verbose, connectionURI, tracefile
+ call HTTP_connect verbose
+
+ requestHandle=HTTP_hwthinit(verbose, HWTH_HANDLETYPE_HTTPREQUEST)
+ call HTTP_setupRequest verbose, user, password, requestPath, connectionURI
+
+ ExpectedResponseStatus = 200
+ responseBody = ''
+ responseStatusCode=HTTP_request(verbose)
+
+ if ResponseStatusCode == ExpectedResponseStatus then do
+    call writeData outfile
+ end
+ else do
+    Say 'Bad response received: ' ResponseStatusCode ' from http request.' 
+    exit 16
+ end
+
+ call HTTP_terminate verbose, requestHandle, HWTH_NOFORCE
+ call HTTP_disconnect verbose
+ call HTTP_terminate verbose, connectionHandle, HWTH_NOFORCE
+ call closeToolkitTrace verbose, traceDD
+
+ exit 0
+
+Syntax:Procedure
+Trace 'o'
+  call SayErr "Syntax: httpsget [-o <outfile>|-v <tracefile>|-u <user:password>] <url>"
+  call SayErr "  -o  : location to write output to (default is stdout). No data translation performed"
+  call SayErr "  -v  : verbose output to stderr and detailed trace file written to <tracefile>"
+  call SayErr "  -u  : user and password to be passed to <url>. Defaults to no userid or password"
+  call SayErr " <url>: web location to read file from, in the form https://<uri>/<path>" 
+exit 4
+
+HTTP_check:Procedure Expose diagArea.
+ Parse arg msg, rexxRC, returnCode
+ code=HTTP_Error(rexxRC, returnCode)
+ if code > 4 then do
+    call HTTP_surfaceDiag msg, rexxRC, returnCode
+    exit code
+ end
+ return 0
+
+HTTP_hwt:
+trace 'o' 
+  Parse arg svc, parms
+
+  returnCode = -1
+  diagArea.  = ''
+
+  address hwthttp svc "returnCode" parms "diagArea."
+  call HTTP_check svc, rc, returnCode
+  return
+  
+HTTP_getToolkitConstants:
+trace 'o'
+  if verbose then do
+    call SayErr 'Setting hwtcalls on, syscalls sigoff'
+  end
+ call hwtcalls 'on'
+ call syscalls 'SIGOFF'
+
+ if verbose then do
+    call SayErr 'Including HWT Constants...'
+ end
+ call HTTP_hwt "hwtconst", ""
+
+ return 0  
+
+HTTP_hwthinit:Procedure
+trace 'o'
+parse arg verbose, handleType
+
+ call HTTP_hwt "hwthinit", "handleType handleOut"  
+ return handleOut
+ 
+HTTP_hwthset:
+trace 'o'
+parse Arg verbose, handle, key, val
+
+  if verbose then do
+    call SayErr key 'set to:' val
+  end
+  call HTTP_hwt "hwthset", handle "key val"
+  return 0
+
+HTTP_hwthsetvar:
+trace 'o'
+parse arg verbose, handle, key, val
+
+  if verbose then do
+    call SayErr key 'set to:' val
+  end
+  call HTTP_hwt "hwthset", handle "key" val
+  return 0
+
+HTTP_setupConnection:Procedure expose connectionHandle
+trace 'o'
+parse arg verbose, uri, tracefile
+
+ handleName="connectionHandle"
+ if verbose then do
+   call TurnOnVerboseOutput verbose, handleName, tracefile
+ end 
+
+ call HTTP_hwthset verbose, handleName, "HWTH_OPT_URI", "https://"uri
+ call HTTP_hwthset verbose, handleName, "HWTH_OPT_COOKIETYPE", "HWTH_COOKIETYPE_SESSION"
+ call HTTP_hwthset verbose, handleName, "HWTH_OPT_USE_SSL", "HWTH_SSL_USE"
+ call HTTP_hwthset verbose, handleName, "HWTH_OPT_SSLKEYTYPE", "HWTH_SSLKEYTYPE_KEYRINGNAME"
+ call HTTP_hwthset verbose, handleName, "HWTH_OPT_SSLKEY", "*AUTH*/*"
+ call HTTP_hwthset verbose, handleName, "HWTH_OPT_XDOMAIN_REDIRECTS", "HWTH_XDOMAIN_REDIRS_ALLOWED"
+
+ if verbose then do
+    call SayErr 'Connection setup successful'
+ end
+ return
+
+HTTP_connect:Procedure Expose connectionHandle
+trace 'o'
+ parse arg verbose
+ if verbose then do
+    call SayErr 'Connect'
+ end
+
+ call HTTP_hwt "hwthconn", "connectionHandle"
+ if verbose then do
+    call SayErr 'Connection successful'
+ end
+ return
+
+HTTP_setupRequest:Procedure Expose requestHandle
+ trace 'o'
+ parse Arg verbose, user, password, requestPath, uri
+
+ handleName="requestHandle"
+ if user <> '' | password <> '' then do
+   call HTTP_hwthset verbose, handleName, "HWTH_OPT_HTTPAUTH", "HWTH_HTTPAUTH_BASIC"
+ end
+
+ if user <> '' then do
+   call HTTP_hwthset verbose, handleName, "HWTH_OPT_USERNAME", user
+ end
+ if password <> '' then do
+   call HTTP_hwthset verbose, handleName, "HWTH_OPT_PASSWORD", password
+ end
+ call HTTP_hwthset verbose, handleName, "HWTH_OPT_REQUESTMETHOD", "HWTH_HTTP_REQUEST_GET"
+ call HTTP_hwthset verbose, handleName, "HWTH_OPT_URI", "/"requestPath
+ call HTTP_hwthsetvar verbose, handleName, "HWTH_OPT_RESPONSEHDR_USERDATA", "ResponseHeaders."
+ call HTTP_hwthset verbose, handleName, "HWTH_OPT_TRANSLATE_RESPBODY", "HWTH_XLATE_RESPBODY_NONE"
+ call HTTP_hwthsetvar verbose, handleName, "HWTH_OPT_RESPONSEBODY_USERDATA", "responseBody"
+
+ call HTTP_setRequestHeaders verbose, uri
+ 
+ if verbose then do
+    call SayErr 'Request setup successful'
+ end
+
+ return 
+
+HTTP_request:Procedure Expose connectionHandle requestHandle responseBody
+trace 'o'
+Parse arg verbose
+
+ if verbose then do
+    call SayErr 'Making HTTP Request'
+ end
+
+ call HTTP_hwt "hwthrqst", "connectionHandle requestHandle HttpStatusCode HttpReasonCode"
+
+ ResponseStatusCode = strip(HttpStatusCode,'L',0)
+ ResponseReasonCode = strip(HttpReasonCode)
+
+ return ResponseStatusCode
+
+HTTP_setRequestHeaders:Procedure Expose requestHandle
+trace 'o'
+ Parse Arg verbose, uri
+ SList = ''
+ acceptMediaHeader = 'Accept:*/*' 
+ acceptLanguageHeader = 'Accept-Language: en-US'
+ hostHeader = 'Host:' uri 
+
+ if verbose then do
+    call SayErr 'Create new SList'
+ end
+ call HTTP_hwt "hwthslst", "requestHandle HWTH_SLST_NEW SList acceptMediaHeader"
+
+ if verbose then do
+    call SayErr 'Append Accept:*/* to SList'
+ end
+ call HTTP_hwt "hwthslst", "requestHandle HWTH_SLST_APPEND SList acceptLanguageHeader"
+
+ if verbose then do
+    call SayErr 'Append Language'
+ end
+ call HTTP_hwt "hwthslst", "requestHandle HWTH_SLST_APPEND SList hostHeader"
+
+ if verbose then do
+    call SayErr '****** Set HWTH_OPT_HTTPHEADERS for request ******'
+ end
+ call HTTP_hwt "hwthset", "requestHandle HWTH_OPT_HTTPHEADERS SList"
+
+ return 0
+
+ /*******************************************************************/
+ /* Function:  writeData()                                          */
+ /*                                                                 */
+ /* return 0 if successful                                          */
+ /* -1 if otherwise.                                                */
+ /*******************************************************************/
+writeData:Procedure Expose responseBody
+Parse arg outfile
+trace 'o'
+
+  responseLength = LENGTH(responseBody)
+
+  /* deletes and recreates the file if it does not exist        */
+  /* If no file specified, write to stdout (turn off conversion */
+  call syscalls 'ON'
+  address syscall
+  if outfile = '' then do
+    fd=1
+    'f_control_cvt' fd 'CVTSETCVTOFF' '0' '0'
+  end
+  else do
+    'open' outfile O_rdwr+O_creat+O_trunc 660                         
+    if retval=-1 then do                                              
+      call SayErr 'Unable to create (open) file:' outfile                     
+      return 16
+    end
+    fd=retval
+  end
+
+  'write' fd 'responseBody' responseLength
+  if retval=-1 then do                                              
+    call SayErr 'Unable to create (write) file:' outfile                     
+    return 16
+  end
+
+  if outfile = '' then do
+    'close' fd
+    if retval=-1 then do
+      call SayErr 'Unable to create (close) file:' outfile
+      return 16
+    end
+  end
+  return 0
+
+HTTP_disconnect:Procedure Expose connectionHandle
+Parse Arg verbose
+
+ if verbose then do
+    call SayErr 'Disconnect'
+ end
+
+ call HTTP_hwt "hwthdisc", "connectionHandle"
+
+ if verbose then do
+    call SayErr 'Disconnect (hwthdisc) succeeded'
+ end
+ return 0 
+
+HTTP_terminate:Procedure 
+Parse arg verbose, handleIn, forceOption
+trace 'o'
+
+ if verbose then do
+    call SayErr 'Terminate'
+ end
+
+ call HTTP_hwt "hwthterm", "handleIn forceOption"
+
+ if verbose then do
+    call SayErr 'Terminate (hwthterm) succeeded'
+ end
+ return 0
+
+/*************************************************************/
+/* Function:  HTTP_Error                                     */
+/*                                                           */
+/* Check the input processing codes. Note that if the input  */
+/* rexxRC is nonzero, then the toolkit return code is moot   */
+/* (the toolkit function was likely not even invoked). If    */
+/* the toolkit return code is relevant, check it against the */
+/* set of { HWTH_xx } return codes for evidence of error.    */
+/* This set is ordered: HWTH_OK < HWTH_WARNING < ...         */
+/* with remaining codes indicating error, so we may check    */
+/* via single inequality.                                    */
+/*                                                           */
+/* returns: REXX return code if non-zero, else toolkitRC     */
+/* otherwise.                                                */
+/*************************************************************/
+HTTP_Error:
+ rexxRC = arg(1)
+ if rexxRC <> 0 then
+    return rexxRC
+ toolkitRC = strip(arg(2),'L',0)
+ if toolkitRC == '' then
+       return 0
+ if toolkitRC <= HWTH_WARNING then
+       return 0
+ return toolkitRC
+
+/***********************************************/
+/* Procedure: HTTP_surfaceDiag()               */
+/*                                             */
+/* Surface input error information.  Note that */
+/* when the rexxRC is nonzero, the toolkitRC   */
+/* and diagArea content are moot and are       */
+/* suppressed (so as to not mislead).          */
+/***********************************************/
+HTTP_surfaceDiag: procedure expose diagArea.
+  msg=arg(1)
+  rexxRC=arg(2)
+  toolkitRC=arg(3)
+
+  call SayErr
+  call SayErr '*ERROR* (' msg ') at time: '||Time()
+  call SayErr 'Rexx RC: ' rexxRC ', Toolkit returnCode: ' toolkitRC '(0x'D2X(toolkitRC)')'
+  call SayErr 'diagArea.Service: '||diagArea.HWTH_service
+  call SayErr 'diagArea.ReasonCode: '||diagArea.HWTH_reasonCode
+  call SayErr 'diagArea.ReasonDesc: '||diagArea.HWTH_reasonDesc
+  call SayErr
+ return
+
+/***********************************************/
+/* Function:  TurnOnVerboseOutput              */
+/*                                             */
+/* Allocates the trace dataset and sets the    */
+/* output data set                             */
+/***********************************************/
+TurnOnVerboseOutput: Procedure Expose connectionHandle
+trace 'o'
+ Parse Arg verbose, handlename, tracefile
+ traceDD = 'MYTRACE'
+
+ allocRc = allocateDsnToolkitTracefile(tracefile,traceDD)
+
+ call HTTP_hwthset verbose, handleName, "HWTH_OPT_VERBOSE",        "HWTH_VERBOSE_ON"
+ call HTTP_hwthset verbose, handlename, "HWTH_OPT_VERBOSE_OUTPUT", traceDD
+ return
+
+ /*************************************************/
+ /* Procedure:  allocateDsnToolkitTracefile       */
+ /*                                               */
+ /* Allocate a previously created trace file      */
+ /* with the required attributes (which           */
+ /* must already exist), and a known DDname.      */
+ /*************************************************/
+allocateDsnToolkitTracefile: procedure expose (PROC_GLOBALS)
+trace 'o'
+  hfsName = arg(1) 
+  DDname = arg(2)
+
+  /* deletes and recreates the file if it does not exist  */
+  call syscalls 'ON'
+  address syscall
+  'open' hfsName O_rdwr+O_creat+O_trunc 660
+  if retval=-1 then do
+    call SayErr 'Unable to create (open) file:' hfsName
+    return 16
+  end
+  fd=retval
+  'close' fd
+  if retval=-1 then do
+    call SayErr 'Unable to create (close) file:' hfsName
+    return 16
+  end
+
+  /* allocates datasetName to DDName and directs messages */
+  /* to z/OS UNIX standard error (stderr)                 */
+  alloc = 'alloc fi('||DDname||') '
+  alloc = alloc||"path('"hfsName"') msg(2)"
+  call bpxwdyn alloc
+  allocRc = Result
+
+  return allocRc  /* end procedure */
+
+ /***********************************************************/
+ /* Procedure:  closeToolkitTrace                           */
+ /*                                                         */
+ /* Free the ddname which an earlier redirectToolkitTraceXX */
+ /* caused allocation to associate with an HFS file.        */
+ /***********************************************************/
+closeToolkitTrace: procedure expose (PROC_GLOBALS)
+  Parse arg verbose, DDname
+
+  if verbose then do
+    call bpxwdyn 'free fi('DDname')'
+  end
+  return
+
+ /*******************************************************/
+ /* Function:  SayErr                                   */
+ /* write message to stdout instead of stderr           */
+ /*******************************************************/
+ SayErr:
+   call lineout '/dev/fd2',arg(1)
+   return
