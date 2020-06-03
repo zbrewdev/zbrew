@@ -161,6 +161,7 @@ parse arg verbose, uri, tracefile
  call HTTP_hwthset verbose, handleName, "HWTH_OPT_USE_SSL", "HWTH_SSL_USE"
  call HTTP_hwthset verbose, handleName, "HWTH_OPT_SSLKEYTYPE", "HWTH_SSLKEYTYPE_KEYRINGNAME"
  call HTTP_hwthset verbose, handleName, "HWTH_OPT_SSLKEY", "*AUTH*/*"
+ call HTTP_hwthset verbose, handleName, "HWTH_OPT_SSLVERSION", "HWTH_SSLVERSION_TLSv12"
  call HTTP_hwthset verbose, handleName, "HWTH_OPT_XDOMAIN_REDIRECTS", "HWTH_XDOMAIN_REDIRS_ALLOWED"
 
  if verbose then do
