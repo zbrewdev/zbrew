@@ -6,7 +6,7 @@
 syntax() {
 	echo "\
 Syntax:
-	mountpt {-m|-u} {-s|-t} [-v] sw
+	zbrewmount {-m|-u} {-s|-t} [-v] sw
 Notes:
     -m:             to mount
     -u:             to unmount
