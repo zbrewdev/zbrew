@@ -337,26 +337,7 @@ deconfigure() {
 		return 8
 	fi
 	if [ "${ZBREW_TGT_HLQ}" != "${ZBREW_TGT_HLQ%.*}" ]; then
-		bom="${ZBREW_REPOROOT}/zbrew-${prefix}/${ussname}/${ussname}bom.json"
-		if ! [ -f "${bom}" ]; then
-			echo "deconfigure: Unable to find BOM file: ${bom}" >&2
-			zbrewlog "deconfigure RC: $?"
-			return $rc
-		fi
-		mountpoints=`readbom "${ussname}" <"${bom}" | awk ' { if ($2 == "ZFS") { print $7; }}'`
-		rc=$?
-		if [ $rc -gt 0 ]; then
-			echo "deconfigure: Unable to read BOM file: ${bom}" >&2
-			zbrewlog "deconfigure RC: $?"
-			return $rc
-		fi
-		for mount in $mountpoints; do
-			absmount="${ZBREW_TGT_ZFSROOT}${mount}"
-			if [ -d "${absmount}" ]; then
-				/usr/sbin/unmount -R "${absmount}" 2>/dev/null
-			fi
-		done
-		drm -f "${ZBREW_TGT_HLQ}${zosname}*.*"
+		/u/ibmuser/zbrew/utils/mountpt -u -t $sw
 	fi
 	zbrewlog "deconfigure RC: $?"
 	return $?

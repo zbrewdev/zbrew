@@ -121,20 +121,7 @@ if [ "$swchild" != "0" ] && [ "$swchild" != "" ]; then
 	rc=$?
 fi
 
-libs=`readbom ${ussname} <${smpelibs}`
-rc=$?
-if [ $rc -gt 0 ]; then
-        echo "${libs}"
-        exit $rc
-fi
-mountpoints=`echo "${libs}" | awk '($2 == "ZFS") {print $7}'`
-
-if [ "$verbose" = "1" ]; then
-	echo "Attempting to unmount ${ZBREW_SRC_ZFSROOT}${mountpoints}" >&2
-fi
-unm=`echo "${libs}" | awk -v zbr="$ZBREW_SRC_ZFSROOT" '($2 == "ZFS") {system("/usr/sbin/unmount -R "zbr""$7" 2>/dev/null")}'`
-
-out=`drm -f "${ZBREW_SRC_HLQ}${zosname}*.**"`
+/u/ibmuser/zbrew/utils/mountpt -u -s $sw
 rc=$?
 if [ $rc -gt 0 ]; then
         echo "Dataset cleanup failed. UnInstall aborted"
