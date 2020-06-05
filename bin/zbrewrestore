@@ -44,6 +44,6 @@ if [ $rc -gt 4 ]; then
 	fi
 fi
 
-/u/ibmuser/zbrew/utils/mountpt -m -t $sw
+. zbrewmount -m -t $sw
 
 exit $rc
