@@ -337,7 +337,7 @@ deconfigure() {
 		return 8
 	fi
 	if [ "${ZBREW_TGT_HLQ}" != "${ZBREW_TGT_HLQ%.*}" ]; then
-		. zbrewmount -u -t $sw
+		zbrewmount -u -t $sw
 	fi
 	zbrewlog "deconfigure RC: $?"
 	return $?

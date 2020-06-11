@@ -23,9 +23,9 @@ if ! [ $# -eq 1 ]; then
         exit 8
 fi  
 sw=$1
-ussname=$(echo $1 | tr '[:upper:]' '[:lower:]');
-zosname=$(echo $1 | tr '[:lower:]' '[:upper:]');
-prefix=`echo "${ussname}" | awk '{ print substr($1, 0, 3) }'`
+ussname=$(echo $sw | tr '[:upper:]' '[:lower:]');
+zosname=$(echo $sw | tr '[:lower:]' '[:upper:]');
+prefix=`echo "${ussname}" | awk '{ print substr($sw, 0, 3) }'`
 dunzipout="${ZBREW_TMP}/$$dzip.out"
 
 dunzip -s800M "${ZBREW_TMP}/${ussname}.dzp" "${ZBREW_TGT_HLQ%.*}" >${dunzipout} 2>&1
@@ -44,6 +44,6 @@ if [ $rc -gt 4 ]; then
 	fi
 fi
 
-. zbrewmount -m -t $sw
+zbrewmount -m -t $sw
 
 exit $rc

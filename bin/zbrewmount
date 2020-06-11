@@ -7,13 +7,25 @@ syntax() {
 	echo "\
 Syntax:
 	zbrewmount {-m|-u} {-s|-t} [-v] sw
-Notes:
-    -m:             to mount
-    -u:             to unmount
-    -s:             action on source
-    -t:             action on target
-    [optional] -v:  enable verbose
-    sw:             product ID
+Definition:
+    -m:  to mount
+    -u:  to unmount
+    -s:  action on source
+    -t:  action on target
+    -v:  enable verbose
+    sw:  product ID
+    
+Note:
+    must specify either -m or -u, not both
+    must specify either -s or -t, not both
+    -v is optional
+    sw is mandatory
+    
+Examples:
+    Mount IGY630 at ZBREW_SRC_ZFSROOT
+        zbrewmount -m -s IGY630
+    Unmount EQAE20 at ZBREW_TGT_ZFSROOT as well as ZBREW_TGT_HLQ
+        zbrewmount -u -t EQAE20
 " >&2
     exit 8
 }
@@ -42,65 +54,54 @@ function opt_combine_repeat_chk
 # ---------------------------------------------------------------------
 function read_args
 {
-count=0
-
-for arg in $*
-do
-    if [ "$arg" = "-m" ]; then
-        opt_combine_repeat_chk -mu
-        mount="true"
-        count=$count+1
-    elif [ "$arg" = "-u" ]; then
-        opt_combine_repeat_chk -mu
-        unmount="true"
-        count=$count+1
-    fi
-  
-    if [ "$arg" = "-s" ]; then
-        opt_combine_repeat_chk -st
-        srcmode="true"
-        count=$count+1
-    elif [ "$arg" = "-t" ]; then
-        opt_combine_repeat_chk -st
-        tgtmode="true"
-        count=$count+1
-    fi
-  
-    if [ "$arg" = "-v" ]; then
-        verbose="true"
-        count=$count+1
-    fi
-
-    if [ "$(echo $arg | cut -c1)" = "-" ] && \
-       [ "$arg" != "-m" ] && \
-       [ "$arg" != "-u" ] && \
-       [ "$arg" != "-s" ] && \
-       [ "$arg" != "-t" ] && \
-       [ "$arg" != "-v" ]; then
-        echo "**WARNING: ignored invalid argument $arg"
-        echo
-    fi
+unset mount unmount srcmode tgtmode verbose sw
+while getopts ":mustv" opt; do
+    case ${opt} in
+        m )
+            opt_combine_repeat_chk -mu
+            mount="true"
+            ;;
+        u )
+            opt_combine_repeat_chk -mu
+            unmount="true"
+            ;;
+        s )
+            opt_combine_repeat_chk -st
+            srcmode="true"
+            ;;
+        t )
+            opt_combine_repeat_chk -st
+            tgtmode="true"
+            ;;
+        v )
+            verbose="true"
+            ;;
+        \?)
+            if [ ${OPTARG} != "?" ]; then
+                echo "Invalid option specified: -""${OPTARG}"
+            fi
+            syntax
+            ;;
+     esac
 done
+shift $(expr $OPTIND - 1 )
 
 if [ -z "$mount" ] && [ -z "$unmount" ]; then
     echo "** ERROR: must specify mount -m or unmount -u option" >&2
     syntax
-    exit 8
 fi
 
 if [ -z "$srcmode" ] && [ -z "$tgtmode" ]; then
     echo "** ERROR: must specify -s or -t option" >&2
     syntax
-    exit 8
 fi
 
-shift $count
 sw=$1
 if [ -z $sw ]; then
     echo "**ERROR: sw name must be specified" >&2
     syntax
-    exit 8
 fi
+shift
 ussname=$(echo ${sw} | tr '[:upper:]' '[:lower:]');
 zosname=$(echo ${sw} | tr '[:lower:]' '[:upper:]');
 prefix=`echo "${ussname}" | awk '{ print substr($1, 0, 3) }'`
