@@ -4,7 +4,9 @@ InvalidOption=1
 TooFewParms=2
 UnknownAction=3
 InvalidWorkDir=4
-WorkDirRequired=4
+WorkDirRequired=5
+InvalidRepoDir=6
+RepoDirRequired=7
 
 #
 # Temporary hack - replace with a proper message file
@@ -23,6 +25,8 @@ msg() {
 		${UnknownAction}) msgtext="Unknown action specified: ";;
 		${InvalidWorkDir}) msgtext="Unknown working directory specified: ";;
 		${WorkDirRequired}) msgtext="Working directory must be specified via -w option or through ZBREW_WORKROOT ";;
+		${InvalidRepoDir}) msgtext="Unknown respository directory specified: ";;
+		${RepoDirRequired}) msgtext="Repository directory must be specified via ZBREW_REPOROOT ";;
 		*) msgtext="Internal Error. Unknow msgnum: ${msgnum}";;
 	esac
 	echo "ZCL000"${msgnum}${msgtype} "${msgtext}${args}" >&2
@@ -53,6 +57,9 @@ Note:
 	config:				Directory containing generated scripts for configuration of software
 	deconfig:			Directory containing generated scripts for de-configuration (removal) of software
 
+	zbrew looks for software package information in ZBREW_REPOROOT. If not specified, ZBREW_REPOROOT defaults to 
+	the directory that zbrew is installed into.
+
 Here is a sample order file for COBOL 6.3.0 you would create at \${ZBREW_WORKROOT}/order/igy630order.json
 {
    "software": [{
@@ -73,6 +80,8 @@ Here is a sample order file for COBOL 6.3.0 you would create at \${ZBREW_WORKROO
 zbrew Examples:
 	zbrew search cobol     <-- search for products with COBOL in their description
 	zbrew order igy630     <-- submit an order for IGY630 software (receive can not be performed until complete)
+	zbrew refresh zbrew    <-- refresh the zbrew package manager from the server
+	zbrew refresh igy      <-- refresh the COBOL package definition from the server
 	zbrew install igy630   <-- check that all pre-reqs required for COBOL are satisfied, then SMP/E RECEIVE/APPLY/ACCEPT the product (with and w/o CHECK)
 	zbrew -w /zbrew/workroot install igy630   <-- install COBOL compiler, specifying the zbrew workroot directory as /zbrew/workroot
 	zbrew -c -v install igy630   <-- do uninstall first and then verbose install
@@ -114,6 +123,16 @@ order() {
 	fi
 	zbrewlog "order RC: ${rc}"
 	return 0
+}
+
+refresh() {
+	zbrewlog "refresh" $*
+	if [ ${verbose} -gt 0 ]; then
+		echo "refresh $1" >&2
+	fi
+	rc=$?
+	zbrewlog "refresh RC: ${rc}"
+	return ${rc} 
 }
 
 receive() {
@@ -441,6 +460,7 @@ if ! [ -d "${workdir}" ]; then
 	msg zbrew ${InvalidWorkDir} E "${OPTARG}"
 	exit 4
 fi
+
 export ZBREW_WORKROOT="${workdir}"
 . zbrewsetenv
 
@@ -462,7 +482,14 @@ if [ $year -lt 2020 ] || [ $month -lt 3 ]; then
 	echo "Z Open Automation Utilities 2020/03/01 or later is required to run zbrew. Your utilities are too old: ${zoaversion}" >&2
 	exit 16
 fi
-
+if [ "${ZBREW_REPOROOT}" = '' ]; then
+	msg zbrew ${RepoDirRequired} E 
+	exit 8
+fi
+if ! [ -d "${ZBREW_REPOROOT}" ]; then
+	msg zbrew ${InvalidRepoDir} E "${ZBREW_REPOROOT}"
+	exit 4
+fi
 
 if [ "${clean}" = "1" ]; then
 	prefix=`echo "${ussname}" | awk '{ print substr($1, 0, 3) }'`
@@ -508,6 +535,10 @@ case ${verb} in
 		out=`search $2`  
 		rc=$?  
 		echo "${out}" | tr '_' ' '
+		;;
+	refresh ) 
+		refresh $2  
+		rc=$?  
 		;;
 	order ) 
 		out=`order ${opts} $2`  
