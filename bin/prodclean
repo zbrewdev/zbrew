@@ -128,4 +128,6 @@ if [ $rc -gt 0 ]; then
         exit $rc
 fi
 
+drm -f "${ZBREW_SRC_HLQ}${zosname}*.**"
+
 exit 0

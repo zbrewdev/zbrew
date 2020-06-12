@@ -112,22 +112,22 @@ function run_unmount {
     mountpoints=$1
     zbrew_zfsroot=$2
     zbrew_hlq=$3
-    zosname=$4
 
     for mount in $(echo $mountpoints | sed "s/,/ /g"); do
-        absmount="${zbrew_zfsroot}${mount#*:}"
+        relds="${zosname}.${mount%%:*}"	    #${mount%%:*} strips everything after first occurrence of ':' including ':'
+        relzfs="${mount#*:}"    #${mount#*:} strips everything before first occurrence of ':' including ':'
+        absmount="${zbrew_zfsroot}${relzfs}"
+        
         if [ ! -z $verbose ]; then
             echo "**INFO: Attempting to unmount $absmount"
         fi
         if [ -d "${absmount}" ]; then
-            /usr/sbin/unmount -R "${absmount}" 2>/dev/null
+            /usr/sbin/unmount -R "${absmount}"
+            chk $? "**ERROR: unable to unmount directory: ${absmount} on ${zbrew_hlq}${relds}"
+            rm -rf "${absmount}"
+            chk $? "**ERROR: unable to remove directory: ${absmount}"
         fi
     done
-    
-    if [ ! -z $verbose ]; then
-        echo "**INFO: Attempting to remove ${zbrew_hlq}${zosname}*.**"
-    fi
-    drm -f "${zbrew_hlq}${zosname}*.**"
 }
 
 function run_mount {
@@ -136,8 +136,8 @@ function run_mount {
     zbrew_hlq=$3
 
     for mount in $(echo $mountpoints | sed "s/,/ /g"); do
-        relds="${zosname}.${mount%%:*}"	    #${mount%%:*} strips everything after first occurance of ':' including ':'
-        relzfs="${mount#*:}"    #${mount#*:} strips everything before first occurance of ':' including ':'
+        relds="${zosname}.${mount%%:*}"	    #${mount%%:*} strips everything after first occurrence of ':' including ':'
+        relzfs="${mount#*:}"    #${mount#*:} strips everything before first occurrence of ':' including ':'
         absmount="${zbrew_zfsroot}${relzfs}"
 
         mkdir -p -m 755 "${absmount}"
@@ -148,7 +148,7 @@ function run_mount {
         fi
         
         /usr/sbin/mount -t zfs -f "${zbrew_hlq}${relds}" "${absmount}"
-        chk $? "**ERROR: unable to mount directory: ${absmount} at ${zbrew_hlq}${relds}"
+        chk $? "**ERROR: unable to mount directory: ${absmount} on ${zbrew_hlq}${relds}"
     done
 }
 
@@ -172,14 +172,18 @@ mountpoints=`echo "${readbom_out}" | awk '($2 == "ZFS") {print $1 ":" $7}'`
 mountpoints=$(echo $mountpoints | tr ' ' ',')
 
 # different scenarios
-if [ ! -z $mount ] && [ ! -z $srcmode ]; then
-    run_mount $mountpoints $ZBREW_SRC_ZFSROOT $ZBREW_SRC_HLQ
-elif [ ! -z $mount ] && [ ! -z $tgtmode ]; then
-    run_mount $mountpoints $ZBREW_TGT_ZFSROOT $ZBREW_TGT_HLQ
-elif [ ! -z $unmount ] && [ ! -z $srcmode ]; then
-    run_unmount $mountpoints $ZBREW_SRC_ZFSROOT $ZBREW_SRC_HLQ $zosname
-elif [ ! -z $unmount ] && [ ! -z $tgtmode ]; then
-    run_unmount $mountpoints $ZBREW_TGT_ZFSROOT $ZBREW_TGT_HLQ $zosname
+if [ ! -z $mount ]; then
+	if [ ! -z $srcmode ]; then
+		run_mount $mountpoints $ZBREW_SRC_ZFSROOT $ZBREW_SRC_HLQ
+	elif [ ! -z $tgtmode ]; then
+		run_mount $mountpoints $ZBREW_TGT_ZFSROOT $ZBREW_TGT_HLQ
+	fi
+elif [ ! -z $unmount ]; then
+	if [ ! -z $srcmode ]; then
+    	run_unmount $mountpoints $ZBREW_SRC_ZFSROOT $ZBREW_SRC_HLQ
+    elif [ ! -z $tgtmode ]; then
+    	run_unmount $mountpoints $ZBREW_TGT_ZFSROOT $ZBREW_TGT_HLQ
+    fi
 fi
 
 exit 0
