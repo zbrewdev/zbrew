@@ -125,14 +125,77 @@ order() {
 	return 0
 }
 
-refresh() {
-	zbrewlog "refresh" $*
-	if [ ${verbose} -gt 0 ]; then
-		echo "refresh $1" >&2
+updateInPlace() {
+	sw="$1"
+	zbrewroot="$2"
+	root="$3"
+
+	tmpscript="${ZBREW_TMP}/$$.updateinplace.sh"
+	cat >"${tmpscript}" <<'zz'
+#!/bin/sh
+set -x
+myself="$0"
+sw="$1"
+zbrewroot="$2"
+root="$3"
+
+cd /tmp
+if [ -d "${root}" ]; then 
+	# Directory exists, this is an 'update', not a 'create'
+	if [ -d "${root}/.git" ]; then
+		# git directory exists: this is a git pull, not a bintray get 
+		echo "git pull ${sw}"
+	else
+		# no git directory: this is a bintray get
+		echo "bintray get ${sw}"
 	fi
+else 
+	# Package does not exist yet. Look to zbrewroot to determine if git or bintray
+	if [ -d "${zbrewroot}/.git" ]; then
+		# zbrew git directory exists: this is a git clone, not a bintray get 
+		echo "git clone ${sw}"
+	else
+		# no git directory: this is a bintray get
+		echo "bintray get ${sw}"
+	fi
+fi
+	
+
+rm "${myself}"
+exit 0
+zz
 	rc=$?
-	zbrewlog "refresh RC: ${rc}"
-	return ${rc} 
+	if [ $rc -gt 0 ]; then
+		echo "Unable to create temporary script ${tmpscript} to refresh ${sw}"
+		exit $rc
+	fi	
+	chmod u+x "${tmpscript}"
+	rc=$?
+	if [ $rc -gt 0 ]; then
+		echo "Unable to maketemporary script ${tmpscript} to refresh ${sw} executable"
+		exit $rc
+	fi	
+	"${tmpscript}" "${sw}" "${zbrewroot}" "${root}"
+
+	# Have an 'exit' here because this code may have now been updated beneath our feet (with zbrew refresh)
+	exit $?
+}
+
+refresh() {
+	sw=$(echo $1 | tr '[:upper:]' '[:lower:]');
+	zbrewlog "refresh $sw"
+
+	if [ ${verbose} -gt 0 ]; then
+		echo "refresh $sw" >&2
+	fi
+	callerdir=`callerdir $0`
+	zbrewroot="${callerdir}/.."
+	if [ "${sw}" = "zbrew" ]; then
+		root="${zbrewroot}"
+	else
+		root="${ZBREW_REPOROOT}/zbrew-${sw}"
+	fi
+	updateInPlace "${sw}" "${zbrewroot}" "${root}"
 }
 
 receive() {
@@ -188,9 +251,9 @@ prodreq() {
 		resizezfs=`zfsadm grow -aggregate "$zfstmpnm" -s "${newsize}"`
 		rc=$?
 		if [ "${rc}" != "0" ]; then
-			echo "Warning, ${ZBREW_TMP} is low on free space, it is recommended to have at least ${ZBREW_TMP_MINSPACE} KB available"
-			echo "Current free space available is: ${tmp_frspace} KB"
-		        echo "zBrew Failed to automatically extend zfs ${zfstmpnm} to new size: ${newsize}. Return code: ${rc}"
+			echo "Warning, ${ZBREW_TMP} is low on free space, it is recommended to have at least ${ZBREW_TMP_MINSPACE} KB available" >&2
+			echo "Current free space available is: ${tmp_frspace} KB" >&2
+		        echo "zBrew Failed to automatically extend zfs ${zfstmpnm} to new size: ${newsize}. Return code: ${rc}" >&2
 			rc=16		
 		fi
 		return ${rc}
@@ -207,7 +270,7 @@ prodreq() {
 		smpchkreq ${opts} ${ussname} ${json}
 		return $?
 	else
-		echo "Unable to find product requisite JSON file: ${json}. Installation failed."
+		echo "Unable to find product requisite JSON file: ${json}. Installation failed." >&2
 		return 16
 	fi
 }
@@ -519,10 +582,10 @@ if [ "${clean}" = "1" ]; then
 	rc=$?
 	zbrewlog "Cleanup for ${sw} Return Code: ${rc}"
 	if [ "${verbose}" = "1" ]; then
-		echo "Cleanup completed: ${rc}"
+		echo "Cleanup completed: ${rc}" >&2
 	fi
 	if [ $rc -gt 0 ]; then
-		echo "Cleanup failed with Return code: ${rc}"
+		echo "Cleanup failed with Return code: ${rc}" >&2
 		echo "${out}"
 		exit ${rc}
 	fi
@@ -561,7 +624,7 @@ case ${verb} in
 		out=`receive ${opts} ${sw}`; 
 		rc=$? 
 		if [ $rc -gt 0 ]; then
-			echo "${out}"
+			echo "${out}" >&2
 			exit $rc
 		fi
 		;;
@@ -569,7 +632,7 @@ case ${verb} in
                 out=`smpfromfile ${opts} ${sw} ${zosfile}`;
                 rc=$?
                 if [ $rc -gt 0 ]; then
-                        echo "${out}"
+                        echo "${out}" >&2
                         exit $rc
                 fi
                 ;;
@@ -578,10 +641,10 @@ case ${verb} in
 
 		rc=$?
 		if [ $verbose -gt 0 ]; then
-			echo ${out}
+			echo ${out} >&2
 		fi 
 		if [ $rc -gt 0 ]; then
-			echo "${out}" 
+			echo "${out}"  >&2
 			exit $rc
 		fi
 		;;
@@ -589,7 +652,7 @@ case ${verb} in
 		out=`smpcrdddef ${opts} ${sw}`
 		rc=$?
 		if [ $rc -gt 0 ]; then
-                        echo "${out}"
+                        echo "${out}" >&2
                         exit $rc
                 fi
                 ;;
@@ -597,7 +660,7 @@ case ${verb} in
 		out=`proddsalloc ${opts} ${sw}`
 		rc=$?
 		if [ $rc -gt 0 ]; then
-			echo "${out}"
+			echo "${out}" >&2
 			exit $rc
 		fi
 		;;
@@ -606,7 +669,7 @@ case ${verb} in
 		out=`smpappacc ${opts} ${sw}`
 		rc=$?
 		if [ $rc -gt 0 ] || [ $verbose -gt 0 ]; then
-                        echo "${out}"
+                        echo "${out}" >&2
                         exit $rc
                 fi
                 ;;
@@ -615,7 +678,7 @@ case ${verb} in
 		out=`smpappacc ${opts} ${sw}`
 		rc=$? 
 		if [ $rc -gt 0 ] || [ $verbose -gt 0 ]; then
-			echo "${out}" 
+			echo "${out}" >&2
 			exit $rc
 		fi
 		;;
@@ -624,7 +687,7 @@ case ${verb} in
                 out=`smpappacc ${opts} ${sw}`
                 rc=$?
                 if [ $rc -gt 0 ] || [ $verbose -gt 0 ]; then
-                        echo "${out}"
+                        echo "${out}" >&2
                         exit $rc
                 fi
                 ;;
@@ -633,7 +696,7 @@ case ${verb} in
                 out=`smpappacc ${opts} ${sw}`;
                 rc=$?
                 if [ $rc -gt 0 ] || [ $verbose -gt 0 ]; then
-                        echo "${out}"
+                        echo "${out}" >&2
                         exit $rc
                 fi
                 ;;
@@ -641,7 +704,7 @@ case ${verb} in
                 out=`zbrewarchive ${sw}`;
                 rc=$?
                 if [ $rc -gt 0 ] || [ $verbose -gt 0 ]; then
-                        echo "${out}"
+                        echo "${out}" >&2
                         exit $rc
                 fi
                 ;;
@@ -649,7 +712,7 @@ case ${verb} in
 		out=`install ${opts} ${sw}`
 		rc=$? 
 		if [ $rc -gt 0 ] || [ $verbose -gt 0 ]; then
-			echo "${out}" 
+			echo "${out}"  >&2
 			exit $rc
 		fi
 		;;
@@ -657,7 +720,7 @@ case ${verb} in
                 out=`update ${opts} ${sw}`
                 rc=$?
                 if [ $rc -gt 0 ] || [ $verbose -gt 0 ]; then
-                        echo "${out}"
+                        echo "${out}" >&2
                         exit $rc
                 fi
                 ;;
@@ -674,10 +737,10 @@ case ${verb} in
 		rc=$?
 		zbrewlog "Uninstall ${sw} Return Code: ${rc}"
 		if [ "${verbose}" = "1" ]; then
-			echo "Uninstall completed: ${rc}"
+			echo "Uninstall completed: ${rc}" >&2
 		fi
                 if [ $rc -gt 0 ]; then
-                        echo "${out}"
+                        echo "${out}" >&2
                 fi
 		
 		;;	
