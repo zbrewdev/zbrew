@@ -3,7 +3,7 @@
 # Basic test to ensure zbrew refresh of packages works
 #
 . zbrewsetenv
-set -x
+#set -x
 
 # Change ZBREW_REPOROOT to point to a test directory so as not to affect the 'real' repos
 export ZBREW_REPOROOT="${ZBREW_TMP}/refreshtest"
