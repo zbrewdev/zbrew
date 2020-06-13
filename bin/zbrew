@@ -189,6 +189,7 @@ updateInPlace() {
 	tmpscript="${ZBREW_TMP}/$$.updateinplace.sh"
 	cat >"${tmpscript}" <<'zz'
 #!/bin/sh
+#set -x
 myself="$0"
 sw="$1"
 root="$2"
@@ -219,11 +220,6 @@ fi
 # Double check that we are really in the '$root' directory since we will be deleting files
 if [ "${root}" = '' ] || [ "${root}" = '/' ]; then
 	echo "The root directory is set to an unacceptable value: ${root}. No refresh performed" >&2
-	exit 8
-fi
-cur="$PWD"
-if [ "${cur}" != "${root}" ]; then
-	echo "We did not successfully change into the ${root} directory" >&2
 	exit 8
 fi
 
