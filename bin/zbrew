@@ -126,27 +126,27 @@ order() {
 }
 
 latestBinary() {
-	binServer="$1"
+	binserver="$1"
 	sw="$2"
-	tmp="${ZBREW_TMP}/zbrewpkgs.$$.txt"
+	tmpa="${ZBREW_TMP}/zbrewpkgs_a.$$.txt"
 
-	httpsget -o "${tmp}" "${binServer}/zbrew"
+	httpsget -o "${tmpa}" "${binserver}/zbrew"
 	rc=$?
 	if [ $rc -gt 0 ]; then
 		return $rc
 	fi
-	chtag -tc ISO8859-1 "${tmp}"
+	chtag -tc ISO8859-1 "${tmpa}"
 	rc=$?
 	if [ $rc -gt 0 ]; then
 		return $rc
 	fi
-	line=`cat ${tmp} | awk '/href=/ { print $3 }' | grep "zbrew-${sw}" | tail -1`
+	line=`cat ${tmpa} | awk '/href=/ { print $3 }' | grep "zbrew-${sw}" | tail -1`
 	rc=$?
-	rm "${tmp}"
+	rm "${tmpa}"
 	if [ $rc -gt 0 ]; then
 		return $rc
 	fi
-	file="${text#*zbrew-${sw}_*}"
+	file="${line#*zbrew-${sw}_*}"
 	drop="${file%*.pax*}"
 	echo "${drop}"
 	return 0
@@ -179,7 +179,7 @@ updateInPlace() {
 	fi 
 
 	if [ "${repotype}" = "bin" ]; then
-		drop=`latestBinary "${binserver}" "${sw}"
+		drop=`latestBinary "${binserver}" "${sw}"`
 		rc=$?
 		if [ $rc -gt 0 ]; then
 			return $rc
@@ -192,54 +192,89 @@ updateInPlace() {
 set -x
 myself="$0"
 sw="$1"
-root="$3"
-gitserver="$4"
-binserver="$5"
-repotype="$6"
-repoaction="$7"
-drop="$8"
+root="$2"
+gitserver="$3"
+binserver="$4"
+repotype="$5"
+repoaction="$6"
+drop="$7"
 
 if [ "${sw}" = "zbrew" ]; then
 	exit 0 # msf - temporary - get this working for packages first to avoid accidentally wiping zbrew out
 fi
 
+qualsw="zbrew-${sw}"
 if [ "${repoaction}" = "create" ]; then
 	mkdir "${root}"
-	cd "${root}"
-	if [ "${repotype}" = "src" ]; then
-		cmd="git clone ${gitserver}/${sw}.git"
-	else
-		cmd="httpsget ${binserver}/${sw}/${sw}_${drop}.pax"
-		bin=true
-	fi
-else # 'update'
-	if [ "${repotype}" = "src" ]; then
-		cd "${root}/${sw}"
-		cmd="git pull ${gitserver}/${sw}.git"
-	else
-		cd "${root}"
-		cmd="httpsget ${binserver}/${sw}/${sw}_${drop}.pax"
-		bin=true
+	rc=$?
+	if [ $rc -gt 0 ]; then
+		exit $rc
 	fi
 fi
+cd "${root}"
+rc=$?
+if [ $rc -gt 0 ]; then
+	exit $rc
+fi
 
-echo "${cmd}"	
+# Double check that we are really in the '$root' directory since we will be deleting files
+if [ "${root}" = '' ] || [ "${root}" = '/' ]; then
+	echo "The root directory is set to an unacceptable value: ${root}. No refresh performed" >&2
+	exit 8
+fi
+cur="$PWD"
+if [ "${cur}" != "${root}" ]; then
+	echo "We did not successfully change into the ${root} directory" >&2
+	exit 8
+fi
+
+if [ "${repotype}" = "src" ]; then
+	if [ "${repoaction}" = "create" ]; then
+		cd ../
+		git clone "${gitserver}/${qualsw}.git"
+	else
+		git pull "${gitserver}/${qualsw}.git"
+	fi
+	rc=$?
+else
+	rm -rf * 
+	rc=$?
+	if [ $rc -gt 0 ]; then
+		exit $rc
+	fi
+	paxfile="${ZBREW_TMP}/${qualsw}_${drop}.pax"
+	httpsget -o "${paxfile}" "${binserver}/zbrew/${qualsw}_${drop}.pax"
+	rc=$?
+	if [ $rc -gt 0 ]; then
+		exit $rc
+	fi
+	pax -rf "${paxfile}"
+	rc=$?
+	if [ $rc -gt 0 ]; then
+		exit $rc
+	fi
+	rm "${paxfile}"
+	rc=$?
+	if [ $rc -gt 0 ]; then
+		exit $rc
+	fi
+fi
 
 rm "${myself}"
 exit 0
 zz
 	rc=$?
 	if [ $rc -gt 0 ]; then
-		echo "Unable to create temporary script ${tmpscript} to refresh ${sw}"
+		echo "Unable to create temporary script ${tmpscript} to refresh ${sw}" >&2
 		exit $rc
 	fi	
 	chmod u+x "${tmpscript}"
 	rc=$?
 	if [ $rc -gt 0 ]; then
-		echo "Unable to maketemporary script ${tmpscript} to refresh ${sw} executable"
+		echo "Unable to maketemporary script ${tmpscript} to refresh ${sw} executable" >&2
 		exit $rc
 	fi	
-	"${tmpscript}" "${sw}" "${zbrewroot}" "${root}" "${gitserver}" "${binserver}" "${repotype}" "${repoaction}" "${drop}" 
+	"${tmpscript}" "${sw}" "${root}" "${gitserver}" "${binserver}" "${repotype}" "${repoaction}" "${drop}" 
 
 	# Have an 'exit' here because this code may have now been updated beneath our feet (with zbrew refresh)
 	exit $?
