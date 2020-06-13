@@ -189,7 +189,6 @@ updateInPlace() {
 	tmpscript="${ZBREW_TMP}/$$.updateinplace.sh"
 	cat >"${tmpscript}" <<'zz'
 #!/bin/sh
-set -x
 myself="$0"
 sw="$1"
 root="$2"
@@ -243,6 +242,7 @@ else
 		exit $rc
 	fi
 	paxfile="${ZBREW_TMP}/${qualsw}_${drop}.pax"
+	echo "Pull down binary package: ${paxfile} from ${binserver}"
 	httpsget -o "${paxfile}" "${binserver}/zbrew/${qualsw}_${drop}.pax"
 	rc=$?
 	if [ $rc -gt 0 ]; then
