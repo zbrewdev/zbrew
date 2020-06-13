@@ -2,6 +2,8 @@
  	"software": [{
 		"relid":"ZBR100",
 		"props":{
+			"ZBREW_GITSERVER":"git@github.com:zbrewdev",
+			"ZBREW_BINSERVER":"https://dl.bintray.com/zbrew",
 			"ZBREW_TMP_MINSPACE":"250000",
 			"ZBREW_TMP":"/tmp",
 			"ZBREW_REPOROOT":"NONE",

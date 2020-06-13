@@ -125,10 +125,66 @@ order() {
 	return 0
 }
 
+latestBinary() {
+	binServer="$1"
+	sw="$2"
+	tmp="${ZBREW_TMP}/zbrewpkgs.$$.txt"
+
+	httpsget -o "${tmp}" "${binServer}/zbrew"
+	rc=$?
+	if [ $rc -gt 0 ]; then
+		return $rc
+	fi
+	chtag -tc ISO8859-1 "${tmp}"
+	rc=$?
+	if [ $rc -gt 0 ]; then
+		return $rc
+	fi
+	line=`cat ${tmp} | awk '/href=/ { print $3 }' | grep "zbrew-${sw}" | tail -1`
+	rc=$?
+	rm "${tmp}"
+	if [ $rc -gt 0 ]; then
+		return $rc
+	fi
+	file="${text#*zbrew-${sw}_*}"
+	drop="${file%*.pax*}"
+	echo "${drop}"
+	return 0
+}
+
 updateInPlace() {
 	sw="$1"
 	zbrewroot="$2"
 	root="$3"
+	gitserver="${ZBREW_GITSERVER}"
+	binserver="${ZBREW_BINSERVER}"
+
+	if [ -d "${root}" ]; then 
+		# Directory exists, this is an 'update', not a 'create'
+		repoaction="update"
+		if [ -d "${root}/.git" ]; then
+			# git directory exists: this is a git pull, not a bintray get 
+			repotype="src"
+		else
+			repotype="bin"
+		fi
+	else 
+		# Package does not exist yet. Look to zbrewroot to determine if git or bintray
+		repoaction="create"
+		if [ -d "${zbrewroot}/.git" ]; then
+			repotype="src"
+		else
+			repotype="bin"
+		fi
+	fi 
+
+	if [ "${repotype}" = "bin" ]; then
+		drop=`latestBinary "${binserver}" "${sw}"
+		rc=$?
+		if [ $rc -gt 0 ]; then
+			return $rc
+		fi
+	fi	
 
 	tmpscript="${ZBREW_TMP}/$$.updateinplace.sh"
 	cat >"${tmpscript}" <<'zz'
@@ -136,30 +192,38 @@ updateInPlace() {
 set -x
 myself="$0"
 sw="$1"
-zbrewroot="$2"
 root="$3"
+gitserver="$4"
+binserver="$5"
+repotype="$6"
+repoaction="$7"
+drop="$8"
 
-cd /tmp
-if [ -d "${root}" ]; then 
-	# Directory exists, this is an 'update', not a 'create'
-	if [ -d "${root}/.git" ]; then
-		# git directory exists: this is a git pull, not a bintray get 
-		echo "git pull ${sw}"
+if [ "${sw}" = "zbrew" ]; then
+	exit 0 # msf - temporary - get this working for packages first to avoid accidentally wiping zbrew out
+fi
+
+if [ "${repoaction}" = "create" ]; then
+	mkdir "${root}"
+	cd "${root}"
+	if [ "${repotype}" = "src" ]; then
+		cmd="git clone ${gitserver}/${sw}.git"
 	else
-		# no git directory: this is a bintray get
-		echo "bintray get ${sw}"
+		cmd="httpsget ${binserver}/${sw}/${sw}_${drop}.pax"
+		bin=true
 	fi
-else 
-	# Package does not exist yet. Look to zbrewroot to determine if git or bintray
-	if [ -d "${zbrewroot}/.git" ]; then
-		# zbrew git directory exists: this is a git clone, not a bintray get 
-		echo "git clone ${sw}"
+else # 'update'
+	if [ "${repotype}" = "src" ]; then
+		cd "${root}/${sw}"
+		cmd="git pull ${gitserver}/${sw}.git"
 	else
-		# no git directory: this is a bintray get
-		echo "bintray get ${sw}"
+		cd "${root}"
+		cmd="httpsget ${binserver}/${sw}/${sw}_${drop}.pax"
+		bin=true
 	fi
 fi
-	
+
+echo "${cmd}"	
 
 rm "${myself}"
 exit 0
@@ -175,7 +239,7 @@ zz
 		echo "Unable to maketemporary script ${tmpscript} to refresh ${sw} executable"
 		exit $rc
 	fi	
-	"${tmpscript}" "${sw}" "${zbrewroot}" "${root}"
+	"${tmpscript}" "${sw}" "${zbrewroot}" "${root}" "${gitserver}" "${binserver}" "${repotype}" "${repoaction}" "${drop}" 
 
 	# Have an 'exit' here because this code may have now been updated beneath our feet (with zbrew refresh)
 	exit $?
@@ -195,7 +259,8 @@ refresh() {
 	else
 		root="${ZBREW_REPOROOT}/zbrew-${sw}"
 	fi
-	updateInPlace "${sw}" "${zbrewroot}" "${root}"
+	drop="202005062019"
+	updateInPlace "${sw}" "${zbrewroot}" "${root}" "${drop}"
 }
 
 receive() {
