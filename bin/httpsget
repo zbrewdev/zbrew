@@ -368,9 +368,19 @@ HTTP_surfaceDiag: procedure expose diagArea.
   rexxRC=arg(2)
   toolkitRC=arg(3)
 
-  call SayErr
+  HWT_REXXNoStorageForVar=7
   call SayErr '*ERROR* (' msg ') at time: '||Time()
-  call SayErr 'Rexx RC: ' rexxRC ', Toolkit returnCode: ' toolkitRC '(0x'D2X(toolkitRC)')'
+  if (toolkitRC > 0) then do
+    call SayErr 'Rexx RC: ' rexxRC ', Toolkit returnCode: ' toolkitRC '(0x'D2X(toolkitRC)')'
+  end
+  else do
+    if (rexxRC == HWT_REXXNoStorageForVar) then do
+      call SayErr 'File download attempt is more than 16MB. This is the limit for REXX.'
+    end
+    else do
+      call SayErr 'Rexx RC: ' rexxRC ', Toolkit returnCode: ' toolkitRC 
+    end
+  end
   call SayErr 'diagArea.Service: '||diagArea.HWTH_service
   call SayErr 'diagArea.ReasonCode: '||diagArea.HWTH_reasonCode
   call SayErr 'diagArea.ReasonDesc: '||diagArea.HWTH_reasonDesc

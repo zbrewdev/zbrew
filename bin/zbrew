@@ -4,7 +4,9 @@ InvalidOption=1
 TooFewParms=2
 UnknownAction=3
 InvalidWorkDir=4
-WorkDirRequired=4
+WorkDirRequired=5
+InvalidRepoDir=6
+RepoDirRequired=7
 
 #
 # Temporary hack - replace with a proper message file
@@ -23,6 +25,8 @@ msg() {
 		${UnknownAction}) msgtext="Unknown action specified: ";;
 		${InvalidWorkDir}) msgtext="Unknown working directory specified: ";;
 		${WorkDirRequired}) msgtext="Working directory must be specified via -w option or through ZBREW_WORKROOT ";;
+		${InvalidRepoDir}) msgtext="Unknown respository directory specified: ";;
+		${RepoDirRequired}) msgtext="Repository directory must be specified via ZBREW_REPOROOT ";;
 		*) msgtext="Internal Error. Unknow msgnum: ${msgnum}";;
 	esac
 	echo "ZCL000"${msgnum}${msgtype} "${msgtext}${args}" >&2
@@ -53,6 +57,9 @@ Note:
 	config:				Directory containing generated scripts for configuration of software
 	deconfig:			Directory containing generated scripts for de-configuration (removal) of software
 
+	zbrew looks for software package information in ZBREW_REPOROOT. If not specified, ZBREW_REPOROOT defaults to 
+	the directory that zbrew is installed into.
+
 Here is a sample order file for COBOL 6.3.0 you would create at \${ZBREW_WORKROOT}/order/igy630order.json
 {
    "software": [{
@@ -73,6 +80,8 @@ Here is a sample order file for COBOL 6.3.0 you would create at \${ZBREW_WORKROO
 zbrew Examples:
 	zbrew search cobol     <-- search for products with COBOL in their description
 	zbrew order igy630     <-- submit an order for IGY630 software (receive can not be performed until complete)
+	zbrew refresh zbrew    <-- refresh the zbrew package manager from the server
+	zbrew refresh igy      <-- refresh the COBOL package definition from the server
 	zbrew install igy630   <-- check that all pre-reqs required for COBOL are satisfied, then SMP/E RECEIVE/APPLY/ACCEPT the product (with and w/o CHECK)
 	zbrew -w /zbrew/workroot install igy630   <-- install COBOL compiler, specifying the zbrew workroot directory as /zbrew/workroot
 	zbrew -c -v install igy630   <-- do uninstall first and then verbose install
@@ -114,6 +123,184 @@ order() {
 	fi
 	zbrewlog "order RC: ${rc}"
 	return 0
+}
+
+latestBinary() {
+	binserver="$1"
+	sw="$2"
+	tmpa="${ZBREW_TMP}/zbrewpkgs_a.$$.txt"
+
+	httpsget -o "${tmpa}" "${binserver}/zbrew"
+	rc=$?
+	if [ $rc -gt 0 ]; then
+		return $rc
+	fi
+	chtag -tc ISO8859-1 "${tmpa}"
+	rc=$?
+	if [ $rc -gt 0 ]; then
+		return $rc
+	fi
+	line=`cat ${tmpa} | awk '/href=/ { print $3 }' | grep "zbrew-${sw}" | tail -1`
+	rc=$?
+	rm "${tmpa}"
+	if [ $rc -gt 0 ]; then
+		return $rc
+	fi
+	file="${line#*zbrew-${sw}_*}"
+	drop="${file%*.pax*}"
+	echo "${drop}"
+	return 0
+}
+
+updateInPlace() {
+	sw="$1"
+	zbrewroot="$2"
+	root="$3"
+	gitserver="${ZBREW_GITSERVER}"
+	binserver="${ZBREW_BINSERVER}"
+
+	if [ -d "${root}" ]; then 
+		# Directory exists, this is an 'update', not a 'create'
+		repoaction="update"
+		if [ -d "${root}/.git" ]; then
+			# git directory exists: this is a git pull, not a bintray get 
+			repotype="src"
+		else
+			repotype="bin"
+		fi
+	else 
+		# Package does not exist yet. Look to zbrewroot to determine if git or bintray
+		repoaction="create"
+		if [ -d "${zbrewroot}/.git" ]; then
+			repotype="src"
+		else
+			repotype="bin"
+		fi
+	fi 
+
+	if [ "${repotype}" = "bin" ]; then
+		drop=`latestBinary "${binserver}" "${sw}"`
+		rc=$?
+		if [ $rc -gt 0 ]; then
+			return $rc
+		fi
+	fi	
+
+	tmpscript="${ZBREW_TMP}/$$.updateinplace.sh"
+	cat >"${tmpscript}" <<'zz'
+#!/bin/sh
+#set -x
+myself="$0"
+sw="$1"
+root="$2"
+gitserver="$3"
+binserver="$4"
+repotype="$5"
+repoaction="$6"
+drop="$7"
+
+if [ "${sw}" = "zbrew" ]; then
+	exit 0 # msf - temporary - get this working for packages first to avoid accidentally wiping zbrew out
+fi
+
+qualsw="zbrew-${sw}"
+if [ "${repoaction}" = "create" ]; then
+	mkdir "${root}"
+	rc=$?
+	if [ $rc -gt 0 ]; then
+		exit $rc
+	fi
+fi
+cd "${root}"
+rc=$?
+if [ $rc -gt 0 ]; then
+	exit $rc
+fi
+
+# Double check that we are really in a '$root' repo directory 
+if [ "${root}" = '' ] || [ "${root}" = '/' ]; then
+	echo "UpdateInPlace: The root directory is set to an unacceptable value: ${root}. No refresh performed." >&2
+	exit 8
+fi
+
+if [ "${repotype}" = "src" ]; then
+	if [ "${repoaction}" = "create" ]; then
+		cd ../
+		git clone "${gitserver}/${qualsw}.git"
+	else
+		git pull "${gitserver}/${qualsw}.git"
+	fi
+	rc=$?
+else
+	if [ "${repoaction}" = "update" ]; then
+		# Triple check that we are really in a valid '$root' binary repo by looking for zbrew-<sw>.bom file
+		bom="zbrew-${sw}.bom"
+		if ! [ -f "${bom}" ]; then
+			echo "UpdateInPlace: The root directory ${root} does not contain the file ${bom} but a refresh was requested. No refresh performed." >&2
+			exit 8
+		fi
+			
+		rm -rf "${root}/*"
+		rc=$?
+		if [ $rc -gt 0 ]; then
+			exit $rc
+		fi
+	fi
+	paxfile="${ZBREW_TMP}/${qualsw}_${drop}.pax"
+	echo "Pull down binary package: ${paxfile} from ${binserver}"
+	httpsget -o "${paxfile}" "${binserver}/zbrew/${qualsw}_${drop}.pax"
+	rc=$?
+	if [ $rc -gt 0 ]; then
+		exit $rc
+	fi
+	pax -rf "${paxfile}"
+	rc=$?
+	if [ $rc -gt 0 ]; then
+		exit $rc
+	fi
+	rm "${paxfile}"
+	rc=$?
+	if [ $rc -gt 0 ]; then
+		exit $rc
+	fi
+fi
+
+rm "${myself}"
+exit 0
+zz
+	rc=$?
+	if [ $rc -gt 0 ]; then
+		echo "Unable to create temporary script ${tmpscript} to refresh ${sw}" >&2
+		exit $rc
+	fi	
+	chmod u+x "${tmpscript}"
+	rc=$?
+	if [ $rc -gt 0 ]; then
+		echo "Unable to maketemporary script ${tmpscript} to refresh ${sw} executable" >&2
+		exit $rc
+	fi	
+	"${tmpscript}" "${sw}" "${root}" "${gitserver}" "${binserver}" "${repotype}" "${repoaction}" "${drop}" 
+
+	# Have an 'exit' here because this code may have now been updated beneath our feet (with zbrew refresh)
+	exit $?
+}
+
+refresh() {
+	sw=$(echo $1 | tr '[:upper:]' '[:lower:]');
+	zbrewlog "refresh $sw"
+
+	if [ ${verbose} -gt 0 ]; then
+		echo "refresh $sw" >&2
+	fi
+	callerdir=`callerdir $0`
+	zbrewroot="${callerdir}/.."
+	if [ "${sw}" = "zbrew" ]; then
+		root="${zbrewroot}"
+	else
+		root="${ZBREW_REPOROOT}/zbrew-${sw}"
+	fi
+	drop="202005062019"
+	updateInPlace "${sw}" "${zbrewroot}" "${root}" "${drop}"
 }
 
 receive() {
@@ -169,9 +356,9 @@ prodreq() {
 		resizezfs=`zfsadm grow -aggregate "$zfstmpnm" -s "${newsize}"`
 		rc=$?
 		if [ "${rc}" != "0" ]; then
-			echo "Warning, ${ZBREW_TMP} is low on free space, it is recommended to have at least ${ZBREW_TMP_MINSPACE} KB available"
-			echo "Current free space available is: ${tmp_frspace} KB"
-		        echo "zBrew Failed to automatically extend zfs ${zfstmpnm} to new size: ${newsize}. Return code: ${rc}"
+			echo "Warning, ${ZBREW_TMP} is low on free space, it is recommended to have at least ${ZBREW_TMP_MINSPACE} KB available" >&2
+			echo "Current free space available is: ${tmp_frspace} KB" >&2
+		        echo "zBrew Failed to automatically extend zfs ${zfstmpnm} to new size: ${newsize}. Return code: ${rc}" >&2
 			rc=16		
 		fi
 		return ${rc}
@@ -188,7 +375,7 @@ prodreq() {
 		smpchkreq ${opts} ${ussname} ${json}
 		return $?
 	else
-		echo "Unable to find product requisite JSON file: ${json}. Installation failed."
+		echo "Unable to find product requisite JSON file: ${json}. Installation failed." >&2
 		return 16
 	fi
 }
@@ -423,6 +610,7 @@ if ! [ -d "${workdir}" ]; then
 	msg zbrew ${InvalidWorkDir} E "${OPTARG}"
 	exit 4
 fi
+
 export ZBREW_WORKROOT="${workdir}"
 . zbrewsetenv
 
@@ -444,7 +632,14 @@ if [ $year -lt 2020 ] || [ $month -lt 3 ]; then
 	echo "Z Open Automation Utilities 2020/03/01 or later is required to run zbrew. Your utilities are too old: ${zoaversion}" >&2
 	exit 16
 fi
-
+if [ "${ZBREW_REPOROOT}" = '' ]; then
+	msg zbrew ${RepoDirRequired} E 
+	exit 8
+fi
+if ! [ -d "${ZBREW_REPOROOT}" ]; then
+	msg zbrew ${InvalidRepoDir} E "${ZBREW_REPOROOT}"
+	exit 4
+fi
 
 if [ "${clean}" = "1" ]; then
 	prefix=`echo "${ussname}" | awk '{ print substr($1, 0, 3) }'`
@@ -474,10 +669,10 @@ if [ "${clean}" = "1" ]; then
 	rc=$?
 	zbrewlog "Cleanup for ${sw} Return Code: ${rc}"
 	if [ "${verbose}" = "1" ]; then
-		echo "Cleanup completed: ${rc}"
+		echo "Cleanup completed: ${rc}" >&2
 	fi
 	if [ $rc -gt 0 ]; then
-		echo "Cleanup failed with Return code: ${rc}"
+		echo "Cleanup failed with Return code: ${rc}" >&2
 		echo "${out}"
 		exit ${rc}
 	fi
@@ -490,6 +685,10 @@ case ${verb} in
 		out=`search $2`  
 		rc=$?  
 		echo "${out}" | tr '_' ' '
+		;;
+	refresh ) 
+		refresh $2  
+		rc=$?  
 		;;
 	order ) 
 		out=`order ${opts} $2`  
@@ -512,7 +711,7 @@ case ${verb} in
 		out=`receive ${opts} ${sw}`; 
 		rc=$? 
 		if [ $rc -gt 0 ]; then
-			echo "${out}"
+			echo "${out}" >&2
 			exit $rc
 		fi
 		;;
@@ -520,7 +719,7 @@ case ${verb} in
                 out=`smpfromfile ${opts} ${sw} ${zosfile}`;
                 rc=$?
                 if [ $rc -gt 0 ]; then
-                        echo "${out}"
+                        echo "${out}" >&2
                         exit $rc
                 fi
                 ;;
@@ -529,10 +728,10 @@ case ${verb} in
 
 		rc=$?
 		if [ $verbose -gt 0 ]; then
-			echo ${out}
+			echo ${out} >&2
 		fi 
 		if [ $rc -gt 0 ]; then
-			echo "${out}" 
+			echo "${out}"  >&2
 			exit $rc
 		fi
 		;;
@@ -540,7 +739,7 @@ case ${verb} in
 		out=`smpcrdddef ${opts} ${sw}`
 		rc=$?
 		if [ $rc -gt 0 ]; then
-                        echo "${out}"
+                        echo "${out}" >&2
                         exit $rc
                 fi
                 ;;
@@ -548,7 +747,7 @@ case ${verb} in
 		out=`proddsalloc ${opts} ${sw}`
 		rc=$?
 		if [ $rc -gt 0 ]; then
-			echo "${out}"
+			echo "${out}" >&2
 			exit $rc
 		fi
 		;;
@@ -557,7 +756,7 @@ case ${verb} in
 		out=`smpappacc ${opts} ${sw}`
 		rc=$?
 		if [ $rc -gt 0 ] || [ $verbose -gt 0 ]; then
-                        echo "${out}"
+                        echo "${out}" >&2
                         exit $rc
                 fi
                 ;;
@@ -566,7 +765,7 @@ case ${verb} in
 		out=`smpappacc ${opts} ${sw}`
 		rc=$? 
 		if [ $rc -gt 0 ] || [ $verbose -gt 0 ]; then
-			echo "${out}" 
+			echo "${out}" >&2
 			exit $rc
 		fi
 		;;
@@ -575,7 +774,7 @@ case ${verb} in
                 out=`smpappacc ${opts} ${sw}`
                 rc=$?
                 if [ $rc -gt 0 ] || [ $verbose -gt 0 ]; then
-                        echo "${out}"
+                        echo "${out}" >&2
                         exit $rc
                 fi
                 ;;
@@ -584,7 +783,7 @@ case ${verb} in
                 out=`smpappacc ${opts} ${sw}`;
                 rc=$?
                 if [ $rc -gt 0 ] || [ $verbose -gt 0 ]; then
-                        echo "${out}"
+                        echo "${out}" >&2
                         exit $rc
                 fi
                 ;;
@@ -592,7 +791,7 @@ case ${verb} in
                 out=`zbrewarchive ${sw}`;
                 rc=$?
                 if [ $rc -gt 0 ] || [ $verbose -gt 0 ]; then
-                        echo "${out}"
+                        echo "${out}" >&2
                         exit $rc
                 fi
                 ;;
@@ -600,7 +799,7 @@ case ${verb} in
 		out=`install ${opts} ${sw}`
 		rc=$? 
 		if [ $rc -gt 0 ] || [ $verbose -gt 0 ]; then
-			echo "${out}" 
+			echo "${out}"  >&2
 			exit $rc
 		fi
 		;;
@@ -608,7 +807,7 @@ case ${verb} in
                 out=`update ${opts} ${sw}`
                 rc=$?
                 if [ $rc -gt 0 ] || [ $verbose -gt 0 ]; then
-                        echo "${out}"
+                        echo "${out}" >&2
                         exit $rc
                 fi
                 ;;
@@ -625,10 +824,10 @@ case ${verb} in
 		rc=$?
 		zbrewlog "Uninstall ${sw} Return Code: ${rc}"
 		if [ "${verbose}" = "1" ]; then
-			echo "Uninstall completed: ${rc}"
+			echo "Uninstall completed: ${rc}" >&2
 		fi
                 if [ $rc -gt 0 ]; then
-                        echo "${out}"
+                        echo "${out}" >&2
                 fi
 		
 		;;	
