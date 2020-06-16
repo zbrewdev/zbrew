@@ -1,0 +1,193 @@
+#!/bin/sh
+
+#
+# Temporary hack - replace with a manpage
+#
+syntax() {
+	echo "\
+Syntax:
+	zbrewmount {-m|-u} {-s|-t} [-v] sw
+Definition:
+    -m:  to mount
+    -u:  to unmount
+    -s:  action on source
+    -t:  action on target
+    -v:  enable verbose
+    sw:  product ID
+    
+Note:
+    must specify either -m or -u, not both
+    must specify either -s or -t, not both
+    -v is optional
+    sw is mandatory
+    
+Examples:
+    Mount IGY630 at ZBREW_SRC_ZFSROOT
+        zbrewmount -m -s IGY630
+    Unmount EQAE20 at ZBREW_TGT_ZFSROOT as well as ZBREW_TGT_HLQ
+        zbrewmount -u -t EQAE20
+" >&2
+    exit 8
+}
+
+# ---------------------------------------------------------------------
+# some options cannot be appeared in multiple times or combining with others
+# ---------------------------------------------------------------------
+function opt_combine_repeat_chk
+{
+    if [ "$1" = "-mu" ]; then
+        if [ -z $unmount ] && [ -z $mount ]; then
+            return 0
+        else
+            echo "**ERROR: cannot have multiple -m and -u or combining them" >&2
+            syntax
+        fi
+    elif [ "$1" = "-st" ]; then
+        if [ -z $srcmode ] && [ -z $tgtmode ]; then
+            return 0
+        else
+            echo "**ERROR: cannot have multiple -s and -t or combining them" >&2
+            syntax
+        fi
+    fi
+}
+
+
+# ---------------------------------------------------------------------
+# --- read startup arguments
+# ---------------------------------------------------------------------
+function read_args
+{
+unset mount unmount srcmode tgtmode verbose sw
+while getopts ":mustv" opt; do
+    case ${opt} in
+        m )
+            opt_combine_repeat_chk -mu
+            mount="true"
+            ;;
+        u )
+            opt_combine_repeat_chk -mu
+            unmount="true"
+            ;;
+        s )
+            opt_combine_repeat_chk -st
+            srcmode="true"
+            ;;
+        t )
+            opt_combine_repeat_chk -st
+            tgtmode="true"
+            ;;
+        v )
+            verbose="true"
+            ;;
+        \?)
+            if [ ${OPTARG} != "?" ]; then
+                echo "Invalid option specified: -""${OPTARG}"
+            fi
+            syntax
+            ;;
+     esac
+done
+shift $(expr $OPTIND - 1 )
+
+if [ -z "$mount" ] && [ -z "$unmount" ]; then
+    echo "** ERROR: must specify mount -m or unmount -u option" >&2
+    syntax
+fi
+
+if [ -z "$srcmode" ] && [ -z "$tgtmode" ]; then
+    echo "** ERROR: must specify -s or -t option" >&2
+    syntax
+fi
+
+sw=$1
+if [ -z $sw ]; then
+    echo "**ERROR: sw name must be specified" >&2
+    syntax
+fi
+shift
+ussname=$(echo ${sw} | tr '[:upper:]' '[:lower:]');
+zosname=$(echo ${sw} | tr '[:lower:]' '[:upper:]');
+prefix=`echo "${ussname}" | awk '{ print substr($1, 0, 3) }'`
+bom_file="${ZBREW_REPOROOT}/zbrew-${prefix}/${ussname}/${ussname}bom.json"
+}
+
+function run_unmount {
+    mountpoints=$1
+    zbrew_zfsroot=$2
+    zbrew_hlq=$3
+
+    for mount in $(echo $mountpoints | sed "s/,/ /g"); do
+        relds="${zosname}.${mount%%:*}"	    #${mount%%:*} strips everything after first occurrence of ':' including ':'
+        relzfs="${mount#*:}"    #${mount#*:} strips everything before first occurrence of ':' including ':'
+        absmount="${zbrew_zfsroot}${relzfs}"
+        
+        if [ ! -z $verbose ]; then
+            echo "**INFO: Attempting to unmount $absmount"
+        fi
+        if [ -d "${absmount}" ]; then
+            /usr/sbin/unmount -R "${absmount}"
+            chk $? "**ERROR: unable to unmount directory: ${absmount} on ${zbrew_hlq}${relds}"
+            rm -rf "${absmount}"
+            chk $? "**ERROR: unable to remove directory: ${absmount}"
+        fi
+    done
+}
+
+function run_mount {
+    mountpoints=$1
+    zbrew_zfsroot=$2
+    zbrew_hlq=$3
+
+    for mount in $(echo $mountpoints | sed "s/,/ /g"); do
+        relds="${zosname}.${mount%%:*}"	    #${mount%%:*} strips everything after first occurrence of ':' including ':'
+        relzfs="${mount#*:}"    #${mount#*:} strips everything before first occurrence of ':' including ':'
+        absmount="${zbrew_zfsroot}${relzfs}"
+
+        mkdir -p -m 755 "${absmount}"
+        chk $? "**ERROR: making directory ${absmount}"
+
+        if [ ! -z $verbose ]; then
+            echo "**INFO: Attempting to mount $absmount"
+        fi
+        
+        /usr/sbin/mount -t zfs -f "${zbrew_hlq}${relds}" "${absmount}"
+        chk $? "**ERROR: unable to mount directory: ${absmount} on ${zbrew_hlq}${relds}"
+    done
+}
+
+
+# ---------------------------------------------------------------------
+# --- main
+# ---------------------------------------------------------------------
+. zbrewsetenv
+
+read_args $*
+
+if ! [ -f "${bom_file}" ]; then
+	echo "**ERROR: unable to find BOM file: ${bom_file}" >&2
+	exit 8
+fi
+
+readbom_out=`readbom $ussname <$bom_file`
+chk $? "**ERROR: readbom failed"
+
+mountpoints=`echo "${readbom_out}" | awk '($2 == "ZFS") {print $1 ":" $7}'`
+mountpoints=$(echo $mountpoints | tr ' ' ',')
+
+# different scenarios
+if [ ! -z $mount ]; then
+	if [ ! -z $srcmode ]; then
+		run_mount $mountpoints $ZBREW_SRC_ZFSROOT $ZBREW_SRC_HLQ
+	elif [ ! -z $tgtmode ]; then
+		run_mount $mountpoints $ZBREW_TGT_ZFSROOT $ZBREW_TGT_HLQ
+	fi
+elif [ ! -z $unmount ]; then
+	if [ ! -z $srcmode ]; then
+    	run_unmount $mountpoints $ZBREW_SRC_ZFSROOT $ZBREW_SRC_HLQ
+    elif [ ! -z $tgtmode ]; then
+    	run_unmount $mountpoints $ZBREW_TGT_ZFSROOT $ZBREW_TGT_HLQ
+    fi
+fi
+
+exit 0

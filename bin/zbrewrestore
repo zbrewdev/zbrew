@@ -14,26 +14,6 @@ Notes:
      	exit 8
 }
 
-zfsmount() {
-	relzfs="$1"
-	relds="$2"
-	mountpoint="${ZBREW_TGT_ZFSROOT}${relzfs}"
-	
-	mkdir -p -m 755 "${mountpoint}"	
-	rc=$?
-	if [ $rc -gt 0 ]; then
-		echo "zbrewrestore: Error making directory: ${mountpoint}" >&2 
-		return $rc
-	fi
-	/usr/sbin/mount -t zfs -f "${ZBREW_TGT_HLQ}${relds}" "${mountpoint}"
-	rc=$?
-	if [ $rc -gt 0 ]; then
-		echo "zbrewrestore: Error mounting directory: ${mountpoint} at ${ZBREW_TGT_HLQ}${relds}" >&2 
-		return $rc
-	fi
-	return 0
-}
-
 . zbrewsetenv
 
 if ! [ $# -eq 1 ]; then
@@ -42,10 +22,10 @@ if ! [ $# -eq 1 ]; then
  	syntax
         exit 8
 fi  
-
-ussname=$(echo $1 | tr '[:upper:]' '[:lower:]');
-zosname=$(echo $1 | tr '[:lower:]' '[:upper:]');
-prefix=`echo "${ussname}" | awk '{ print substr($1, 0, 3) }'`
+sw=$1
+ussname=$(echo $sw | tr '[:upper:]' '[:lower:]');
+zosname=$(echo $sw | tr '[:lower:]' '[:upper:]');
+prefix=`echo "${ussname}" | awk '{ print substr($sw, 0, 3) }'`
 dunzipout="${ZBREW_TMP}/$$dzip.out"
 
 dunzip -s800M "${ZBREW_TMP}/${ussname}.dzp" "${ZBREW_TGT_HLQ%.*}" >${dunzipout} 2>&1
@@ -64,26 +44,6 @@ if [ $rc -gt 4 ]; then
 	fi
 fi
 
-bom="${ZBREW_REPOROOT}/zbrew-${prefix}/${ussname}/${ussname}bom.json"
-if ! [ -f "${bom}" ]; then
-	echo "zbrewrestore: Unable to find BOM file: ${bom}" >&2
-	exit $rc
-fi
+zbrewmount -m -t $sw
 
-mountpoints=`readbom "${ussname}" <"${bom}" | awk ' { if ($2 == "ZFS") { print $1 ":" $7; }}'`
-rc=$?
-if [ $rc -gt 0 ]; then
-	echo "zbrewrestore: Unable to read BOM file: ${bom}" >&2
-	exit $rc
-fi
-
-for mount in ${mountpoints}; do
-	relds="${zosname}.${mount%%:*}"	
-	relzfs="${mount#*:}"
-	zfsmount "${relzfs}" "${relds}"
-	rc=$?
-	if [ $rc -gt 0 ]; then
-		exit $rc
-	fi
-done
 exit $rc
