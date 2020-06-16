@@ -36,12 +36,16 @@ Examples:
 function opt_combine_repeat_chk
 {
     if [ "$1" = "-mu" ]; then
-        if [ ! -z $unmount ] || [ ! -z $mount ]; then
+        if [ -z $unmount ] && [ -z $mount ]; then
+            return 0
+        else
             echo "**ERROR: cannot have multiple -m and -u or combining them" >&2
             syntax
         fi
     elif [ "$1" = "-st" ]; then
-        if [ ! -z $srcmode ] || [ ! -z $tgtmode ]; then
+        if [ -z $srcmode ] && [ -z $tgtmode ]; then
+            return 0
+        else
             echo "**ERROR: cannot have multiple -s and -t or combining them" >&2
             syntax
         fi
