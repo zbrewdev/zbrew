@@ -126,8 +126,25 @@ function run_unmount {
             echo "**INFO: Attempting to unmount $absmount"
         fi
         if [ -d "${absmount}" ]; then
-            /usr/sbin/unmount -R "${absmount}"
-            chk $? "**ERROR: unable to unmount directory: ${absmount} on ${zbrew_hlq}${relds}"
+            error=$(/usr/sbin/unmount -R "${absmount}" 2>&1 >/dev/null)
+            if [ ! -z $error ]; then
+                if [[ $error == *"FOMF0512I Path is not a mountpoint"* ]]; then
+                else
+                    echo "**ERROR: unable to unmount directory: ${absmount} on ${zbrew_hlq}${relds}"
+                    exit $error
+                fi
+            fi
+        fi
+    done
+    
+    for mount in $(echo $mountpoints | sed "s/,/ /g"); do
+        relzfs="${mount#*:}"
+        absmount="${zbrew_zfsroot}${relzfs}"
+        
+        if [ ! -z $verbose ]; then
+            echo "**INFO: Attempting to remove directory $absmount"
+        fi
+        if [ -d "${absmount}" ]; then
             rm -rf "${absmount}"
             chk $? "**ERROR: unable to remove directory: ${absmount}"
         fi
