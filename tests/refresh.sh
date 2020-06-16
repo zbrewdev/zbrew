@@ -31,10 +31,11 @@ rc=$?
 # Check the output and ensure it did a 'pull' and that no updates were found
 zbrewtest "zbrew refresh (src update) failed. Full output: ${out}" "0" "$rc"
 
-# Finally, 'pretend' to already have a binary repo by just creating the root directory and ensure it pulls from bintray
+# Finally, 'pretend' to already have a binary repo by just creating the root directory, create a zbrew-zhw.bom file and ensure it pulls from bintray
 
 rm -rf "$ZBREW_REPOROOT/zbrew-zhw"
 mkdir -p "$ZBREW_REPOROOT/zbrew-zhw"
+touch "$ZBREW_REPOROOT/zbrew-zhw/zbrew-zhw.bom"
 zbrew refresh zhw 
 rc=$?
 zbrewtest "Failed to refresh zhw (bin create)" "0" "$rc"

@@ -217,9 +217,9 @@ if [ $rc -gt 0 ]; then
 	exit $rc
 fi
 
-# Double check that we are really in the '$root' directory since we will be deleting files
+# Double check that we are really in a '$root' repo directory 
 if [ "${root}" = '' ] || [ "${root}" = '/' ]; then
-	echo "The root directory is set to an unacceptable value: ${root}. No refresh performed" >&2
+	echo "UpdateInPlace: The root directory is set to an unacceptable value: ${root}. No refresh performed." >&2
 	exit 8
 fi
 
@@ -232,10 +232,19 @@ if [ "${repotype}" = "src" ]; then
 	fi
 	rc=$?
 else
-	rm -rf * 
-	rc=$?
-	if [ $rc -gt 0 ]; then
-		exit $rc
+	if [ "${repoaction}" = "update" ]; then
+		# Triple check that we are really in a valid '$root' binary repo by looking for zbrew-<sw>.bom file
+		bom="zbrew-${sw}.bom"
+		if ! [ -f "${bom}" ]; then
+			echo "UpdateInPlace: The root directory ${root} does not contain the file ${bom} but a refresh was requested. No refresh performed." >&2
+			exit 8
+		fi
+			
+		rm -rf "${root}/*"
+		rc=$?
+		if [ $rc -gt 0 ]; then
+			exit $rc
+		fi
 	fi
 	paxfile="${ZBREW_TMP}/${qualsw}_${drop}.pax"
 	echo "Pull down binary package: ${paxfile} from ${binserver}"
