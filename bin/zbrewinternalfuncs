@@ -1,0 +1,227 @@
+#
+# the functions listed below are used internally by zbrew related routines
+#
+
+zbrewlog() {
+	log_dir="${ZBREW_TMP}/zbrewlog"
+	log_msg=$*
+	log_time=$(date -u)
+	echo "${log_time} ${log_msg}" >> ${log_dir}
+}	
+
+zbrewdeploy() {
+	dir="$1"
+	bom="$2"
+
+	if [ "${bom}" = "" ] || ! [ -d "${dir}" ] || ! [ -f "${bom}" ]; then
+		echo "Syntax: zbrewdeploy <directory> <bom>" >&2
+		echo "Deploy the bill of materials to the specified directory" >&2
+		return 8
+	fi
+	rm -rf "${dir}"
+	mkdir -p "${dir}"
+	rc=$?
+	if [ $rc -gt 0 ]; then
+		echo "zbrewdeploy: Unable to make directory: ${dir}" >&2
+		return $rc
+	fi
+
+	names=`cat "${bom}"`
+	rc=$?
+	if [ $rc -gt 0 ]; then
+		echo "zbrewdeploy: Unable to read bom file: ${bom}" >&2
+		return $rc
+	fi
+	code="${names}"
+	for c in ${code}; do
+		path=${c%/*}
+		if [ "${path}" != "${c}" ]; then
+			mkdir -p "${dir}/${path}"
+			rc=$?
+			if [ $rc -gt 0 ]; then
+				echo "zbrewdeploy: Unable to make directory: ${dir}/${path}" >&2
+				return $rc
+			fi
+		fi
+		cp -p "${c}" "${dir}/${c}"
+		rc=$?
+		if [ $rc -gt 0 ]; then
+			echo "zbrewdeploy: Unable to copy file ${c} to file ${dir}/${c}" >&2
+			return $rc
+		fi
+	done
+	return 0	
+}
+
+	
+zbrewtest() {
+	lmsg="$1"
+	lexpected="$2"
+	lactual="$3"
+
+	if [ "${lexpected}" != "${lactual}" ]; then
+		echo "Test Failed. ${lmsg}" >&2
+		lines=`echo "${lexpected}" | wc -l | xargs echo`
+		if [ ${lines} -gt 1 ]; then
+			fexpected=/tmp/$$.zbrewtest.expected
+			factual=/tmp/$$.zbrewtest.actual
+			echo "diff <expected> <actual>" >&2
+			echo "${lexpected}" >${fexpected}
+			echo "${lactual}" >${factual}
+			diff ${fexpected} ${factual}
+			rm -f ${fexpected} ${factual}
+		else 
+			echo "Expected: ${lexpected}" >&2
+			echo "Actual: ${lactual}" >&2
+		fi
+		exit 16
+	fi	
+}
+
+zbrewprops() {
+	if [ $# -lt 3 ]; then
+		echo "Syntax: zbrewprops <swname> <category> [<file>]+" >&2
+		echo "where:" >&2
+		echo "  <swname> is the software these properties are associated with" >&2
+		echo "  <category> is the software category these properties are associated with" >&2
+		echo "  <file> is a JSON properties file" >&2
+		echo "Each key/value pair will be evaluated, creating a variable <key> with a value <value>" >&2
+		return 16
+	fi
+	swname=$1
+	shift 1
+	category=$1
+	shift 1
+	for props in $*; do
+		if [ -f "${props}" ]; then
+			props=`readprops ${swname} ${category} <${props}`
+			OLDIFS=$IFS; IFS="
+		"
+			line=0
+			for p in $props; do
+				line=$(($line+1))
+				p=`echo "$p" | awk '!/#/ { print $0; }'`
+				if [ "$p" != '' ]; then
+					key="${p%%=*}"
+					if [ "${key}" = "${p}" ]; then
+						echo "The line ${p} does not have a valid key/value pair of the form <key>=<value>. Line ignored." >&2
+					else
+						# Evaluate the line in a child shell. If it has errors, report them, otherwise repeat
+						(eval "$p" 2>/dev/null >/dev/null)
+						if [ $? -gt 0 ]; then
+							echo "The key/value pair '$p' could not be evaluated. Please correct line ${line}" >&2
+							return 16
+						fi
+						val="${p#*=}"
+
+						# Set the key only if it has not already been set
+						cmd="${key}=\${${key}-${val}}" 
+						eval "export ${cmd}"
+					fi
+				fi
+			done
+			IFS=$OLDIFS
+		else
+			echo "Unable to find properties file ${props}" >&2
+			return 16
+		fi
+		if [ ${line} -eq 0 ]; then
+			echo "No properties were read for swname: ${swname}, category: ${category}, file:${props}." >&2
+			return 8
+		fi
+	done
+
+	return 0
+}
+
+zbrewpropse() {
+	zbrewprops $*
+	if [ $? -gt 0 ]; then
+		exit 4
+	fi
+	return 0
+}
+
+zbrewswinstalled() {
+	sw=$(echo $1 | tr '[:lower:]' '[:upper:]');
+
+	if [ "${sw}" = "" ]; then
+		echo "zbrewswinstalled: Error - need to specify the software to check" >&2
+		return 0
+	fi
+	csi="ZBREW_${sw}HLQ"
+	eval "value=\${$csi}"
+	if [ "${value}" = "" ] || [ "${value}" = "NONE" ]; then
+		return 0
+	fi
+	return 1
+}
+
+callerdir() {
+	calledas="$1"
+	calledasdir="$(dirname ${calledas})"
+	if [ "${calledasdir}" = '.' ]; then
+		if [ "${calledas%%/*}" = "${calledas}" ]; then
+			calledasdir=''
+		fi
+	fi
+	if [ "${calledasdir}" = '' ]; then
+		calledasdir=$(abspath "${calledas}")
+	fi
+	echo "${calledasdir}"
+}
+
+setjavaenv() {
+	if [ -z "${SMPE_JAVAHOME}" ]; then
+		if [ -z "${JAVA_HOME}" ]; then
+			javaloc=`whence java 2>/dev/null`
+			if [ $? -eq 0 ]; then
+	                        export SMPE_JAVAHOME="$(dirname ${javaloc})/../"
+			else
+	                    	echo "Unable to set SMPE_JAVAHOME. Please export SMPE_JAVAHOME before running"
+	                        exit 16
+			fi
+		else
+	            	export SMPE_JAVAHOME="${JAVA_HOME}"
+		fi
+	fi
+	if [ -z "${SMPE_CLASSPATH}" ]; then
+		if [ -d /usr/lpp/smp/classes ]; then
+			export SMPE_CLASSPATH="/usr/lpp/smp/classes"
+		else
+	            	echo "Unable to set SMPE_CLASSPATH. Please export SMPE_CLASSPATH before running"
+			exit 16
+		fi
+	fi
+	if ! [ -d ${SMPE_JAVAHOME} ]; then
+	    	echo "SMPE_JAVAHOME environment variable is defined to ${SMPE_JAVAHOME} but the directory does not exist. Please create directory or change environment variable."
+		exit 16
+	fi
+	
+	if ! [ -d ${SMPE_CLASSPATH} ]; then
+	    	echo "SMPE_CLASSPATH environment variable is defined to ${SMPE_JAVAHOME} but the directory does not exist. Please create directory or change environment variable."
+		exit 16
+	fi
+	
+}
+
+chk() {
+	rc=$1
+	msg="$2"
+
+	if  [ $rc -eq 0 ]; then
+		return 0
+	fi
+	echo "${msg}" >&2
+	exit $rc
+}
+
+isinteger() {
+	val=$1
+	result=`echo "$1" | tr -d '[:digit:]'`
+	if [ "${result}" = '' ] ; then 
+		echo true
+	else
+		echo false
+	fi
+}

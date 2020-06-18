@@ -29,7 +29,9 @@ bin/smpfromppa
 bin/smpfromshopz
 bin/zbrew
 bin/zbrewarchive
-bin/zbrewfuncs
+bin/zbrewexternalfuncs
+bin/zbrewinternalfuncs
+bin/zbrewmount
 bin/zbrewrestore
 bin/zbrewsetenv
 bin/zbrewsetswenv
