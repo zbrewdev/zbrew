@@ -38,7 +38,7 @@ Examples:
 
 unpaxfromlocal() {
 	sw="$1"
-	paxout="${ZBREW_TMP}$$.${sw}_pax.out"
+	paxout="${ZBREW_TMP}/$$.${sw}_pax.out"
 
 	NTS="${ZBREW_TMP}/smpnts.${sw}/ppaorder"
 	mkdir -p ${NTS}
