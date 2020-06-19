@@ -200,10 +200,11 @@ repoaction="$6"
 drop="$7"
 
 if [ "${sw}" = "zbrew" ]; then
-	exit 0 # msf - temporary - get this working for packages first to avoid accidentally wiping zbrew out
+	qualsw="zbrew"
+else
+	qualsw="zbrew-${sw}"
 fi
 
-qualsw="zbrew-${sw}"
 if [ "${repoaction}" = "create" ]; then
 	mkdir "${root}"
 	rc=$?
@@ -234,8 +235,8 @@ if [ "${repotype}" = "src" ]; then
 else
 	if [ "${repoaction}" = "update" ]; then
 		# Triple check that we are really in a valid '$root' binary repo by looking for zbrew-<sw>.bom file
-		bom="zbrew-${sw}.bom"
-		if ! [ -f "${bom}" ]; then
+		readme="README.md"
+		if ! [ -f "${readme}" ]; then
 			echo "UpdateInPlace: The root directory ${root} does not contain the file ${bom} but a refresh was requested. No refresh performed." >&2
 			exit 8
 		fi
@@ -299,8 +300,7 @@ refresh() {
 	else
 		root="${ZBREW_REPOROOT}/zbrew-${sw}"
 	fi
-	drop="202005062019"
-	updateInPlace "${sw}" "${zbrewroot}" "${root}" "${drop}"
+	updateInPlace "${sw}" "${zbrewroot}" "${root}" 
 }
 
 receive() {
