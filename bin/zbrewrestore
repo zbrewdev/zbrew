@@ -28,7 +28,7 @@ zosname=$(echo $sw | tr '[:lower:]' '[:upper:]');
 prefix=`echo "${ussname}" | awk '{ print substr($sw, 0, 3) }'`
 dunzipout="${ZBREW_TMP}/$$dzip.out"
 
-dunzip -s800M "${ZBREW_TMP}/${ussname}.dzp" "${ZBREW_TGT_HLQ%.*}" >${dunzipout} 2>&1
+dunzip -s1G "${ZBREW_TMP}/${ussname}.dzp" "${ZBREW_TGT_HLQ%.*}" >${dunzipout} 2>&1
 rc=$?
 if [ $rc -gt 4 ]; then
 	# Filter on 'empty dataset' (0ADR744W) message and if that is the only non-informational, treat the unzip as a pass

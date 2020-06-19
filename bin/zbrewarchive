@@ -26,5 +26,5 @@ fi
 ussname=$(echo $1 | tr '[:upper:]' '[:lower:]');
 zosname=$(echo $1 | tr '[:lower:]' '[:upper:]');
 
-dzip -s800M "${ZBREW_TMP}/${ussname}.dzp" "${ZBREW_SRC_HLQ}${zosname}.*" 
+dzip -s1G "${ZBREW_TMP}/${ussname}.dzp" "${ZBREW_SRC_HLQ}${zosname}.*" 
 exit $rc

@@ -41,17 +41,23 @@ if url == '' then do
   call Syntax
 end
 
-parse var url 'https://'connectionURI'/'requestPath .
+parse var url 'https://'connection'/'requestPath .
 
-if connectionURI == '' || requestPath == '' then do
+if connection == '' || requestPath == '' then do
   call SayErr 'URL not in valid format.'
   call Syntax
+end
+
+parse var connection connectionURI':'connectionPort
+
+if connectionPort == '' then do
+  connectionPort = 443
 end
 
  call HTTP_getToolkitConstants
 
  connectionHandle=HTTP_hwthinit(verbose, HWTH_HANDLETYPE_CONNECTION)
- call HTTP_setupConnection verbose, connectionURI, tracefile
+ call HTTP_setupConnection verbose, connectionURI, connectionPort, tracefile
  call HTTP_connect verbose
 
  requestHandle=HTTP_hwthinit(verbose, HWTH_HANDLETYPE_HTTPREQUEST)
@@ -149,7 +155,7 @@ parse arg verbose, handle, key, val
 
 HTTP_setupConnection:Procedure expose connectionHandle
 trace 'o'
-parse arg verbose, uri, tracefile
+parse arg verbose, uri, port, tracefile
 
  handleName="connectionHandle"
  if verbose then do
@@ -157,6 +163,7 @@ parse arg verbose, uri, tracefile
  end 
 
  call HTTP_hwthset verbose, handleName, "HWTH_OPT_URI", "https://"uri
+ call HTTP_hwthset verbose, handleName, "HWTH_OPT_PORT", port
  call HTTP_hwthset verbose, handleName, "HWTH_OPT_COOKIETYPE", "HWTH_COOKIETYPE_SESSION"
  call HTTP_hwthset verbose, handleName, "HWTH_OPT_USE_SSL", "HWTH_SSL_USE"
  call HTTP_hwthset verbose, handleName, "HWTH_OPT_SSLKEYTYPE", "HWTH_SSLKEYTYPE_KEYRINGNAME"
