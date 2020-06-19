@@ -41,13 +41,20 @@ configure software
 
 *From github*
 You can download zbrew from github directly into _ZBREWROOT_. You will need to 'build' zbrew before you can use it. To do so:
+- cd _ZBREWROOT_
+- cd ..
+- git clone git@github.com:zbrewdev/zbrew.git
 - cd _ZBREWROOT_/build
 - ./build.sh
 
-*From artifactory*
-You can also get zbrew from artifactory: https://bintray.com/zbrew/zbrew
-To install from artifactory:
-- download the latest pax file, and unpax it into a directory _ZBREWROOT_
+*From bintray*
+You can also get zbrew from bintray: https://bintray.com/zbrew/zbrew
+To install from bintray:
+- Download the pax file from bintray to your desktop, then upload via sftp to _ZBREWROOT_
+- Log on to z/OS
+- mkdir _ZBREWROOT_
+- cd _ZBREWROOT_
+- pax -rf zbrew_yyyymmddhhmm.pax
 
 You will then want to pick up pax files for each software package you want to install. 
 Start with _zbrew-zhw_, which is just a hello world package, to ensure it all works. Install all pax files in the _ZBREW\_WORKROOT_ directory. 
