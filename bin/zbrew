@@ -237,7 +237,7 @@ else
 		# Triple check that we are really in a valid '$root' binary repo by looking for zbrew-<sw>.bom file
 		readme="README.md"
 		if ! [ -f "${readme}" ]; then
-			echo "UpdateInPlace: The root directory ${root} does not contain the file ${bom} but a refresh was requested. No refresh performed." >&2
+			echo "UpdateInPlace: The root directory ${root} does not contain the file ${readme} but a refresh was requested. No refresh performed." >&2
 			exit 8
 		fi
 			
