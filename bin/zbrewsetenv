@@ -41,7 +41,8 @@ if [ $? -gt 0 ]; then
 fi
 zbrewroot="${zbrewdir%/*}"
 
-. zbrewfuncs
+. zbrewinternalfuncs
+. zbrewexternalfuncs
 
 export mydir=$(callerdir ${0})
 
