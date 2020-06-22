@@ -130,6 +130,12 @@ latestBinary() {
 	sw="$2"
 	tmpa="${ZBREW_TMP}/zbrewpkgs_a.$$.txt"
 
+	if [ "${sw}" = "zbrew" ]; then
+		binname='zbrew'
+	else
+		binname="zbrew-${sw}"
+	fi
+
 	httpsget -o "${tmpa}" "${binserver}/zbrew"
 	rc=$?
 	if [ $rc -gt 0 ]; then
@@ -140,13 +146,13 @@ latestBinary() {
 	if [ $rc -gt 0 ]; then
 		return $rc
 	fi
-	line=`cat ${tmpa} | awk '/href=/ { print $3 }' | grep "zbrew-${sw}" | tail -1`
+	line=`cat ${tmpa} | awk '/href=/ { print $3 }' | grep "${binname}" | tail -1`
 	rc=$?
 	rm "${tmpa}"
 	if [ $rc -gt 0 ]; then
 		return $rc
 	fi
-	file="${line#*zbrew-${sw}_*}"
+	file="${line#*${binname}_*}"
 	drop="${file%*.pax*}"
 	echo "${drop}"
 	return 0
@@ -200,10 +206,11 @@ repoaction="$6"
 drop="$7"
 
 if [ "${sw}" = "zbrew" ]; then
-	exit 0 # msf - temporary - get this working for packages first to avoid accidentally wiping zbrew out
+	qualsw="zbrew"
+else
+	qualsw="zbrew-${sw}"
 fi
 
-qualsw="zbrew-${sw}"
 if [ "${repoaction}" = "create" ]; then
 	mkdir "${root}"
 	rc=$?
@@ -227,16 +234,17 @@ if [ "${repotype}" = "src" ]; then
 	if [ "${repoaction}" = "create" ]; then
 		cd ../
 		git clone "${gitserver}/${qualsw}.git"
+		rc=$?
 	else
 		git pull "${gitserver}/${qualsw}.git"
+		rc=$?
 	fi
-	rc=$?
 else
 	if [ "${repoaction}" = "update" ]; then
 		# Triple check that we are really in a valid '$root' binary repo by looking for zbrew-<sw>.bom file
-		bom="zbrew-${sw}.bom"
-		if ! [ -f "${bom}" ]; then
-			echo "UpdateInPlace: The root directory ${root} does not contain the file ${bom} but a refresh was requested. No refresh performed." >&2
+		readme="README.md"
+		if ! [ -f "${readme}" ]; then
+			echo "UpdateInPlace: The root directory ${root} does not contain the file ${readme} but a refresh was requested. No refresh performed." >&2
 			exit 8
 		fi
 			
@@ -247,12 +255,13 @@ else
 		fi
 	fi
 	paxfile="${ZBREW_TMP}/${qualsw}_${drop}.pax"
-	echo "Pull down binary package: ${paxfile} from ${binserver}"
 	httpsget -o "${paxfile}" "${binserver}/zbrew/${qualsw}_${drop}.pax"
 	rc=$?
 	if [ $rc -gt 0 ]; then
+		echo "Unable to find a binary package of ${qualsw} on ${binserver}" >&2
 		exit $rc
 	fi
+	echo "Binary package: ${paxfile} downloaded from ${binserver}"
 	pax -rf "${paxfile}"
 	rc=$?
 	if [ $rc -gt 0 ]; then
@@ -299,8 +308,7 @@ refresh() {
 	else
 		root="${ZBREW_REPOROOT}/zbrew-${sw}"
 	fi
-	drop="202005062019"
-	updateInPlace "${sw}" "${zbrewroot}" "${root}" "${drop}"
+	updateInPlace "${sw}" "${zbrewroot}" "${root}" 
 }
 
 receive() {

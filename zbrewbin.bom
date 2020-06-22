@@ -9,6 +9,7 @@ utils/smplstptfs
 utils/smplstzones
 testtools/mdiff
 testtools/zbrewtestfuncs
+bin/httpsget
 bin/prodclean
 bin/proddsalloc
 bin/readbom

@@ -93,14 +93,17 @@ done
 
 run_gimsmp(){
 
-
-mvscmdauth --pgm=GIMSMP --smpcsi=${ZBREW_SRC_HLQ}${zosname}G.GLOBAL.CSI --sysprint=DUMMY --smprpt=DUMMY --smplist=DUMMY --smpcntl=stdin <<zzz
+smpout=`smp -i "${ZBREW_SRC_HLQ}${zosname}G.GLOBAL.CSI" <<zzz
 ${smpuclin}
 zzz
+`
         rc=$?
         if [ $rc -gt 4 ]; then
 		echo "GIMSMP failed with rc:$rc" >&2
+		echo "Input:" >&2
 		echo "${smpuclin}" >&2
+		echo "Output:" >&2
+		echo "${smpout}" >&2
                 exit $rc
         fi
 
