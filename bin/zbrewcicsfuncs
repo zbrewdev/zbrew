@@ -1,0 +1,125 @@
+#
+# gets called by zbrewexternalfuncs
+#
+
+supportsCICS() {
+	return `definedProperty "$ZBREW_DFHHLQ"`
+}
+
+cicsSYSINUpdate() {
+	sysin="$1"
+	cicskey="$2"
+	cicsvalue="$3"
+
+	case ${cicskey} in
+		GRPLIST)
+			echo "${sysin}"	| awk -vcicsvalue=$cicsvalue '
+				BEGIN {
+					found=0;
+				}
+				/^[ ]*GRPLIST/ {
+					openParen=index($1,"(")
+					closeParen=index($1,")")
+					if (openParen > 0 && closeParen > 0) {
+						origlist=substr($1,openParen+1,closeParen-openParen-1)
+					} else {
+						equals=index($1,"=")
+						if (equals == 0) {
+							exit(16);
+						}
+						origlist=substr($1,equals+1)
+					}
+					found=1
+					print "GRPLIST=("cicsvalue","origlist")"
+					next
+				}
+				/^\.END/ {
+					if (!found) {
+						print "GRPLIST="cicsvalue
+					}
+				}
+				// {
+					print
+				}
+			'
+			;;
+
+		SEC|XTRAN|XCMD|XDCT|XFCT|XHFS|XJCT|XPPT|XPSB|XPTKT|XRES|GMTRAN)
+			# YES or NO is the only valid value, except for GMTRAN where it is a transaction
+			echo "${sysin}" | awk -vcicsvalue=$cicsvalue -vcicskey=$cicskey '
+				BEGIN {
+					found=0;
+				}
+				/^\.END/ {
+					if (!found) {
+						print cicskey"="cicsvalue
+					}
+				}
+				{
+					equals=index($1,"=")
+					if (equals != 0) {
+						origkey=substr($1,1,equals-1)
+						if (origkey==cicskey) {
+							found=1
+							print cicskey"="cicsvalue
+						} else {
+							print
+						}
+					} else {
+						print
+					}
+                                }
+                        '
+			;;
+		*)
+			echo "Unexpected CICS parameter ${cicskey} passed to cicsSYSINUpdate" >&2
+			return 4
+			;;
+	esac
+	return 0
+}
+
+stopCICS() {
+	region=$(echo $1 | tr '[:lower:]' '[:upper:]')
+
+	#
+	# Shutdown any current CICS regions running
+	# Look for either a 'not active' or 'ended' message
+	#
+	timestamp=`opercmd "modify ${region},cemt p shut" 2>/dev/null | tail -1 | awk '{ print $2 " " $3; }'`
+	while [ true ]; do
+		pout=`pcon -s ${timestamp} 2>/dev/null`
+		echo "${pout}" | grep "IEE341I ${region}" | grep "NOT ACTIVE"
+		if [ $? -eq 0 ]; then         
+			break;
+		fi
+	        echo "${pout}" | grep "HASP395 ${region} ENDED" 
+		if [ $?	-eq 0 ]; then      
+			break;
+		fi
+		sleep 1
+	done
+	return 0
+}
+
+startCICS() {
+	region=$(echo $1 | tr '[:lower:]' '[:upper:]')
+
+	#
+	# Shutdown any current CICS regions running
+	# Look for either a 'not active' or 'ended' message
+	#
+	timestamp=`opercmd "start ${region}" 2>/dev/null | tail -1 | awk '{ print $2 " " $3; }'`
+	while [ true ]; do
+		pout=`pcon -s ${timestamp} 2>/dev/null`
+		echo "${pout}" | grep "DFHSI1517 ${region}"
+		if [ $? -eq 0 ]; then         
+			return 0;
+		fi
+		echo "${pout}" | egrep "IEE122I|DFHXS1106"
+		if [ $? -eq 0 ]; then         
+			return 1;
+		fi
+		sleep 1
+	done
+}

@@ -30,8 +30,15 @@ bin/smpfromppa
 bin/smpfromshopz
 bin/zbrew
 bin/zbrewarchive
-bin/zbrewfuncs
+bin/zbrewcicsfuncs
+bin/zbrewexternalfuncs
+bin/zbrewinternalfuncs
+bin/zbrewiofuncs
+bin/zbrewjclfuncs
+bin/zbrewmount
+bin/zbrewosfuncs
 bin/zbrewrestore
+bin/zbrewsecurityfuncs
 bin/zbrewsetenv
 bin/zbrewsetswenv
 bin/zbrewswenabled

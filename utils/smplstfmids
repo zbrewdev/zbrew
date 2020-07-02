@@ -3,13 +3,20 @@ if [ $# != 2 ]; then
 	echo "smplstfmid <csi> <zone>"
 	exit 4
 fi
-out=$(whence zbrewfuncs >/dev/null)
+out=$(whence zbrewinternalfuncs >/dev/null)
 if [ $? -eq 0 ]; then
-	. zbrewfuncs
+	. zbrewinternalfuncs
 else    	
 	echo "zbrew tools need to be in your PATH" >&2
 	exit 4
-fi      
+fi
+out=$(whence zbrewexternalfuncs >/dev/null)
+if [ $? -eq 0 ]; then
+	. zbrewexternalfuncs
+else    	
+	echo "zbrew tools need to be in your PATH" >&2
+	exit 4
+fi
 
 mydir=$(callerdir ${0})
 props="${mydir}/../zbrewglobalprops.json"

@@ -1,0 +1,78 @@
+#
+# gets called by zbrewexternalfuncs
+#
+
+a2e() {
+	file="$1"
+	tmpfile="${ZBREW_TMP}/ascii.$$"
+	iconv -t IBM-1047 -f ISO8859-1 <"${file}" >"${tmpfile}"
+	if [ $? -gt 0 ]; then
+		return $?
+	fi
+
+	mv "${tmpfile}" "${file}"
+	if [ $? -gt 0 ]; then
+		return $?
+	fi
+	chtag -tc IBM-1047 "${file}"
+	return $?
+}
+
+e2a() {
+	file="$1"
+	tmpfile="${ZBREW_TMP}/ascii.$$"
+	iconv -f IBM-1047 -t ISO8859-1 <"${file}" >"${tmpfile}"
+	if [ $? -gt 0 ]; then
+		return $?
+	fi
+
+	mv "${tmpfile}" "${file}"
+	if [ $? -gt 0 ]; then
+		return $?
+	fi
+	chtag -tc ISO8859-1 "${file}"
+	return $?
+}
+
+#
+# VSAM dataset exists?
+#
+vsamexists() {
+	dataset=$(echo $1 | tr '[:lower:]' '[:upper:]');
+	echo "  LISTCAT ENTRIES(${dataset})" | mvscmdauth --pgm=idcams --sysprint=dummy --sysin=stdin
+	rc=$?
+	if [ $rc -eq 0 ]; then
+		echo true
+	else
+		echo false
+	fi
+}
+
+#
+# Create a copy of a VSAM dataset
+#
+vsamcp() {
+#set -x
+	src=$(echo $1 | tr '[:lower:]' '[:upper:]');
+	dst=$(echo $2 | tr '[:lower:]' '[:upper:]');
+
+	if [ "${dst}" = '' ]; then
+		echo "Syntax: vsamcp <src> <dst>" >&2
+		return 4
+	fi
+	sysprint=/tmp/vsampcp.$$.out
+	touch "${sysprint}"
+	mvscmdauth --pgm=ADRDSSU --sysprint="${sysprint}" --sysin=stdin <<-zz
+          COPY DS(INCLUDE( -
+            ${src})) -
+            CAN SHR CATALOG -
+            RENAMEU(${src},${dst})
+	zz
+	rc=$?
+	if [ $rc -gt 0 ]; then
+		echo "VSAM Copy failed with rc:$rc" >&2
+		cat "${sysprint}" >&2
+	fi
+	rm -rf "${sysprint}"
+	return $?
+}
