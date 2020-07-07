@@ -62,7 +62,8 @@
 
 			"ZBREW_DFH_SET_MINIMAL_SECURITY":"NO",
 
-			"ZBREW_ZOSMF_PORT":"NONE"
+                        "ZBREW_JAVA_HOME":"",
+                        "ZBREW_NODE_HOME":""
                  }
 	}]
 }

@@ -61,7 +61,8 @@
 
 			"ZBREW_DFH_SET_MINIMAL_SECURITY":"YES",
 
-			"ZBREW_ZOSMF_PORT":"10443"
+			"ZBREW_JAVA_HOME":"/usr/lpp/java/J8.0_64",
+			"ZBREW_NODE_HOME":"/usr/lpp/IBM/cnj/v8r0/IBM/node-latest-os390-s390x"
                  }
 	}]
 }

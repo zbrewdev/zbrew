@@ -81,7 +81,7 @@ fi
 
 sw=$(echo $1 | tr '[:lower:]' '[:upper:]');
 verb=$(echo $2 | tr '[:lower:]' '[:upper:]');
-text=$*
+text=$3
 
 pfx="/*"
 sfx="*/"
