@@ -31,18 +31,18 @@ msg() {
 #
 syntax() {
 	echo "\
-apfregistrar [-vd] <swname> enable|disable [dataset]+
+pptregistrar [-vd] <swname> enable|disable <ppt-entry-text>
 
 Examples:
-	Enable APF authorization for dataset ZBREW.EQAE20.SEQAAUTH
-		apfregistrar eqae20 enable zbrew.eqae20.seqaauth
-	Disable APF authorization for EQAE20 datasets
-        	apfregistrar eqae20 disable 5737-I22
+	Enable PPT entry for program ZWESIS01 as KEY(4) NOSWAP
+		pptregistrar zwe1b0 enable \"PPT PGMNAME(ZWESIS01) KEY(4) NOSWAP\"
+	Disable PPT specification for ZWESIS01
+        	pptregistrar zwe1b0 disable 
 Note:
 	The PDS \${ZBREW_TGT_HLQ}PARMLIB is created if it does not already exist
-	The PDS member PROG\${ZBREW_PARMLIB_SFX} is created if it does not already exist
-	The PDS member will have the new APF authorized datasets added if 'enable' is specified
-	The PDS member will have the APF authorized datasets removed if 'disable' is specified.
+	The PDS member SCHED\${ZBREW_PARMLIB_SFX} is created if it does not already exist
+	The PDS member will have the new PPT entries added if 'enable' is specified
+	The PDS member will have the PPT entries removed if 'disable' is specified.
 	Enabling a product that already has an entry is an error.
 	Disabling a product that does not have an entry is silent.
 	Disabling a product removes the entry from the file - it does NOT mark as DISABLED
@@ -63,7 +63,7 @@ while getopts ":vdf" opt; do
       ;;
     \?)         
       if [ ${OPTARG} != "?" ]; then
-        msg apfregistrar ${InvalidOption} E "${OPTARG}"
+        msg pptregistrar ${InvalidOption} E "${OPTARG}"
       fi                
       syntax
       exit 4
@@ -72,7 +72,7 @@ while getopts ":vdf" opt; do
 done    	
 shift $(expr $OPTIND - 1 )
 if [ $# -lt 3 ]; then
-        msg apfregistrar ${TooFewParms} E "$#"
+        msg pptregistrar ${TooFewParms} E "$#"
  	syntax
         exit 8
 fi  
@@ -81,56 +81,33 @@ fi
 
 sw=$(echo $1 | tr '[:lower:]' '[:upper:]');
 verb=$(echo $2 | tr '[:lower:]' '[:upper:]');
-shift 2
-datasets=$*
+text=$3
 
 pfx="/*"
 sfx="*/"
-header="${pfx} --- ${sw} APF start --- ${sfx}"
-footer="${pfx} --- ${sw} APF end   --- ${sfx}"
+header="${pfx} --- ${sw} SCHED start --- ${sfx}"
+footer="${pfx} --- ${sw} SCHED end   --- ${sfx}"
 
 parmlibds="${ZBREW_TGT_HLQ}PARMLIB"
-member="PROG${ZBREW_PARMLIB_SFX}"
+member="SCHED${ZBREW_PARMLIB_SFX}"
 
-datasets=$(echo $datasets | tr '[:lower:]' '[:upper:]');
-for dataset in ${datasets}; do
-	dataset=$(echo $dataset | tr '[:lower:]' '[:upper:]');
-	dls -l ${dataset} >/dev/null 2>/dev/null
-	if [ $? -gt 0 ]; then
-		echo "apfregistrar: Dataset: ${dataset} not found." >&2
-		exit 16
-	fi
-done
-
-for dataset in ${datasets}; do
-	info=`dls -l ${dataset}`
-	volume=`echo "${info}" | awk '{ print $5; }'`
-	opercmd "d sms,volume(${volume})" 2>/dev/null | grep "NOT AN SMS MANAGED DASD VOLUME"
-	if [ $? -gt 0 ]; then
-		volume="SMS"
-		setstr="SMS"
-	else
-		setstr="VOLUME=${volume}"
-	fi
-
-	if [ "${verb}" = ENABLE ]; then
-		op="ADD"
-	else
-		op="DELETE"
-	fi
-	entry="APF ${op} DSNAME(${dataset}) ${volume}"
-	if [ "${text}" = "" ]; then
-		text="${entry}"
-	else
-		text="${entry}
-${text}"
-	fi
-	opercmd "SETPROG APF,${op},DSNAME=${dataset},${setstr}" >/dev/null 2>&1
-	if [ $? -gt 0 ]; then
-		echo "apfregistrar: Unable to APF authorize ${dataset}" >&2
-		exit 16
-	fi
-done
+parmlibAddDataset "${parmlibds}"
+rc=$?
+if [ $rc -gt 0 ]; then
+	echo "schedregistrari: unable to add ${parmlibds} to PARMLIB concatenation" >&2
+	exit $rc
+fi
 
 registrar "${sw}" "${verb}" "${parmlibds}" "${member}" "${header}" "${footer}" "${pfx}" "${sfx}" "${text}"
-exit $?
+rc=$?
+if [ $rc -gt 0 ]; then
+	echo "schedregistrar failed for ${text}" >&2
+	exit $rc
+fi
+opercmd "SET SCH=${ZBREW_PARMLIB_SFX}"
+rc=$?
+if [ $rc -gt 0 ]; then
+	echo "schedregistrar: unable to dynamically update ${parmlibds}(${member}) with SET SCH" >&2
+	exit $rc
+fi
+exit 0

@@ -33,6 +33,19 @@ definedProperty() {
 	fi
 }
 
+chkProperties() {
+	properties=$*
+	rc=0
+	for property in ${properties}; do
+		eval "val=\${$property}" 
+		if `undefinedProperty "${val}"`; then 
+			echo "Property \$${property} is undefined but is required" >&2
+			rc=4
+		fi
+	done
+	return $rc
+}
+
 parmlibAddOrRemoveDataset() {
 	pverb="$1"
 	ds="$2"
