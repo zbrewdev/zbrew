@@ -7,7 +7,7 @@ utils/shopzgenorder
 utils/smplstfmids
 utils/smplstptfs
 utils/smplstzones
-testtools/mdiff
+testtools/ediff
 testtools/zbrewtestfuncs
 bin/httpsget
 bin/prodclean

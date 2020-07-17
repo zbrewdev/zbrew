@@ -36,7 +36,7 @@ runtests() {
 			fi
 			if [ -e ${name}.expected ]; then
 				${test} ${parms} >${name}.actual 2>&1
-				mdiff -Z ${name}.expected ${name}.actual
+				ediff -Z ${name}.expected ${name}.actual
 				rc=$?
 			else
 				${test} ${parms}

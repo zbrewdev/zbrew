@@ -1,11 +1,11 @@
 #!/bin/sh
 #
-# mdiff - master diff:
-# Format: mdiff path1 path2
+# ediff - enhanced diff:
+# Format: ediff path1 path2
 #
-# compare a master file to an actual output file
+# compare an expected output file to an actual output file
 # return 0 if files match and returns non-zero if files do not match.
-# The master file is composed of standard text lines and lines with 
+# The expected output file is composed of standard text lines and lines with 
 # wildcards. A line with wildcards must start with the ^ character and 
 # end with the $ character, e.g.
 # ^This line has a date stamp: .* in it $
@@ -16,7 +16,7 @@
 # character.
 #
 # A wildcard line will be treated as a regular expression line. 
-# As an example, consider the file Example.master:
+# As an example, consider the file Example.expected:
 # This is Line One
 # ^This has a date stamp: .*$
 # This is Line Three
@@ -29,7 +29,7 @@
 # The line:
 # ^This has a date stamp: .*$
 #
-# in Example.master would be treated as a regular expression and would match
+# in Example.expected would be treated as a regular expression and would match
 # the corresponding line:  
 #This has a date stamp: Wednesday, January 3rd, 2018 15:23
 #
@@ -38,7 +38,7 @@
 export ME=$0
 function syntax {
   echo "${ME} Version 1.0.1" >&2
-  echo "${ME} [<options>] <master file> <actual file>" >&2
+  echo "${ME} [<options>] <expected file> <actual file>" >&2
   echo " where <options> can be one or more of:" >&2
   echo " -v [version information]" >&2
   echo " -Z [ignore trailing whitespace in comparison]" >&2
@@ -76,6 +76,7 @@ fi
 nl1=`wc -l <$1`
 nl2=`wc -l <$2`
 if [[ $nl1 -ne $nl2 ]]; then 
+  echo "Number of lines in 2 files differs (expected: ${nl1} actual: ${nl2}. Unabled to perform extended diff. Simple diff follows" >&2
   diff $1 $2
   exit $?
 fi
